@@ -16,6 +16,7 @@ This is a meticulously structured project template designed to save you time and
 - **`pyproject.toml`**: The project configuration file, storing metadata and managing dependencies, replacing the traditional `requirements.txt` with modern standards.
 - **`.python-version`**: Defines the standard Python version for the project (currently `3.14`), allowing tools like `pyenv` or `uv` to automatically select the correct environment.
 - **`CLAUDE.md`**: Behavioral guidelines for pre-installed AI Agents, outlining principles and coding standards to follow within this project.
+- **`ANTIGRAVITY.md`**: Behavioral guidelines for pre-installed AI Agents, outlining principles and coding standards to follow within this project.
 - **`skills-lock.json`**: A skills lock file that remembers configured skills and tools to ensure consistent project operation.
 - **`.gitignore`**: Specifies files and directories that should not be pushed to Git, keeping the repository clean and secure.
 

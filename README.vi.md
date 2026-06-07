@@ -16,6 +16,7 @@
 - **`pyproject.toml`**: File cấu hình dự án, lưu trữ metadata và quản lý các thư viện phụ thuộc (dependencies) thay thế cho `requirements.txt` theo tiêu chuẩn hiện đại.
 - **`.python-version`**: Định nghĩa chuẩn phiên bản Python của dự án (hiện tại `3.14`), giúp các công cụ như `pyenv` hoặc `uv` tự động chọn đúng môi trường.
 - **`CLAUDE.md`**: File chỉ dẫn hành vi (Guidelines) cho AI Agent cài đặt sẵn những nguyên tắc cần tuân thủ về tư duy và coding khi làm việc trong project này.
+- **`ANTIGRAVITY.md`**: File chỉ dẫn hành vi (Guidelines) cho AI Agent cài đặt sẵn những nguyên tắc cần tuân thủ về tư duy và coding khi làm việc trong project này.
 - **`skills-lock.json`**: Tập tin khoá kỹ năng, giúp ghi nhớ các công cụ đã cấu hình để dự án hoạt động đồng nhất.
 - **`.gitignore`**: Chứa danh sách các thư mục/file không được push lên Git để giữ repo gọn nhẹ và bảo mật.
 

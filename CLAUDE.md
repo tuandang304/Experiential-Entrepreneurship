@@ -2,9 +2,46 @@
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## 🛠️ Project Structure
 
-## 1. Think Before Coding
+```
+repo/
+├── frontend/   # React + TypeScript (Vite, Tailwind, React Router)
+├── backend/    # Java 21 + Spring Boot (PostgreSQL, JWT, OAuth2)
+├── ai/         # Python 3.14 AI backend (LangChain, platform connectors)
+└── docs/       # Project documentation
+```
+
+## 🛠️ Project Commands
+
+### AI backend (uv)
+```bash
+cd ai
+uv run main.py        # Run demo workflow
+uv sync               # Install dependencies
+uv python install 3.14
+```
+
+### Frontend (Node)
+```bash
+cd frontend
+npm install           # Install dependencies
+npm run dev           # Dev server on http://localhost:3000
+npm run build         # Production build
+```
+
+### Backend (Maven)
+```bash
+cd backend
+./mvnw spring-boot:run   # Run on http://localhost:8080
+./mvnw package           # Build JAR
+```
+
+## 🧠 Behavioral Guidelines
+
+These principles help ensure clean code, surgical changes, and effective problem-solving.
+
+### 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
@@ -14,7 +51,7 @@ Before implementing:
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
-## 2. Simplicity First
+### 2. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -26,7 +63,7 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 3. Surgical Changes
+### 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -42,7 +79,7 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
-## 4. Goal-Driven Execution
+### 4. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -52,14 +89,6 @@ Transform tasks into verifiable goals:
 - "Refactor X" → "Ensure tests pass before and after"
 
 For multi-step tasks, state a brief plan:
-```
 1. [Step] → verify: [check]
 2. [Step] → verify: [check]
 3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

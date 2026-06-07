@@ -12,7 +12,7 @@ AIMA automates social media content generation, scheduling, and analytics throug
 repo/
 ├── frontend/          # React + TypeScript web app
 ├── backend/           # Java 21 + Spring Boot REST API
-├── ai/                # Python 3.14 AI agent backend
+├── ai/                # Python 3.10 AI agent backend
 └── docs/              # Project documentation
 ```
 
@@ -59,11 +59,11 @@ Configure secrets in `backend/src/main/resources/application.yml` or via environ
 ### AI Backend (`ai/`)
 Python AI agent system that fetches social platform data, runs trend analysis, and generates content using LangChain and the Antigravity SDK.
 
-**Stack:** Python 3.14 · uv · LangChain · Antigravity SDK · Requests
+**Stack:** Python 3.10 · uv · LangChain · Antigravity SDK · Requests
 
 ```bash
 cd ai
-uv python install 3.14
+uv python install 3.10
 uv sync
 uv run main.py
 ```

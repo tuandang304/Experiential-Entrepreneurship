@@ -12,7 +12,7 @@ AIMA tự động hóa việc tạo nội dung, lên lịch đăng và phân tí
 repo/
 ├── frontend/          # Ứng dụng web React + TypeScript
 ├── backend/           # REST API Java 21 + Spring Boot
-├── ai/                # Backend AI Agent Python 3.14
+├── ai/                # Backend AI Agent Python 3.10
 └── docs/              # Tài liệu dự án
 ```
 
@@ -59,11 +59,11 @@ Cấu hình biến môi trường trong `backend/src/main/resources/application.
 ### AI Backend (`ai/`)
 Hệ thống AI Agent Python thu thập dữ liệu từ các nền tảng mạng xã hội, phân tích xu hướng và tạo nội dung bằng LangChain và Antigravity SDK.
 
-**Công nghệ:** Python 3.14 · uv · LangChain · Antigravity SDK · Requests
+**Công nghệ:** Python 3.10 · uv · LangChain · Antigravity SDK · Requests
 
 ```bash
 cd ai
-uv python install 3.14
+uv python install 3.10
 uv sync
 uv run main.py
 ```

@@ -125,7 +125,7 @@ Chúng tôi chia quy trình thực hiện dự án thành **4 giai đoạn chín
 ### Giai đoạn 1: Nền tảng Core Logic & MVP (Tuần 1 - Tuần 3)
 * **Mục tiêu:** Xây dựng backend cốt lõi cho phép định nghĩa Brand Persona và kích hoạt Agent AI tạo nội dung thô.
 * **Các bước triển khai:**
-  1. Cài đặt môi trường dự án bằng `uv` để quản lý phiên bản Python 3.14 và cấu hình `pyproject.toml`.
+  1. Cài đặt môi trường dự án bằng `uv` để quản lý phiên bản Python 3.10 và cấu hình `pyproject.toml`.
   2. Phát triển API cấu hình Brand Persona cho User.
   3. Tích hợp thư viện OpenAI SDK / Anthropic SDK để gọi LLM (sử dụng kỹ thuật Prompt Engineering chuyên sâu) tạo bản nháp content dựa trên Brand Voice.
   4. Triển khai bộ lọc chính sách nội bộ (Local Policy Filter) để quét các từ nhạy cảm và gán nhãn `Need Review` cho bài viết chứa rủi ro.
@@ -175,7 +175,7 @@ Chúng tôi chia quy trình thực hiện dự án thành **4 giai đoạn chín
 
 | Thành phần | Công nghệ lựa chọn | Lý do |
 | --- | --- | --- |
-| **Ngôn ngữ lập trình** | Python 3.12 / 3.14 | Hỗ trợ tốt nhất các thư viện AI/ML và có tính năng gõ kiểu dữ liệu mạnh mẽ. |
+| **Ngôn ngữ lập trình** | Python 3.10 | Hỗ trợ tốt nhất các thư viện AI/ML và có tính năng gõ kiểu dữ liệu mạnh mẽ. |
 | **Package Manager** | `uv` | Tốc độ cài đặt thư viện nhanh hơn gấp 10-100 lần so với pip/poetry, hỗ trợ tốt quản lý môi trường ảo. |
 | **Backend Framework** | FastAPI | Tốc độ thực thi cực nhanh, hỗ trợ lập trình bất đồng bộ (async/await), tự động tạo tài liệu API Swagger. |
 | **Database** | PostgreSQL | Hỗ trợ dữ liệu quan hệ mạnh mẽ, hỗ trợ lưu trữ mảng/JSONB và mở rộng tốt bằng pgvector cho AI. |

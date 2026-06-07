@@ -8,7 +8,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 repo/
 ├── frontend/   # React + TypeScript (Vite, Tailwind, React Router)
 ├── backend/    # Java 21 + Spring Boot (PostgreSQL, JWT, OAuth2)
-├── ai/         # Python 3.14 AI backend (LangChain, platform connectors)
+├── ai/         # Python 3.10 AI backend (LangChain, platform connectors)
 └── docs/       # Project documentation
 ```
 
@@ -19,7 +19,7 @@ repo/
 cd ai
 uv run main.py        # Run demo workflow
 uv sync               # Install dependencies
-uv python install 3.14
+uv python install 3.10
 ```
 
 ### Frontend (Node)

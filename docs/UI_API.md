@@ -2,68 +2,68 @@
 
 ---
 
-## Yêu cầu giao diện (UI)
+## UI Requirements
 
-| Mã | Trang | Nội dung |
+| ID | Page | Content |
 |----|-------|----------|
-| UI-01 | Landing Page | Hero, vấn đề người dùng, giải pháp AIMA, chức năng chính, quy trình, lợi ích, CTA đăng ký/dùng thử |
-| UI-02 | Dashboard | Số bài đã tạo / lên lịch / đã đăng / thất bại; hiệu quả tổng quan; insight mới; thanh tiến trình setup (FR-86) |
-| UI-03 | Brand Profile | Tạo/sửa hồ sơ thương hiệu |
-| UI-04 | Content Strategy | Mục tiêu, tần suất, nền tảng, lịch đăng |
-| UI-05 | Trend Research | Danh sách trend + content idea do AI đề xuất |
-| UI-06 | Content Workspace | Xem/sửa/duyệt/regenerate nội dung |
-| UI-07 | Calendar / Schedule | Lịch đăng theo ngày/tuần/tháng |
-| UI-08 | Analytics | Dữ liệu hiệu quả + insight |
-| UI-09 | Social Account | Kết nối / trạng thái / ngắt kết nối |
-| UI-10 | Admin Dashboard | User, lỗi hệ thống, nội dung cần duyệt |
+| UI-01 | Landing Page | Hero, user pain points, the AIMA solution, key features, process, benefits, sign-up/trial CTA |
+| UI-02 | Dashboard | Posts created / scheduled / published / failed; performance overview; new insights; setup progress bar (FR-86) |
+| UI-03 | Brand Profile | Create/edit brand profiles |
+| UI-04 | Content Strategy | Goals, frequency, platforms, posting schedule |
+| UI-05 | Trend Research | List of trends + AI-suggested content ideas |
+| UI-06 | Content Workspace | View/edit/approve/regenerate content |
+| UI-07 | Calendar / Schedule | Posting calendar by day/week/month |
+| UI-08 | Analytics | Performance data + insights |
+| UI-09 | Social Account | Connect / status / disconnect |
+| UI-10 | Admin Dashboard | Users, system errors, content awaiting review |
 
-**Nguyên tắc UI/UX**: đơn giản dễ dùng cho người không kỹ thuật; responsive (desktop/laptop/tablet); thiết kế nhất quán, hiện đại; **minh bạch AI** — đánh dấu rõ nội dung nào do AI tạo / cần duyệt / đã auto-post.
+**UI/UX principles**: simple and usable for non-technical users; responsive (desktop/laptop/tablet); consistent, modern design; **AI transparency** — clearly mark which content is AI-generated / needs review / was auto-posted.
 
 ---
 
 ## API
 
-- **API-01** Response thống nhất:
+- **API-01** Unified response format:
   ```json
   { "code": 200, "message": "Success", "result": {} }
   ```
-- **API-02** Mọi API dữ liệu user phải xác thực.
-- **API-03** Kiểm tra quyền: user chỉ truy cập dữ liệu của mình; admin có quyền quản trị.
-- **API-04** Validate input trước khi xử lý.
-- **API-05** Trả lỗi rõ ràng, message dễ hiểu cho frontend.
+- **API-02** Every user-data API requires authentication.
+- **API-03** Authorization checks: users can only access their own data; admins have administrative rights.
+- **API-04** Validate input before processing.
+- **API-05** Return clear errors with frontend-friendly messages.
 
 ---
 
-## Bảo mật (Security)
+## Security
 
-| Mã | Yêu cầu |
+| ID | Requirement |
 |----|---------|
-| SEC-01 | Mật khẩu mã hóa, không lưu plain text |
-| SEC-02 | Token xác thực bảo vệ API |
-| SEC-03 | Access/Refresh token MXH lưu an toàn, không lộ ra frontend |
-| SEC-04 | Phân quyền User / Admin rõ ràng |
-| SEC-05 | User không truy cập dữ liệu user khác |
-| SEC-06 | **Không tự build bộ lọc nội dung riêng** — chỉ xử lý đúng khi platform từ chối; ghi nhận lỗi rõ ràng, không retry loại lỗi vi phạm |
+| SEC-01 | Passwords encrypted, never stored in plain text |
+| SEC-02 | Authentication tokens protect the APIs |
+| SEC-03 | Social access/refresh tokens stored securely, never exposed to the frontend |
+| SEC-04 | Clear User / Admin role separation |
+| SEC-05 | Users cannot access other users' data |
+| SEC-06 | **Do not build a custom content filter** — only handle platform rejections properly; record errors clearly, never retry violation-type errors |
 
 ---
 
-## Tích hợp (Integration)
+## Integration
 
-| Mã | Tích hợp | Ghi chú |
+| ID | Integration | Notes |
 |----|----------|---------|
-| INT-01 | Facebook | Kết nối, đăng bài, lấy analytics (nếu API cho phép) |
-| INT-02 | Instagram | Kết nối, đăng bài/Reels, analytics |
-| INT-03 | Threads | Kết nối, đăng bài, analytics |
+| INT-01 | Facebook | Connect, post, fetch analytics (where the API allows) |
+| INT-02 | Instagram | Connect, post/Reels, analytics |
+| INT-03 | Threads | Connect, post, analytics |
 | INT-04 | AI Model | Research, generate, format, analyze, optimize |
 
-> Thứ tự triển khai platform: **Facebook → Instagram → Threads**. Thiết kế lớp tích hợp dạng adapter/interface để dễ thêm platform mới sau này (NFR-09).
+> Platform rollout order: **Facebook → Instagram → Threads**. Design the integration layer as adapters/interfaces to easily add new platforms later (NFR-09).
 
 ---
 
-## Lưu ý kỹ thuật quan trọng
+## Key Technical Notes
 
-- **Async (NFR-04)**: research, generate, format, auto posting, analyze → background job + scheduler.
-- **Scheduler**: kiểm tra lịch đăng, kích hoạt đúng giờ; chạy research định kỳ (2:00 AM).
-- **Token refresh job** (FR-18a): tự refresh khi token còn < 24h.
-- **Retry job** (FR-56): 3 lần, cách 5/15/30 phút, chỉ cho lỗi tạm thời.
-- **Logging** (NFR-11): log lỗi AI, đăng bài, gọi API platform.
+- **Async (NFR-04)**: research, generate, format, auto-posting, analyze → background jobs + scheduler.
+- **Scheduler**: checks the posting calendar and triggers on time; runs periodic research (2:00 AM).
+- **Token refresh job** (FR-18a): auto-refresh when the token has < 24h remaining.
+- **Retry job** (FR-56): 3 attempts, at 5/15/30 minutes, temporary errors only.
+- **Logging** (NFR-11): log AI errors, posting errors, and platform API calls.

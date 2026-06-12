@@ -1,57 +1,57 @@
-# GLOSSARY.md — Thuật ngữ, Giả định, Ràng buộc (AIMA)
+# GLOSSARY.md — Terminology, Assumptions, Constraints (AIMA)
 
 ---
 
 ## Glossary
 
-| Thuật ngữ | Định nghĩa |
+| Term | Definition |
 |-----------|-----------|
-| **Agent AI** | Tác nhân AI tự động: research, generate, format, analyze — không cần user can thiệp từng bước |
-| **Brand Profile** | Hồ sơ thương hiệu: ngành hàng, giọng điệu, đối tượng, mục tiêu content. Nền tảng cho mọi nội dung AI tạo |
-| **Brand Voice** | Giọng điệu thương hiệu (chuyên nghiệp, hài hước, trẻ trung, sang trọng...) |
-| **CTA** | Call To Action — lời kêu gọi hành động (Mua ngay, Theo dõi, Bình luận để nhận tài liệu...) |
-| **Content Strategy** | Chiến lược nội dung: mục tiêu, tần suất, nền tảng, phong cách |
-| **ContentItem** | Nội dung gốc do AI tạo (script, caption, hashtag, CTA) trước khi format |
-| **ContentVersion** | Phiên bản đã format theo từng platform cụ thể |
-| **Giờ vàng** | Khung giờ tương tác cao nhất trên platform |
-| **Hook** | Câu/cảnh mở đầu thu hút trong 1–3 giây đầu |
-| **MVP** | Phiên bản tối thiểu đủ chức năng cốt lõi |
-| **Posting Job** | Tiến trình gọi API platform để đăng bài, có thể retry |
-| **Rate Limit** | Giới hạn số lần gọi API trong một khoảng thời gian |
-| **Refresh Token** | Token lấy Access Token mới mà không cần đăng nhập lại |
-| **Scheduler** | Thành phần kiểm tra lịch và kích hoạt đăng bài đúng giờ |
-| **SME** | Small and Medium Enterprise — đối tượng khách hàng chính |
-| **Soft Delete** | Xóa bằng cách đánh dấu `deleted_at`, không xóa hẳn |
-| **Trend** | Xu hướng nội dung đang phổ biến (format, chủ đề, hashtag) |
-| **Watch Time** | Tổng thời gian xem video — chỉ số chất lượng nội dung video |
+| **Agent AI** | Autonomous AI agent: researches, generates, formats, analyzes — without requiring user intervention at every step |
+| **Brand Profile** | Brand profile: industry, brand voice, target audience, content goals. The foundation for all AI-generated content |
+| **Brand Voice** | The brand's tone of voice (professional, humorous, youthful, luxurious...) |
+| **CTA** | Call To Action — a prompt for the audience to act (Buy now, Follow, Comment to receive the guide...) |
+| **Content Strategy** | Content strategy: goals, frequency, platforms, style |
+| **ContentItem** | Original AI-generated content (script, caption, hashtags, CTA) before formatting |
+| **ContentVersion** | A version formatted for a specific platform |
+| **Golden hour** | The time slots with the highest engagement on a platform |
+| **Hook** | The opening line/scene that grabs attention within the first 1–3 seconds |
+| **MVP** | Minimum Viable Product — the smallest version with the core features |
+| **Posting Job** | The process that calls a platform API to publish a post; can be retried |
+| **Rate Limit** | The maximum number of API calls allowed within a time window |
+| **Refresh Token** | A token used to obtain a new Access Token without logging in again |
+| **Scheduler** | The component that checks the calendar and triggers posting at the right time |
+| **SME** | Small and Medium Enterprise — the primary customer segment |
+| **Soft Delete** | Deletion by setting `deleted_at`, without physically removing the record |
+| **Trend** | A content trend currently popular (format, topic, hashtag) |
+| **Watch Time** | Total video viewing time — a quality metric for video content |
 
 ---
 
-## Giả định (Assumptions)
+## Assumptions
 
-- **AS-01** User đã có tài khoản MXH hợp lệ để kết nối.
-- **AS-02** Platform cung cấp API cần thiết cho đăng bài và lấy analytics.
-- **AS-03** AI tạo nội dung dựa trên input của user.
-- **AS-04** User chịu trách nhiệm cuối cùng với nội dung đăng lên tài khoản của họ.
-- **AS-05** Một số platform giới hạn auto-posting → hệ thống xử lý theo khả năng API thực tế.
-
----
-
-## Ràng buộc (Constraints)
-
-- **CON-01** Phụ thuộc API của các platform MXH.
-- **CON-02** Platform có thể đổi chính sách API, ảnh hưởng auto-posting.
-- **CON-03** AI có thể tạo nội dung chưa chính xác → cần cơ chế review.
-- **CON-04** Analytics có thể không realtime.
-- **CON-05** Auto-posting phải tuân thủ chính sách từng platform.
+- **AS-01** The user already has valid social media accounts to connect.
+- **AS-02** The platforms provide the APIs needed for posting and analytics.
+- **AS-03** The AI generates content based on the user's input.
+- **AS-04** The user bears final responsibility for the content published to their accounts.
+- **AS-05** Some platforms restrict auto-posting → the system works within what each platform's API actually allows.
 
 ---
 
-## Nhắc lại phạm vi (cho Claude Code)
+## Constraints
 
-1. Platform: **Facebook → Instagram → Threads** (đúng thứ tự).
-2. **Không** tự sinh ảnh/video — chỉ tạo media prompt (text).
-3. **Không** tự build content filter — chỉ xử lý phản hồi vi phạm từ platform.
-4. Tác vụ AI/posting luôn **async**.
-5. **Soft delete** mặc định.
-6. Tuân thủ **retry policy** (3 lần, 5/15/30 phút, chỉ lỗi tạm thời).
+- **CON-01** Dependent on the social media platforms' APIs.
+- **CON-02** Platforms may change their API policies, affecting auto-posting.
+- **CON-03** The AI may generate inaccurate content → a review mechanism is required.
+- **CON-04** Analytics may not be real-time.
+- **CON-05** Auto-posting must comply with each platform's policies.
+
+---
+
+## Scope Reminders (for Claude Code)
+
+1. Platforms: **Facebook → Instagram → Threads** (in that order).
+2. Do **not** generate images/videos — only produce media prompts (text).
+3. Do **not** build a custom content filter — only handle violation responses from the platforms.
+4. AI/posting tasks are always **async**.
+5. **Soft delete** by default.
+6. Follow the **retry policy** (3 attempts, at 5/15/30 minutes, temporary errors only).

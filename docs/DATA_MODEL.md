@@ -1,14 +1,14 @@
 # DATA_MODEL.md — Entities & Relationships (AIMA)
 
-> Mục 8 trong requirement gốc ghi "cần cân nhắc, chưa chốt" — dùng làm tham khảo, có thể điều chỉnh khi implement.
+> Section 8 of the original requirements notes this is "under consideration, not finalized" — use as a reference; it may be adjusted during implementation.
 
 ---
 
-## Entities & thuộc tính chính
+## Entities & main attributes
 
 ### BrandProfile
 `BrandProfileID, UserID, BrandName, Industry, Description, BrandVoice, TargetAudience, ContentGoal, CreatedAt, UpdatedAt`
-(thêm: PlatformList, PostingFrequency, PreferredTime theo FR-05)
+(plus: PlatformList, PostingFrequency, PreferredTime per FR-05)
 
 ### ContentStrategy
 `StrategyID, BrandProfileID, Goal, Frequency, PreferredTime, PlatformList, ContentStyle, CTAType, Status`
@@ -16,7 +16,7 @@
 ### PlatformAccount
 `PlatformAccountID, UserID, PlatformName, AccountName, AccessToken, RefreshToken, TokenExpiredAt, ConnectionStatus`
 - `ConnectionStatus`: Active / Expired / Disconnected
-- ⚠️ Token phải được mã hóa, không trả ra frontend (SEC-03).
+- ⚠️ Tokens must be encrypted and never returned to the frontend (SEC-03).
 
 ### TrendResearchSession
 `ResearchSessionID, BrandProfileID, Industry, Platform, ResearchTime, Status`
@@ -27,15 +27,15 @@
 ### ContentIdea
 `ContentIdeaID, TrendID, IdeaTitle, IdeaDescription, Platform, SuitabilityLevel`
 
-### ContentItem (nội dung gốc)
+### ContentItem (original content)
 `ContentItemID, BrandProfileID, ContentIdeaID, Script, Caption, Hashtag, CTA, Status, CreatedAt`
 
-### ContentVersion (đã format theo platform)
+### ContentVersion (formatted per platform)
 `ContentVersionID, ContentItemID, PlatformName, FormattedCaption, FormattedHashtag, MediaFormat, Status`
 
 ### MediaAsset
 `MediaAssetID, ContentItemID, MediaType, MediaURL, MediaPrompt, Format, Size, Duration`
-(MVP: chủ yếu lưu `MediaPrompt` — text mô tả, không tự sinh media)
+(MVP: primarily stores `MediaPrompt` — a text description; no media generation)
 
 ### PostSchedule
 `ScheduleID, ContentVersionID, PlatformAccountID, ScheduledTime, Status`
@@ -60,34 +60,34 @@
 
 ---
 
-## Quan hệ giữa các entity
+## Entity Relationships
 
-| Quan hệ | Loại | Ghi chú |
+| Relationship | Type | Notes |
 |---------|------|---------|
-| User → BrandProfile | 1–N | 1 user nhiều brand profile |
+| User → BrandProfile | 1–N | One user can have multiple brand profiles |
 | BrandProfile → ContentStrategy | 1–N | |
 | User → PlatformAccount | 1–N | |
 | BrandProfile → ContentItem | 1–N | |
-| ContentItem → ContentVersion | 1–N | 1 gốc → nhiều bản theo platform |
+| ContentItem → ContentVersion | 1–N | One original → multiple platform versions |
 | ContentItem → MediaAsset | 1–N | |
 | ContentVersion → PostSchedule | 1–1 | |
 | PostSchedule → Post | 1–1 | |
-| Post → PostingJob | 1–N | nhiều lần retry |
-| Post → PostAnalytics | 1–N | thu thập nhiều lần |
+| Post → PostingJob | 1–N | Multiple retries |
+| Post → PostAnalytics | 1–N | Collected multiple times |
 | PostAnalytics → OptimizationInsight | 1–N | |
 | ContentIdea → ContentItem | 1–N | |
 | Trend → ContentIdea | 1–N | |
 
 ---
 
-## Quy tắc xóa dữ liệu (Soft Delete mặc định — `deleted_at`)
+## Data Deletion Rules (Soft Delete by default — `deleted_at`)
 
-| Hành động | Cascade | Ghi chú |
+| Action | Cascade | Notes |
 |-----------|---------|---------|
-| Xóa BrandProfile | ContentStrategy, ContentItem, ContentVersion, PostSchedule **chưa đăng** | KHÔNG xóa Post đã `Posted` (giữ lịch sử) |
-| Xóa ContentStrategy | Không cascade | Content & lịch vẫn giữ |
-| Xóa ContentItem | ContentVersion, MediaAsset liên quan | Chỉ xóa khi `Draft`/`Generated` |
-| Xóa PlatformAccount | PostSchedule đang `Scheduled` → chuyển `On Hold` | KHÔNG xóa Post đã `Posted` |
-| Xóa User | Toàn bộ dữ liệu (soft delete) | Giữ anonymized data cho analytics tổng hợp |
+| Delete BrandProfile | ContentStrategy, ContentItem, ContentVersion, **unpublished** PostSchedule | Do NOT delete `Posted` posts (keep the history) |
+| Delete ContentStrategy | No cascade | Content & schedules are kept |
+| Delete ContentItem | Related ContentVersion, MediaAsset | Only deletable when `Draft`/`Generated` |
+| Delete PlatformAccount | `Scheduled` PostSchedules → move to `On Hold` | Do NOT delete `Posted` posts |
+| Delete User | All data (soft delete) | Keep anonymized data for aggregate analytics |
 
-> Hard delete chỉ khi user yêu cầu xóa tài khoản hoàn toàn theo GDPR.
+> Hard delete only when the user requests full account deletion under GDPR.

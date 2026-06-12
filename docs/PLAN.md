@@ -14,10 +14,10 @@
 ---
 
 ## 1. Account Management
-- [ ] FR-01 Register (full name, email, password, confirmation) `[BE][FE]`
-- [ ] FR-02 Login (email + password, error on invalid) `[BE][FE]`
-- [ ] FR-03 Logout `[BE][FE]`
-- [ ] FR-04 Profile — view/update personal information `[BE][FE]`
+- [x] FR-01 Register (full name, email, password, confirmation) `[BE][FE]` — done 2026-06-12
+- [x] FR-02 Login (email + password, error on invalid) `[BE][FE]` — done 2026-06-12
+- [x] FR-03 Logout `[BE][FE]` — done 2026-06-12
+- [x] FR-04 Profile — view/update personal information `[BE][FE]` — done 2026-06-12
 
 ## 2. Brand Profile
 - [ ] FR-05 Create brand profile (name, industry, description, voice, audience, goals, platforms, frequency, time slots) `[BE][FE]`
@@ -136,10 +136,10 @@
 
 ## Cross-Cutting / Infrastructure
 - [ ] Database schema per DATA_MODEL.md (soft delete `deleted_at` everywhere) `[BE]`
-- [ ] Unified API response format + auth on all user-data APIs (API-01, API-02) `[BE]`
+- [x] Unified API response format + auth on all user-data APIs (API-01, API-02) `[BE]` — done 2026-06-12
 - [ ] Authorization: users see only their own data; admin roles (API-03, SEC-04, SEC-05) `[BE]`
-- [ ] Input validation + clear error responses (API-04, API-05) `[BE]`
-- [ ] Password hashing (SEC-01) + JWT protection (SEC-02) `[BE]`
+- [x] Input validation + clear error responses (API-04, API-05) `[BE]` — done 2026-06-12
+- [x] Password hashing (SEC-01) + JWT protection (SEC-02) `[BE]` — done 2026-06-12
 - [ ] AES-256 token encryption, never exposed to frontend (SEC-03) `[BE]`
 - [ ] Async background jobs for all AI/posting tasks (NFR-04) `[BE][AI]`
 - [ ] Scheduler (posting calendar trigger + 2:00 AM research run) `[BE]`

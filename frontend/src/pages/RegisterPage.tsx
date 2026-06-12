@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { register } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
@@ -15,7 +15,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const setField = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const setField = (field: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [field]: e.target.value });
 
   const handleSubmit = async (e: FormEvent) => {

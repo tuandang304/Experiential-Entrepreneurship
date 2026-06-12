@@ -6,7 +6,6 @@ ai/.env
 
 # ── Backend (Java / Maven) ───────────────────
 backend/target/
-backend/.mvn/
 *.class
 *.jar
 *.war

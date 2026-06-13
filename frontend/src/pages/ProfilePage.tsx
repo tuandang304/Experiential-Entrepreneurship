@@ -1,11 +1,10 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import Layout, { PageHeader } from "../components/Layout";
 import { updateProfile } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
 
 export default function ProfilePage() {
-  const { user, logout, setUser } = useAuth();
-  const navigate = useNavigate();
+  const { user, setUser } = useAuth();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -27,33 +26,12 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
-
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <Layout>
+      <PageHeader title="My Profile" />
       <div className="mx-auto w-full max-w-lg bg-white rounded-lg shadow p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My profile</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate("/brand-profiles")}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              Brand profiles
-            </button>
-            <button
-              onClick={handleLogout}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              Log out
-            </button>
-          </div>
-        </div>
         {message && (
           <p className="mb-4 rounded bg-green-50 border border-green-200 text-green-700 px-3 py-2 text-sm">
             {message}
@@ -96,6 +74,6 @@ export default function ProfilePage() {
           </button>
         </form>
       </div>
-    </div>
+    </Layout>
   );
 }

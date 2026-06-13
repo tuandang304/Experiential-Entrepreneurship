@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import Layout, { PageHeader } from "../components/Layout";
+import { useBrand } from "../brand/BrandContext";
 import {
   BrandProfile,
   BrandProfileInput,
@@ -27,7 +28,7 @@ const emptyForm: BrandProfileInput = {
 };
 
 export default function BrandProfilePage() {
-  const navigate = useNavigate();
+  const { refresh: refreshBrands } = useBrand();
   const [profiles, setProfiles] = useState<BrandProfile[]>([]);
   const [form, setForm] = useState<BrandProfileInput>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,7 +39,10 @@ export default function BrandProfilePage() {
 
   const load = () => {
     listBrandProfiles()
-      .then(setProfiles)
+      .then((data) => {
+        setProfiles(data);
+        refreshBrands(); // keep the topbar brand selector in sync
+      })
       .catch((err) => setError((err as Error).message));
   };
 
@@ -119,18 +123,9 @@ export default function BrandProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <Layout>
+      <PageHeader title="Brand Profiles" subtitle="Create and manage your brands." />
       <div className="mx-auto w-full max-w-3xl space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Brand profiles</h1>
-          <button
-            onClick={() => navigate("/profile")}
-            className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Back to profile
-          </button>
-        </div>
-
         {message && (
           <p className="rounded bg-green-50 border border-green-200 text-green-700 px-3 py-2 text-sm">
             {message}
@@ -294,7 +289,7 @@ export default function BrandProfilePage() {
           </div>
         </form>
       </div>
-    </div>
+    </Layout>
   );
 }
 

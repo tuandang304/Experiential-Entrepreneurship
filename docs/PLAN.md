@@ -25,16 +25,16 @@
 - [x] FR-09 Validation (required fields, ≥1 platform, valid frequency) `[BE]` — done 2026-06-13
 
 ## 3. Content Strategy
-- [ ] FR-10 Create strategy (goals, content types, frequency, platforms, slots, audience, style, CTA) `[BE][FE]`
-- [ ] FR-11 Update / FR-12 List `[BE][FE]`
-- [ ] FR-13 Activate/Pause (paused → no new content, no auto-scheduling) `[BE]`
+- [ ] FR-10 Create strategy (goals, content types, frequency, platforms, slots, audience, style, CTA) `[BE][FE]` — FE done 2026-06-13 (UI-04 page); BE pending
+- [ ] FR-11 Update / FR-12 List `[BE][FE]` — FE done 2026-06-13; BE pending
+- [ ] FR-13 Activate/Pause (paused → no new content, no auto-scheduling) `[BE]` — FE toggle done 2026-06-13; BE enforcement pending
 
 ## 4. Social Media Connection
-- [ ] FR-14 OAuth connect — Facebook `[BE][FE]`
-- [ ] FR-14 OAuth connect — Instagram `[BE][FE]`
-- [ ] FR-14 OAuth connect — Threads `[BE][FE]`
-- [ ] FR-15 List connected accounts (platform, account, status, dates, token status) `[BE][FE]`
-- [ ] FR-16 Disconnect `[BE][FE]`
+- [ ] FR-14 OAuth connect — Facebook `[BE][FE]` — FE connect flow done 2026-06-13; BE OAuth pending
+- [ ] FR-14 OAuth connect — Instagram `[BE][FE]` — FE connect flow done 2026-06-13; BE OAuth pending
+- [ ] FR-14 OAuth connect — Threads `[BE][FE]` — FE connect flow done 2026-06-13; BE OAuth pending
+- [ ] FR-15 List connected accounts (platform, account, status, dates, token status) `[BE][FE]` — FE done 2026-06-13 (UI-09); BE pending
+- [ ] FR-16 Disconnect `[BE][FE]` — FE done 2026-06-13; BE pending
 - [ ] FR-17 Connection check before posting `[BE]`
 - [ ] FR-18a Auto token refresh (< 24h remaining) `[BE]`
 - [ ] FR-18b Expired token → account `Expired`, scheduled posts → `On Hold` `[BE]`
@@ -53,14 +53,14 @@
 - [x] FR-29 Media prompt (text only — no media generation in MVP) `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-30 Brand voice check `[AI]` — done 2026-06-13 (AI svc)
 - [ ] FR-31 Save drafts (`Draft`/`Generated`) `[BE]`
-- [ ] FR-32 Regenerate / FR-33 Manual edit / FR-34 Review before posting `[BE][FE]`
+- [ ] FR-32 Regenerate / FR-33 Manual edit / FR-34 Review before posting `[BE][FE]` — FE done 2026-06-13 (UI-06 workspace); BE pending
 
 ## 7. Policy Violation Handling (no custom filter — SEC-06)
 - [ ] FR-35 Handle platform 400/403 policy errors: `Failed`, no retry, store original code + message, notify `[BE]`
 - [ ] FR-36 Move violating post to `Failed` + store error `[BE]`
 - [ ] FR-37 Classify policy violations vs technical errors `[BE]`
-- [ ] FR-38 Violation notification (platform, reason, next steps) `[BE][FE]`
-- [ ] FR-39 Edit/regenerate then reschedule `[BE][FE]`
+- [ ] FR-38 Violation notification (platform, reason, next steps) `[BE][FE]` — FE notification UI done 2026-06-13; BE pending
+- [ ] FR-39 Edit/regenerate then reschedule `[BE][FE]` — FE done 2026-06-13 (workspace edit/regenerate); BE pending
 
 ## 8. Platform Formatting
 - [x] FR-40 Create one version per selected platform `[AI]` — done 2026-06-13 (AI svc)
@@ -72,21 +72,21 @@
 *(FR-41 TikTok, FR-43 YouTube Shorts, FR-45 LinkedIn — out of current scope, do not implement yet.)*
 
 ## 9. Scheduling
-- [ ] FR-47 Create schedule (content, platform, date, time, status) `[BE][FE]`
+- [ ] FR-47 Create schedule (content, platform, date, time, status) `[BE][FE]` — FE calendar done 2026-06-13 (UI-07); BE pending
 - [ ] FR-48 Golden hour suggestions (platform defaults → data-driven after ≥10 analyzed posts) `[BE][AI]` — AI endpoint (`POST /golden-hours`, defaults + data-driven) done 2026-06-13; BE scheduling integration pending
 - [ ] FR-49 Posting queue `[BE]`
-- [ ] FR-50 Update schedule / FR-51 Cancel schedule (unpublished only) `[BE][FE]`
+- [ ] FR-50 Update schedule / FR-51 Cancel schedule (unpublished only) `[BE][FE]` — FE done 2026-06-13 (calendar reschedule/cancel); BE pending
 
 ## 10. Auto-Posting
 - [ ] FR-52 Post on time (scheduler) `[BE]`
 - [ ] FR-53 Call platform API / FR-54 receive result `[BE]`
 - [ ] FR-55 Persist post status (state machine in WORKFLOWS.md) `[BE]`
 - [ ] FR-56 Retry policy (3 attempts at 5/15/30 min, temporary errors only) `[BE]`
-- [ ] FR-57 Failure notification / FR-58 user resolution (edit/reconnect/repost) `[BE][FE]`
+- [ ] FR-57 Failure notification / FR-58 user resolution (edit/reconnect/repost) `[BE][FE]` — FE notifications + calendar error UI done 2026-06-13; BE pending
 
 ## 11. Performance Analysis
 - [ ] FR-59 Collect metrics (views, likes, comments, shares, saves, CTR, conversion, watch time) at 24h/48h/7d `[BE]`
-- [ ] FR-60 Store in DB / FR-61 display to user / FR-62 compare posts `[BE][FE]`
+- [ ] FR-60 Store in DB / FR-61 display to user / FR-62 compare posts `[BE][FE]` — FE display + compare done 2026-06-13 (UI-08); BE pending
 - [x] FR-63 Success factor analysis (hook, caption, hashtags, CTA, media, timing, platform) `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-64 Produce optimization insights `[AI]` — done 2026-06-13 (AI svc)
 
@@ -94,7 +94,7 @@
 - [x] FR-65 Propose strategy adjustments from data `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-66 Propose improvements for future posts `[AI]` — done 2026-06-13 (AI svc)
 - [ ] FR-67 Store adjustment history `[BE]`
-- [ ] FR-68 User accepts/rejects proposals `[BE][FE]`
+- [ ] FR-68 User accepts/rejects proposals `[BE][FE]` — FE accept/reject UI done 2026-06-13; BE pending
 
 ## 13. Error Management
 - [ ] FR-69 Unconnected account → block posting + notify `[BE]`
@@ -105,34 +105,34 @@
 - [ ] FR-74 System error logging `[BE]`
 
 ## 14. Notifications
-- [ ] FR-75 Post published / FR-76 post failed `[BE][FE]`
-- [ ] FR-77 Review needed / FR-78 reconnection needed / FR-79 new insight `[BE][FE]`
+- [ ] FR-75 Post published / FR-76 post failed `[BE][FE]` — FE notifications page done 2026-06-13; BE pending
+- [ ] FR-77 Review needed / FR-78 reconnection needed / FR-79 new insight `[BE][FE]` — FE done 2026-06-13; BE pending
 
 ## 15. Admin
-- [ ] FR-80 Manage users `[BE][FE]`
-- [ ] FR-81 System status `[BE][FE]`
-- [ ] FR-82 Rejected content / FR-83 posting errors / FR-84 system logs `[BE][FE]`
+- [ ] FR-80 Manage users `[BE][FE]` — FE done 2026-06-13 (UI-10 users tab + suspend/activate); BE pending
+- [ ] FR-81 System status `[BE][FE]` — FE done 2026-06-13 (UI-10 system tab); BE pending
+- [ ] FR-82 Rejected content / FR-83 posting errors / FR-84 system logs `[BE][FE]` — FE done 2026-06-13 (UI-10 rejected + logs tabs); BE pending
 
 ## 16. Onboarding
-- [ ] FR-85 Onboarding wizard (Brand Profile → connect ≥1 account → first Strategy → tour) `[FE][BE]`
-- [ ] FR-86 Setup progress bar on dashboard `[FE]`
+- [ ] FR-85 Onboarding wizard (Brand Profile → connect ≥1 account → first Strategy → tour) `[FE][BE]` — FE wizard done 2026-06-13; BE pending
+- [x] FR-86 Setup progress bar on dashboard `[FE]` — done 2026-06-13
 
 ## 17. Content Library
-- [ ] FR-87 View/filter/search all ContentItems `[BE][FE]`
-- [ ] FR-88 Reuse (regenerate creates a new item) `[BE][AI]` — AI supports it (`regenerate_from` on `POST /generate`) 2026-06-13; BE new-item creation pending
-- [ ] FR-89 Delete rules (`Draft`/`Generated` only; cascades to ContentVersions) `[BE]`
+- [ ] FR-87 View/filter/search all ContentItems `[BE][FE]` — FE done 2026-06-13 (Content Library filter/search); BE pending
+- [ ] FR-88 Reuse (regenerate creates a new item) `[BE][AI]` — AI supports it (`regenerate_from` on `POST /generate`) 2026-06-13; FE regenerate action done 2026-06-13; BE new-item creation pending
+- [ ] FR-89 Delete rules (`Draft`/`Generated` only; cascades to ContentVersions) `[BE]` — FE delete (Draft/Generated only) done 2026-06-13; BE cascade pending
 
 ## UI Pages (UI_API.md)
-- [ ] UI-01 Landing Page `[FE]`
-- [ ] UI-02 Dashboard `[FE]`
-- [ ] UI-03 Brand Profile page `[FE]`
-- [ ] UI-04 Content Strategy page `[FE]`
-- [ ] UI-05 Trend Research page `[FE]`
-- [ ] UI-06 Content Workspace `[FE]`
-- [ ] UI-07 Calendar / Schedule `[FE]`
-- [ ] UI-08 Analytics page `[FE]`
-- [ ] UI-09 Social Account page `[FE]`
-- [ ] UI-10 Admin Dashboard `[FE]`
+- [x] UI-01 Landing Page `[FE]` — done 2026-06-13
+- [x] UI-02 Dashboard `[FE]` — done 2026-06-13
+- [x] UI-03 Brand Profile page `[FE]` — done 2026-06-13
+- [x] UI-04 Content Strategy page `[FE]` — done 2026-06-13
+- [x] UI-05 Trend Research page `[FE]` — done 2026-06-13
+- [x] UI-06 Content Workspace `[FE]` — done 2026-06-13
+- [x] UI-07 Calendar / Schedule `[FE]` — done 2026-06-13
+- [x] UI-08 Analytics page `[FE]` — done 2026-06-13
+- [x] UI-09 Social Account page `[FE]` — done 2026-06-13
+- [x] UI-10 Admin Dashboard `[FE]` — done 2026-06-13
 
 ## Cross-Cutting / Infrastructure
 - [ ] Database schema per DATA_MODEL.md (soft delete `deleted_at` everywhere) `[BE]`
@@ -146,4 +146,4 @@
 - [ ] Platform adapter/interface layer for future platforms (NFR-09) `[BE]`
 - [ ] Webhook endpoints for post-publication violation notifications `[BE]`
 - [ ] Logging for AI errors, posting, platform API calls (NFR-11) `[BE][AI]`
-- [ ] AI transparency markers in UI (AI-generated / needs review / auto-posted) `[FE]`
+- [x] AI transparency markers in UI (AI-generated / needs review / auto-posted) `[FE]` — done 2026-06-13 (AIBadge component used across content/workspace/library)

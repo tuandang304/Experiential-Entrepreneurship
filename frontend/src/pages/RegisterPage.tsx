@@ -29,7 +29,7 @@ export default function RegisterPage() {
     try {
       await register(form);
       await login(form.email, form.password);
-      navigate("/profile");
+      navigate("/onboarding");
     } catch (err) {
       setError((err as Error).message);
     } finally {

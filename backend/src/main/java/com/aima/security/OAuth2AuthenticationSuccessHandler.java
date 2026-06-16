@@ -70,12 +70,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             clearAuthenticationAttributes(request);
 
-            // Đặt cả access token và refresh token vào cookie HttpOnly
+            // Đặt cả access token và refresh token vào cookie HttpOnly.
+            // Không đưa token vào URL: tránh rò rỉ qua history/Referer/access log (SEC-03, NFR-06).
             cookieUtils.addAccessTokenCookie(response, authResponse.getToken());
             cookieUtils.addRefreshTokenCookie(response, authResponse.getRefreshToken());
 
-            String redirectUrl = frontendCallbackUrl + "?login=success" + "&access_token=" + authResponse.getToken()
-                    + "&refresh_token=" + authResponse.getRefreshToken();
+            String redirectUrl = frontendCallbackUrl + "?login=success";
             getRedirectStrategy().sendRedirect(request, response, redirectUrl);
 
         } catch (Exception e) {

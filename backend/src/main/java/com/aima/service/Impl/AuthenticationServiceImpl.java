@@ -13,11 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aima.dto.request.IntrospectRequest;
 import com.aima.dto.request.LoginRequest;
 import com.aima.dto.request.LogoutRequest;
+import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.AuthenticationResponse;
 import com.aima.dto.response.IntrospectResponse;
 import com.aima.entity.User;
 import com.aima.exception.AppException;
 import com.aima.exception.ErrorCode;
+import com.aima.mapper.AuthenticationMapper;
 import com.aima.repository.UserRepository;
 import com.aima.security.CookieUtils;
 import com.aima.security.JwtProperties;
@@ -44,33 +46,26 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     JwtService jwtService;
     JwtProperties jwtProperties;
     CookieUtils cookieUtils;
+    AuthenticationMapper authenticationMapper;
 
     static SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Override
-    public IntrospectResponse introspect(IntrospectRequest request) {
+    public ApiResponse<IntrospectResponse> introspect(IntrospectRequest request) {
+        boolean isValid = true;
         try {
-            var token = request.getToken();
-            boolean isValid = true;
-
-            try {
-                jwtService.parseClaims(token);
-            } catch (Exception e) {
-                isValid = false;
-            }
-
-            return IntrospectResponse.builder()
-                    .valid(isValid)
-                    .build();
+            jwtService.parseClaims(request.getToken());
         } catch (Exception e) {
-            log.error("Lỗi khi xác thực token", e);
-            return IntrospectResponse.builder().valid(false).build();
+            isValid = false;
         }
+
+        return ApiResponse.success("Introspect token thành công",
+                IntrospectResponse.builder().valid(isValid).build());
     }
 
     @Override
     @Transactional
-    public void logout(LogoutRequest request, HttpServletRequest httpRequest, HttpServletResponse response)
+    public ApiResponse<Void> logout(LogoutRequest request, HttpServletRequest httpRequest, HttpServletResponse response)
             throws ParseException, JOSEException {
         // Thu hồi refresh token trong Redis + xoá cookie.
         cookieUtils.extractRefreshToken(httpRequest)
@@ -100,11 +95,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 log.warn("Cannot blacklist access token during logout: {}", e.getMessage());
             }
         }
+
+        return ApiResponse.success("Đăng xuất thành công");
     }
 
     @Override
     @Transactional
-    public AuthenticationResponse refreshToken(HttpServletRequest httpRequest, HttpServletResponse response) {
+    public ApiResponse<AuthenticationResponse> refreshToken(HttpServletRequest httpRequest, HttpServletResponse response) {
         String rawToken = cookieUtils.extractRefreshToken(httpRequest)
                 .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
@@ -140,12 +137,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             cookieUtils.addAccessTokenCookie(response, accessToken);
             cookieUtils.addRefreshTokenCookie(response, refreshToken);
 
-            return AuthenticationResponse.builder()
-                    .token(accessToken)
-                    .authenticated(true)
-                    .build();
+            return ApiResponse.success("Làm mới token thành công",
+                    authenticationMapper.toAuthResponse(accessToken));
+        } catch (AppException e) {
+            // Lỗi nghiệp vụ đã xác định (vd USER_INACTIVE) -> giữ nguyên mã lỗi gốc.
+            throw e;
         } catch (Exception e) {
-            log.error("Refresh token failed", e);
+            // Token hỏng/không parse được -> coi như chưa xác thực.
+            log.warn("Refresh token không hợp lệ: {}", e.getMessage());
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
     }
@@ -164,7 +163,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     @Transactional
-    public AuthenticationResponse authenticate(LoginRequest request, HttpServletResponse response) {
+    public ApiResponse<AuthenticationResponse> authenticate(LoginRequest request, HttpServletResponse response) {
         var user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
@@ -191,10 +190,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         cookieUtils.addAccessTokenCookie(response, accessToken);
         cookieUtils.addRefreshTokenCookie(response, refreshToken);
 
-        return AuthenticationResponse.builder()
-                .token(accessToken)
-                .authenticated(true)
-                .build();
+        return ApiResponse.success("Đăng nhập thành công",
+                authenticationMapper.toAuthResponse(accessToken));
     }
 
     @Override
@@ -214,10 +211,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         refreshTokenRedis.store(jti, user.getId().toString(),
                 java.time.Duration.ofSeconds(jwtProperties.refreshTokenExpiration()));
 
-        return AuthenticationResponse.builder()
-                .token(accessToken)
-                .refreshToken(refreshToken)
-                .authenticated(true)
-                .build();
+        return authenticationMapper.toAuthResponse(accessToken, refreshToken);
     }
 }

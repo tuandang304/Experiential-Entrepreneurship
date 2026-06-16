@@ -50,9 +50,7 @@ public class AuthenticationController {
                     examples = @ExampleObject(value = SwaggerExamples.LOGIN_RESPONSE)))
     com.aima.dto.response.ApiResponse<AuthenticationResponse> login(@RequestBody LoginRequest request,
                                                                        HttpServletResponse response) {
-        return com.aima.dto.response.ApiResponse.<AuthenticationResponse>builder()
-                .result(authenticationService.authenticate(request, response))
-                .build();
+        return authenticationService.authenticate(request, response);
     }
 
     @PostMapping("/refresh")
@@ -68,9 +66,7 @@ public class AuthenticationController {
                     examples = @ExampleObject(value = SwaggerExamples.REFRESH_RESPONSE)))
     com.aima.dto.response.ApiResponse<AuthenticationResponse> refreshToken(HttpServletRequest httpRequest,
                                                                               HttpServletResponse response) {
-        return com.aima.dto.response.ApiResponse.<AuthenticationResponse>builder()
-                .result(authenticationService.refreshToken(httpRequest, response))
-                .build();
+        return authenticationService.refreshToken(httpRequest, response);
     }
 
     @PostMapping("/introspect")
@@ -88,10 +84,7 @@ public class AuthenticationController {
                     examples = @ExampleObject(value = SwaggerExamples.INTROSPECT_RESPONSE)))
     com.aima.dto.response.ApiResponse<IntrospectResponse> introspect(@RequestBody IntrospectRequest request)
             throws ParseException, JOSEException {
-        var result = authenticationService.introspect(request);
-        return com.aima.dto.response.ApiResponse.<IntrospectResponse>builder()
-                .result(result)
-                .build();
+        return authenticationService.introspect(request);
     }
 
     @PostMapping("/logout")
@@ -109,10 +102,7 @@ public class AuthenticationController {
     com.aima.dto.response.ApiResponse<Void> logout(
             @RequestBody(required = false) LogoutRequest request, HttpServletRequest httpRequest, HttpServletResponse response)
             throws ParseException, JOSEException {
-        authenticationService.logout(request, httpRequest, response);
-
-        return com.aima.dto.response.ApiResponse.<Void>builder()
-                .build();
+        return authenticationService.logout(request, httpRequest, response);
     }
 
     @PreAuthorize("hasRole('ADMIN')")

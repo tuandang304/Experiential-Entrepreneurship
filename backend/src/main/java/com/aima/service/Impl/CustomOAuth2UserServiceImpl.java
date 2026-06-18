@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserServ
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.aima.dto.request.OAuth2UserInfo;
 import com.aima.entity.Role;
@@ -22,6 +23,7 @@ import com.aima.service.CustomOAuth2UserService;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class CustomOAuth2UserServiceImpl extends DefaultOAuth2UserService implem
     UserRepository userRepository;
     RoleRepository roleRepository;
     OAuth2UserMapper oauth2UserMapper;
+    PasswordEncoder passwordEncoder;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -110,6 +113,9 @@ public class CustomOAuth2UserServiceImpl extends DefaultOAuth2UserService implem
 
         User newUser = oauth2UserMapper.toUser(info);
         newUser.setRole(defaultRole);
+        // User Google không đăng nhập bằng mật khẩu, nhưng cột password vẫn cần một
+        // giá trị an toàn (ngẫu nhiên, đã hash) thay vì để trống/đoán được.
+        newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
         User saved = userRepository.save(newUser);
         log.info("Tạo user mới từ Google OAuth2: {}", email);

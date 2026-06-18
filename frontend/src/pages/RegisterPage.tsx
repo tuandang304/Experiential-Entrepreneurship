@@ -27,9 +27,15 @@ export default function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      await register(form);
-      await login(form.email, form.password);
-      navigate("/profile");
+      await register({
+        fullName: form.fullName,
+        email: form.email,
+        password: form.password,
+      });
+      const me = await login(form.email, form.password);
+      navigate(me.profileCompleted ? "/profile" : "/complete-profile", {
+        replace: true,
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {

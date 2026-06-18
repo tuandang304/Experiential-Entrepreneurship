@@ -18,10 +18,12 @@ import com.aima.entity.User;
 import com.aima.repository.RoleRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.AuthenticationService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     RoleRepository roleRepository;
     AuthenticationService authenticationService;
     CookieUtils cookieUtils;
+    PasswordEncoder passwordEncoder;
 
     @NonFinal
     @Value("${app.oauth2.frontend-callback-url}")
@@ -113,10 +116,14 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 ? baseUsername + "_" + googleId.substring(0, 6)
                 : baseUsername;
 
+        // Mật khẩu ngẫu nhiên đã được hash: user Google không dùng mật khẩu để đăng nhập,
+        // nhưng cột password vẫn cần một giá trị an toàn (không phải chuỗi cố định/đoán được).
+        String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
+
         User newUser = User.builder()
                 .username(username)
                 .email(email)
-                .password("GOOGLE_OAUTH2_USER")
+                .password(randomPassword)
                 .phone("GOOGLE_OAUTH2_USER")
                 .fullName(name != null ? name : baseUsername)
                 .googleId(googleId)

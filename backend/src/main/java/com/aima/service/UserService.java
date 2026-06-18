@@ -1,8 +1,6 @@
 package com.aima.service;
 
-
-
-import com.aima.dto.request.UserRegisterRequest;
+import com.aima.dto.request.*;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.MeResponse;
 import com.aima.dto.response.UserResponse;
@@ -15,4 +13,10 @@ public interface UserService {
     ApiResponse<List<UserResponse>> getAllUsers();
     ApiResponse<UserResponse> getUserById(UUID userId);
     ApiResponse<MeResponse> getCurrentUser(String email);
+    ApiResponse<MeResponse> updateCurrentUser(String email, UpdateProfileRequest request);
+
+    ApiResponse<String> forgotPassword(ForgotPasswordRequest request);
+    ApiResponse<String> verifyOtp(VerifyOtpRequest request);
+    ApiResponse<String> resetPassword(ResetPasswordRequest request);
+
 }

@@ -7,14 +7,14 @@ import {
 } from "react";
 import * as authApi from "../api/auth";
 import { User } from "../api/auth";
-import { TOKEN_KEY } from "../api/client";
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
+  refreshUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -23,33 +23,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore the session from a stored token on first load
-  useEffect(() => {
-    if (!localStorage.getItem(TOKEN_KEY)) {
-      setLoading(false);
-      return;
+  // Cookie HttpOnly không đọc được từ JS → luôn hỏi /me.
+  // Thành công nghĩa là đang đăng nhập; lỗi (401) nghĩa là chưa.
+  const refreshUser = async (): Promise<User | null> => {
+    try {
+      const me = await authApi.getProfile();
+      setUser(me);
+      return me;
+    } catch {
+      setUser(null);
+      return null;
     }
-    authApi
-      .getProfile()
-      .then(setUser)
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
-      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    refreshUser().finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { token, user } = await authApi.login(email, password);
-    localStorage.setItem(TOKEN_KEY, token);
-    setUser(user);
+    const me = await authApi.login(email, password);
+    setUser(me);
+    return me;
   };
 
   const logout = async () => {
     await authApi.logout().catch(() => undefined);
-    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setUser }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, logout, setUser, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

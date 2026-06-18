@@ -18,6 +18,9 @@
 - [x] FR-02 Login (email + password, error on invalid) `[BE][FE]` — done 2026-06-12
 - [x] FR-03 Logout `[BE][FE]` — done 2026-06-12
 - [x] FR-04 Profile — view/update personal information `[BE][FE]` — done 2026-06-12
+- [x] Cookie-based session wired to UI (login + Google + /me, FE no longer handles tokens) `[BE][FE]` — done 2026-06-18
+- [x] Google sign-in (first login → complete-profile: fullName/phone/dateOfBirth; random hashed password) `[BE][FE]` — done 2026-06-18
+- [x] Forgot password flow (forgot-password → verify-otp → reset-password) `[BE][FE]` — done 2026-06-18
 
 ## 2. Brand Profile
 - [x] FR-05 Create brand profile (name, industry, description, voice, audience, goals, platforms, frequency, time slots) `[BE][FE]` — done 2026-06-13

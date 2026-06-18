@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
@@ -21,4 +22,24 @@ public class MeResponse {
 
     @Schema(description = "Role name assigned to the user.", example = "USER")
     String role;
+
+    @Schema(description = "Display name.", example = "John Doe")
+    String fullName;
+
+    @Schema(description = "Phone number.", example = "0901234567")
+    String phone;
+
+    @Schema(description = "Date of birth.", example = "1998-05-20")
+    LocalDate dateOfBirth;
+
+    @Schema(description = "Authentication provider (LOCAL or GOOGLE).", example = "GOOGLE")
+    String provider;
+
+    @Schema(description = "Avatar image URL.", example = "https://cdn.example.com/avatars/johndoe.png")
+    String avatarUrl;
+
+    @Schema(description = "True when the user has filled in all required profile fields " +
+            "(fullName, phone, dateOfBirth). False forces the frontend to the complete-profile screen.",
+            example = "true")
+    boolean profileCompleted;
 }

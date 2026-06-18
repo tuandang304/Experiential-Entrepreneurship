@@ -1,5 +1,9 @@
 package com.aima.controller;
 
+import com.aima.dto.request.ForgotPasswordRequest;
+import com.aima.dto.request.ResetPasswordRequest;
+import com.aima.dto.request.UpdateProfileRequest;
+import com.aima.dto.request.VerifyOtpRequest;
 import com.aima.dto.response.MeResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -81,5 +85,58 @@ public class UserController {
     public com.aima.dto.response.ApiResponse<MeResponse> getCurrentUser(
             @AuthenticationPrincipal UserDetails userDetails) {
         return userService.getCurrentUser(userDetails.getUsername());
+    }
+
+    @PutMapping("/me")
+    @Operation(
+            summary = "Update the current user's profile",
+            description = "Saves fullName, phone and dateOfBirth for the authenticated user. Used both by the " +
+                    "complete-profile screen after a first Google login and by the regular profile editor."
+    )
+    @ApiResponse(responseCode = "200", description = "Profile updated; current user returned.")
+    public com.aima.dto.response.ApiResponse<MeResponse> updateCurrentUser(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return userService.updateCurrentUser(userDetails.getUsername(), request);
+    }
+
+    //reset password
+    @PostMapping("/forgot-password")
+    @SecurityRequirements({})
+    @Operation(
+            summary = "Request a password-reset OTP",
+            description = "Validates the email exists, invalidates any previous reset tokens, generates a 6-digit OTP " +
+                    "valid for 1 minute 30 seconds, and emails it to the user. Returns 404 if the email is not registered."
+    )
+    @ApiResponse(responseCode = "200", description = "OTP sent to the user's email.")
+    @ApiResponse(responseCode = "404", description = "Email not found.")
+    public com.aima.dto.response.ApiResponse<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return userService.forgotPassword(request);
+    }
+
+    @PostMapping("/verify-otp")
+    @SecurityRequirements({})
+    @Operation(
+            summary = "Verify a password-reset OTP",
+            description = "Checks that the OTP matches the email, has not been used, and has not expired. " +
+                    "Does not consume the OTP — it is consumed only on POST /users/reset-password."
+    )
+    @ApiResponse(responseCode = "200", description = "OTP is valid.")
+    @ApiResponse(responseCode = "400", description = "OTP is invalid, used, or expired.")
+    public com.aima.dto.response.ApiResponse<String> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        return userService.verifyOtp(request);
+    }
+
+    @PostMapping("/reset-password")
+    @SecurityRequirements({})
+    @Operation(
+            summary = "Reset password with a verified OTP",
+            description = "Re-validates the OTP, ensures newPassword equals confirmPassword, updates the user's password " +
+                    "(BCrypt), and marks the OTP as used so it cannot be reused."
+    )
+    @ApiResponse(responseCode = "200", description = "Password reset successfully.")
+    @ApiResponse(responseCode = "400", description = "OTP invalid/expired/used or passwords do not match.")
+    public com.aima.dto.response.ApiResponse<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return userService.resetPassword(request);
     }
 }

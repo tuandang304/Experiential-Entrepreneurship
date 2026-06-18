@@ -7,10 +7,13 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 ```
 repo/
 ├── frontend/   # React + TypeScript (Vite, Tailwind, React Router)
-├── backend/    # Java 21 + Spring Boot (PostgreSQL, JWT, OAuth2)
+├── backend/    # Java 21 + Spring Boot (PostgreSQL, JWT, OAuth2) — see backend/CLAUDE.md
 ├── ai/         # Python 3.10 AI backend (LangChain, platform connectors)
 └── docs/       # Project documentation
 ```
+
+> **Module guides:** When working in the backend, read [`backend/CLAUDE.md`](backend/CLAUDE.md)
+> for its structure, conventions, authentication flow and rules.
 
 ## 🛠️ Project Commands
 

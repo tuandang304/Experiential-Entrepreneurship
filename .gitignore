@@ -26,3 +26,15 @@ frontend/.env
 *.iml
 .DS_Store
 Thumbs.db
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+package-lock.json
+
+# Build output
+dist/
+dist-ssr/
+build/
+*.local

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,6 +30,9 @@ public class User extends BaseEntity {
 
     @Column(name = "phone")
     String phone;
+
+    @Column(name = "date_of_birth")
+    LocalDate dateOfBirth;
 
     @Column(name = "provider", length = 20)
     String provider;

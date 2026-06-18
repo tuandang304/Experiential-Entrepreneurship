@@ -1,27 +1,36 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { updateProfile } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
 
-export default function ProfilePage() {
-  const { user, logout, setUser } = useAuth();
+export default function CompleteProfilePage() {
+  const { user, loading, setUser } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState(user?.fullName ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
-  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ?? "");
-  const [message, setMessage] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading...
+      </div>
+    );
+  }
+  // Phải đăng nhập mới vào được; đã hoàn tất hồ sơ thì không cần trang này.
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.profileCompleted) return <Navigate to="/profile" replace />;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setMessage("");
     setError("");
     setSubmitting(true);
     try {
       const updated = await updateProfile({ fullName, phone, dateOfBirth });
       setUser(updated);
-      setMessage("Đã cập nhật hồ sơ");
+      navigate("/profile", { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -29,38 +38,13 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
-  };
-
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto w-full max-w-lg bg-white rounded-lg shadow p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My profile</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate("/brand-profiles")}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              Brand profiles
-            </button>
-            <button
-              onClick={handleLogout}
-              className="rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              Log out
-            </button>
-          </div>
-        </div>
-        {message && (
-          <p className="mb-4 rounded bg-green-50 border border-green-200 text-green-700 px-3 py-2 text-sm">
-            {message}
-          </p>
-        )}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Hoàn tất hồ sơ</h1>
+        <p className="text-sm text-gray-600 mb-6">
+          Vui lòng bổ sung thông tin cá nhân để tiếp tục sử dụng AIMA.
+        </p>
         {error && (
           <p className="mb-4 rounded bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm">
             {error}
@@ -109,21 +93,12 @@ export default function ProfilePage() {
               className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              disabled
-              value={user.email}
-              className="w-full rounded border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500"
-            />
-          </div>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded bg-blue-600 text-white px-4 py-2 font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="w-full rounded bg-blue-600 text-white py-2 font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+            {submitting ? "Đang lưu..." : "Lưu và tiếp tục"}
           </button>
         </form>
       </div>

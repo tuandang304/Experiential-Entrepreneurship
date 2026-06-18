@@ -1,8 +1,12 @@
 package com.aima.mapper;
 
 import com.aima.dto.response.MeResponse;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import com.aima.dto.request.UpdateProfileRequest;
 import com.aima.dto.request.UserRegisterRequest;
 import com.aima.dto.response.UserResponse;
 import com.aima.entity.User;
@@ -23,4 +27,8 @@ public interface UserMapper {
 
     @Mapping(target = "role", source = "role.roleName")
     MeResponse toMeResponse(User user);
+
+    // Cập nhật hồ sơ: chỉ ghi đè các trường có giá trị (bỏ qua null).
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    void updateUserFromProfile(UpdateProfileRequest request, @MappingTarget User user);
 }

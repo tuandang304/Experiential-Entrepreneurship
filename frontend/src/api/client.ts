@@ -7,17 +7,9 @@ export interface ApiResponse<T> {
   result: T;
 }
 
-export const TOKEN_KEY = "aima_token";
-
-const client = axios.create({ baseURL: "/api" });
-
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Auth dùng cookie HttpOnly do backend set (access_token / refresh_token).
+// FE không đọc/ghi token — chỉ cần gửi kèm cookie trong mọi request.
+const client = axios.create({ baseURL: "/api", withCredentials: true });
 
 client.interceptors.response.use(
   (response) => response,

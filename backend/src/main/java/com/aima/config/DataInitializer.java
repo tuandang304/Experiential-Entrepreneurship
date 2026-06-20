@@ -35,7 +35,25 @@ public class DataInitializer implements CommandLineRunner {
         // 2. Initialize Admin User
         initAdminUser(adminRole);
 
+        // 3. Backfill profile_completed for rows created before the column existed.
+        backfillProfileCompleted();
+
         log.info("Data initialization completed.");
+    }
+
+    private void backfillProfileCompleted() {
+        var pending = userRepository.findAll().stream()
+                .filter(u -> u.getProfileCompleted() == null)
+                .toList();
+        if (pending.isEmpty()) return;
+
+        pending.forEach(u -> {
+            boolean isGoogle = "GOOGLE".equalsIgnoreCase(u.getProvider());
+            boolean completed = !isGoogle || u.getLastPasswordChangeAt() != null;
+            u.setProfileCompleted(completed);
+        });
+        userRepository.saveAll(pending);
+        log.info("Backfilled profile_completed for {} existing user(s).", pending.size());
     }
 
     private Role initRole(String roleName, String description) {
@@ -60,6 +78,7 @@ public class DataInitializer implements CommandLineRunner {
                     .fullName("System Administrator")
                     .phone("0123456789")
                     .status("ACTIVE")
+                    .profileCompleted(true)
                     .role(adminRole)
                     .build();
             userRepository.save(adminUser);

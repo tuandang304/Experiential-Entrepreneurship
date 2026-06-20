@@ -1,3 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+body {
+  font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+  color: #1b1730;
+  background: #f7f6fd;
+  -webkit-font-smoothing: antialiased;
+}
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+::selection {
+  background: rgba(139, 92, 246, 0.2);
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #e0ddee;
+  border-radius: 20px;
+  border: 2px solid #f7f6fd;
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-13px); }
+}
+@keyframes floaty2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(11px); }
+}
+@keyframes spinslow {
+  to { transform: rotate(360deg); }
+}
+@keyframes pop {
+  0% { transform: translateY(12px); }
+  100% { transform: none; }
+}
+.view-pop {
+  animation: pop 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.gradtext {
+  background: var(--brand, linear-gradient(110deg, #46d6ec, #897ce3, #f083c0));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .grid-split-wide {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 760px) {
+  .grid-split,
+  .grid-split-wide,
+  .grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}

@@ -35,4 +35,9 @@ public class UpdateProfileRequest {
     @Schema(description = "Date of birth (ISO-8601, must be in the past).", example = "1998-05-20",
             requiredMode = Schema.RequiredMode.REQUIRED)
     LocalDate dateOfBirth;
+
+    @Size(max = 500, message = "INVALID_AVATAR_URL")
+    @Schema(description = "Avatar image URL (typically the public URL returned by POST /files/avatar).",
+            example = "https://xyz.supabase.co/storage/v1/object/public/avatars/<userId>/<uuid>_avatar.png")
+    String avatarUrl;
 }

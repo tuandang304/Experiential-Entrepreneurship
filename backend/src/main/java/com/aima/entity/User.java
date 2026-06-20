@@ -57,4 +57,7 @@ public class User extends BaseEntity {
 
     @Column(name = "last_password_change_at")
     LocalDateTime lastPasswordChangeAt;
+
+    @Column(name = "profile_completed")
+    Boolean profileCompleted;
 }

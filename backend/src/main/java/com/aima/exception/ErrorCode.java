@@ -33,6 +33,7 @@ public enum ErrorCode {
     INVALID_EMAIL_FORMAT(1015, "Email không đúng định dạng (ví dụ: 112@gmail.com)", HttpStatus.BAD_REQUEST),
     USER_NOT_EXISTED(1016, "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
     INVALID_FULLNAME(1017, "Họ tên không được vượt quá 255 ký tự", HttpStatus.BAD_REQUEST),
+    INVALID_AVATAR_URL(1028, "Đường dẫn ảnh đại diện không được vượt quá 500 ký tự", HttpStatus.BAD_REQUEST),
     USER_LIST_EMPTY(1018, "Không có tài khoản nào trong hệ thống!!!", HttpStatus.NOT_FOUND),
     DATE_OF_BIRTH_REQUIRED(1025, "Ngày sinh không được để trống", HttpStatus.BAD_REQUEST),
     INVALID_DATE_OF_BIRTH(1026, "Ngày sinh phải là một ngày trong quá khứ", HttpStatus.BAD_REQUEST),
@@ -67,6 +68,12 @@ public enum ErrorCode {
     PASSWORD_CHANGE_LIMIT(1071, "Bạn chỉ được phép đổi mật khẩu 1 lần trong vòng 7 ngày", HttpStatus.BAD_REQUEST),
     OTP_ATTEMPTS_EXCEEDED(1072, "Bạn đã nhập sai mã OTP quá số lần cho phép. Vui lòng yêu cầu mã mới.", HttpStatus.BAD_REQUEST),
     OTP_NOT_VERIFIED(1073, "Vui lòng xác thực mã OTP trước khi đặt lại mật khẩu", HttpStatus.BAD_REQUEST),
+
+    // ONBOARDING (complete-profile)
+    WEAK_PASSWORD(1074, "Mật khẩu quá yếu. Cần tối thiểu 8 ký tự và đạt mức Trung bình (gồm chữ hoa, chữ thường, số hoặc ký tự đặc biệt).", HttpStatus.BAD_REQUEST),
+    PROFILE_ALREADY_COMPLETED(1075, "Hồ sơ của bạn đã được hoàn tất trước đó", HttpStatus.BAD_REQUEST),
+    DOB_REQUIRED(1076, "Ngày sinh không được để trống", HttpStatus.BAD_REQUEST),
+
 
     // NOTIFICATION & FEEDBACK ERRORS
     NOTIFICATION_NOT_FOUND(1600, "Không tìm thấy thông báo", HttpStatus.NOT_FOUND),

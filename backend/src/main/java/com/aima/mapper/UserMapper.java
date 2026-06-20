@@ -1,5 +1,6 @@
 package com.aima.mapper;
 
+import com.aima.dto.request.CompleteProfileRequest;
 import com.aima.dto.response.MeResponse;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -27,6 +28,10 @@ public interface UserMapper {
 
     @Mapping(target = "role", source = "role.roleName")
     MeResponse toMeResponse(User user);
+
+    @Mapping(target = "password", ignore = true)
+    void completeProfile(CompleteProfileRequest request, @MappingTarget User user);
+
 
     // Cập nhật hồ sơ: chỉ ghi đè các trường có giá trị (bỏ qua null).
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

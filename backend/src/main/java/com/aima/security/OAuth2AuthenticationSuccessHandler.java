@@ -1,5 +1,6 @@
 package com.aima.security;
 
+import com.aima.service.SupabaseStorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.AccessLevel;
@@ -36,6 +37,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     AuthenticationService authenticationService;
     CookieUtils cookieUtils;
     PasswordEncoder passwordEncoder;
+    SupabaseStorageService supabaseStorageService;
 
     @NonFinal
     @Value("${app.oauth2.frontend-callback-url}")
@@ -69,6 +71,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                     .map(existing -> updateIfNeeded(existing, fGoogleId, fPicture))
                     .orElseGet(() -> createGoogleUser(fEmail, fGoogleId, fName, fPicture));
 
+            syncGoogleAvatar(user, fPicture);
+
             var authResponse = authenticationService.generateTokenForOAuth2User(user);
 
             clearAuthenticationAttributes(request);
@@ -85,6 +89,23 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             log.error("Lỗi khi xử lý OAuth2 authentication success", e);
             String errorMsg = URLEncoder.encode("Đăng nhập Google thất bại. Vui lòng thử lại.", StandardCharsets.UTF_8);
             getRedirectStrategy().sendRedirect(request, response, frontendCallbackUrl + "?error=" + errorMsg);
+        }
+    }
+
+    private void syncGoogleAvatar(User user, String googlePictureUrl) {
+        if (googlePictureUrl == null) return;
+
+        String current = user.getAvatarUrl();
+        boolean shouldMirror = current == null || current.contains("googleusercontent.com");
+        if (!shouldMirror) return;
+
+        try {
+            String supabaseUrl = supabaseStorageService.uploadAvatarFromUrl(googlePictureUrl, user.getId().toString());
+            user.setAvatarUrl(supabaseUrl);
+            userRepository.save(user);
+            log.info("Đã đồng bộ avatar Google sang Supabase cho {}", user.getEmail());
+        } catch (Exception e) {
+            log.warn("Không thể đồng bộ avatar Google sang Supabase cho {}: {}", user.getEmail(), e.getMessage());
         }
     }
 

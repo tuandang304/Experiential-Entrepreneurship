@@ -1,9 +1,6 @@
 package com.aima.controller;
 
-import com.aima.dto.request.ForgotPasswordRequest;
-import com.aima.dto.request.ResetPasswordRequest;
-import com.aima.dto.request.UpdateProfileRequest;
-import com.aima.dto.request.VerifyOtpRequest;
+import com.aima.dto.request.*;
 import com.aima.dto.response.MeResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,7 +18,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import com.aima.config.swagger.SwaggerExamples;
-import com.aima.dto.request.UserRegisterRequest;
 import com.aima.dto.response.UserResponse;
 import com.aima.service.UserService;
 
@@ -138,5 +134,39 @@ public class UserController {
     @ApiResponse(responseCode = "400", description = "OTP invalid/expired/used or passwords do not match.")
     public com.aima.dto.response.ApiResponse<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return userService.resetPassword(request);
+    }
+
+    @PatchMapping("/complete-profile")
+    @Operation(
+            summary = "Complete first-time onboarding (OAuth2 users)",
+            description = "One-time onboarding for a Google user who has not finished their profile yet. " +
+                    "Sets fullName, phone, dob and a self-chosen password (BCrypt-hashed), marks the profile as " +
+                    "completed (password becomes non-null), and emails a setup-success confirmation (never the password). " +
+                    "Requires a valid access token and fails with PROFILE_ALREADY_COMPLETED if the profile is already done."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            content = @Content(schema = @Schema(implementation = CompleteProfileRequest.class),
+                    examples = @ExampleObject(value = SwaggerExamples.COMPLETE_PROFILE_REQUEST)))
+    @ApiResponse(responseCode = "200", description = "Onboarding completed; confirmation email sent.",
+            content = @Content(schema = @Schema(implementation = com.aima.dto.response.ApiResponse.class),
+                    examples = @ExampleObject(value = SwaggerExamples.COMPLETE_PROFILE_RESPONSE)))
+    @ApiResponse(responseCode = "400", description = "Profile already completed, weak password, or passwords do not match.")
+    public com.aima.dto.response.ApiResponse<UserResponse> completeProfile(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody CompleteProfileRequest request) {
+        return userService.completeProfile(userDetails.getUsername(), request);
+    }
+
+    @GetMapping("/me/profile")
+    @Operation(
+            summary = "Get the current user's full profile",
+            description = "Returns the complete profile (fullName, phone, dob, avatarUrl, status, createdAt, role, ...) " +
+                    "of the authenticated user resolved from the JWT. Unlike GET /users/me (lightweight identity), " +
+                    "this is intended for the profile page."
+    )
+    @ApiResponse(responseCode = "200", description = "Profile returned.")
+    public com.aima.dto.response.ApiResponse<UserResponse> getMyProfile(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return userService.getMyProfile(userDetails.getUsername());
     }
 }

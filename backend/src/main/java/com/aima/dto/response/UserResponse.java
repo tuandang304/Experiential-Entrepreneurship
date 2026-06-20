@@ -1,5 +1,6 @@
 package com.aima.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -31,7 +32,8 @@ public class UserResponse {
     @Schema(description = "Phone number.", example = "0901234567")
     String phone;
 
-    @Schema(description = "Hashed password (BCrypt).", accessMode = Schema.AccessMode.READ_ONLY)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Schema(description = "Hashed password (BCrypt). Never serialized in responses.", hidden = true)
     String password;
 
     @Schema(description = "Account status.", example = "ACTIVE", allowableValues = {"ACTIVE", "LOCKED"})

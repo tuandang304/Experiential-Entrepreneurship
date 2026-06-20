@@ -113,8 +113,7 @@ public class CustomOAuth2UserServiceImpl extends DefaultOAuth2UserService implem
 
         User newUser = oauth2UserMapper.toUser(info);
         newUser.setRole(defaultRole);
-        // User Google không đăng nhập bằng mật khẩu, nhưng cột password vẫn cần một
-        // giá trị an toàn (ngẫu nhiên, đã hash) thay vì để trống/đoán được.
+        newUser.setProfileCompleted(false);
         newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
 
         User saved = userRepository.save(newUser);

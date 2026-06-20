@@ -19,4 +19,6 @@ public interface UserService {
     ApiResponse<String> verifyOtp(VerifyOtpRequest request);
     ApiResponse<String> resetPassword(ResetPasswordRequest request);
 
+    ApiResponse<UserResponse> completeProfile(String email, CompleteProfileRequest request);
+    ApiResponse<UserResponse> getMyProfile(String email);
 }

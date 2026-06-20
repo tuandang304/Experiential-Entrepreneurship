@@ -1,11 +1,13 @@
 import { useApp } from '../context/AppContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useUiStore } from '../store/useUiStore';
 import { Card, PlatformTag } from '../components/ui';
 import { channels, notifLabels, themeOptions } from '../data';
 
 export default function Settings() {
   const { t, lang, setLang, theme, setTheme, notif, toggleNotif, brandGradient } = useApp();
   const { isMobile } = useBreakpoint();
+  const { autoCollapse, toggleAutoCollapse } = useUiStore();
   const chans = channels(lang);
   const notifs = notifLabels(lang);
   const themes = themeOptions(lang);
@@ -100,6 +102,36 @@ export default function Settings() {
           </div>
         </Card>
       </div>
+
+      <Card style={{ padding: 26 }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38', marginBottom: 16 }}>{t.seSidebar}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13.5, color: '#3f3a55', fontWeight: 600 }}>{t.seSidebarAuto}</div>
+            <div style={{ fontSize: 12, color: '#8a85a0', marginTop: 2, lineHeight: 1.45 }}>{t.seSidebarAutoSub}</div>
+          </div>
+          <span
+            onClick={toggleAutoCollapse}
+            role="switch"
+            aria-checked={autoCollapse}
+            style={{
+              width: 42,
+              height: 24,
+              borderRadius: 99,
+              flex: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0 3px',
+              cursor: 'pointer',
+              transition: 'background .15s',
+              background: autoCollapse ? brandGradient : '#dcd7ea',
+              justifyContent: autoCollapse ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)' }} />
+          </span>
+        </div>
+      </Card>
     </div>
   );
 }

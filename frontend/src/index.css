@@ -63,6 +63,115 @@ button {
   -webkit-text-fill-color: transparent;
 }
 
+/* ===== Hero logo treatment (AimaHero): glass slab + halo glow ===== */
+@keyframes aima-float {
+  0%, 100% { transform: translateY(-9px); }
+  50% { transform: translateY(11px); }
+}
+@keyframes aima-float-rot {
+  0%, 100% { transform: translateY(-7px) rotate(-7deg); }
+  50% { transform: translateY(9px) rotate(-7deg); }
+}
+@keyframes aima-breathe {
+  0%, 100% { transform: scale(1) rotate(-2.5deg); }
+  50% { transform: scale(1.045) rotate(2.5deg); }
+}
+@keyframes aima-halo {
+  0%, 100% { opacity: 0.6; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+.aima-halo {
+  animation: aima-halo 7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aima-halo,
+  [style*='aima-float'],
+  [style*='aima-breathe'] {
+    animation: none !important;
+  }
+}
+
+/* Cuộn mượt cho các anchor của landing header; chừa khoảng cho header fixed. */
+html {
+  scroll-behavior: smooth;
+}
+.scroll-anchor {
+  scroll-margin-top: 104px;
+}
+
+/* Dropdown UserMenu xuất hiện mượt (thay framer-motion ở bản UML). */
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.menu-pop {
+  animation: menu-pop 0.16s ease-out both;
+  transform-origin: top right;
+}
+
+/* Nút Login co/giãn dạng "viên thuốc" (phỏng theo UML, đổi sang gradient AIMA). */
+.login-pill {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition-duration: 0.3s;
+  box-shadow: 0 10px 22px -10px rgba(139, 92, 246, 0.6);
+  background: var(--brand, linear-gradient(120deg, #46d6ec, #897ce3, #f083c0));
+}
+.login-pill .sign {
+  width: 100%;
+  transition-duration: 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-pill .sign svg {
+  width: 18px;
+  color: #fff;
+}
+.login-pill .btn-text {
+  position: absolute;
+  right: 0;
+  width: 0;
+  opacity: 0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition-duration: 0.3s;
+  white-space: nowrap;
+}
+.login-pill:hover {
+  width: 132px;
+  border-radius: 40px;
+}
+.login-pill:hover .sign {
+  width: 30%;
+  padding-left: 12px;
+}
+.login-pill:hover .btn-text {
+  opacity: 1;
+  width: 70%;
+  padding-right: 12px;
+  padding-left: 4px;
+}
+.login-pill:active {
+  transform: translate(1px, 1px);
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
   .grid-split-wide {

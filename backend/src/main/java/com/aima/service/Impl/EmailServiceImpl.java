@@ -69,7 +69,7 @@ public class EmailServiceImpl implements EmailService {
         String greetingName = (fullName != null && !fullName.isBlank()) ? fullName : "bạn";
         String accentColor = "#2563eb";
         String when = setupTime != null ? SETUP_TIME_FORMAT.format(setupTime) : "vừa xong";
-        String forgotPasswordUrl = frontendBaseUrl;
+        String forgotPasswordUrl = frontendBaseUrl + "/forgot-password";
 
         return "<div style='margin:0;padding:24px;background-color:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;'>"
                 + "<div style='max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;"
@@ -78,7 +78,7 @@ public class EmailServiceImpl implements EmailService {
                 + "<h1 style='margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.5px;'>"
                 + BRAND_NAME + "</h1>"
                 + "<p style='margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:13px;'>"
-                + "Nền tảng thiết kế &amp; hỗ trợ vẽ UML Diagram</p>"
+                + "Trợ lý Marketing AI đa nền tảng</p>"
                 + "</div>"
                 + "<div style='padding:32px;color:#0f172a;'>"
                 + "<div style='text-align:center;margin:0 0 16px;'>"

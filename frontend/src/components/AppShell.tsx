@@ -66,6 +66,15 @@ function Topbar() {
         </div>
       )}
       {isMobile && <div style={{ flex: 1 }} />}
+      <button
+        onClick={() => go('landing')}
+        title={t.nHome}
+        aria-label={t.nHome}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 10, padding: isMobile ? '9px' : '9px 12px', fontSize: 13, fontWeight: 600, color: '#4b4660', cursor: 'pointer' }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8M5 10v9a1 1 0 001 1h12a1 1 0 001-1v-9" /></svg>
+        {!isMobile && t.nHome}
+      </button>
       <LangButton compact />
       <button style={{ position: 'relative', width: 42, height: 42, borderRadius: 11, background: '#f4f2fb', border: '1px solid #ece8f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
         <Icon path={ICON.bell} size={19} stroke="#5b5670" />

@@ -5,7 +5,7 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import AppShell from "./components/AppShell";
 import { THEMES } from "./theme";
 
-import Landing from "./pages/Landing";
+import LandingPage from "./pages/LandingPage";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Create from "./pages/Create";
@@ -45,7 +45,7 @@ export default function App() {
   return (
     <div style={themeVars}>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/register" element={<Auth />} />
         <Route path="/logout" element={<Auth />} />

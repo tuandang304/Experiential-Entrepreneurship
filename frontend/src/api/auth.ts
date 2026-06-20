@@ -32,6 +32,15 @@ export interface ResetPasswordRequest {
   confirmPassword: string;
 }
 
+// Onboarding (first Google login): personal info + a self-chosen password.
+export interface CompleteProfileRequest {
+  fullName: string;
+  phone: string;
+  dob: string; // ISO date, e.g. "2000-01-15"
+  password: string;
+  confirmPassword: string;
+}
+
 // Đăng nhập Google: điều hướng toàn trang tới endpoint OAuth2 của backend.
 // Backend xử lý redirect Google rồi set cookie và quay về app.
 export const GOOGLE_LOGIN_URL = "/oauth2/authorization/google";
@@ -59,6 +68,15 @@ export async function getProfile(): Promise<User> {
 export async function updateProfile(request: UpdateProfileRequest): Promise<User> {
   const { data } = await client.put<ApiResponse<User>>("/users/me", request);
   return data.result;
+}
+
+// Hoàn tất onboarding cho user đăng nhập Google lần đầu (đặt mật khẩu + thông tin
+// cá nhân). Backend yêu cầu JWT, chặn nếu hồ sơ đã hoàn tất, hash mật khẩu BCrypt
+// và gửi email xác nhận. FE gọi xong nên refresh /users/me để cập nhật trạng thái.
+export async function completeProfile(
+  request: CompleteProfileRequest
+): Promise<void> {
+  await client.patch<ApiResponse<unknown>>("/users/complete-profile", request);
 }
 
 // ----- Quên mật khẩu (3 bước) -----

@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useApp } from "./context/AppContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import GuestRoute from "./auth/GuestRoute";
 import AppShell from "./components/AppShell";
 import { THEMES } from "./theme";
 
@@ -46,10 +47,10 @@ export default function App() {
     <div style={themeVars}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Auth />} />
-        <Route path="/register" element={<Auth />} />
+        <Route path="/login" element={<GuestRoute><Auth /></GuestRoute>} />
+        <Route path="/register" element={<GuestRoute><Auth /></GuestRoute>} />
         <Route path="/logout" element={<Auth />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
         <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/complete-profile" element={<CompleteProfilePage />} />
 

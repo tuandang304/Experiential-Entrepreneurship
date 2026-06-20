@@ -86,7 +86,8 @@ export default function Sidebar() {
 
   const floatBtn: CSSProperties = {
     position: 'absolute',
-    top: 78,
+    top: '50%',
+    transform: 'translateY(-50%)',
     right: -15,
     width: 30,
     height: 30,

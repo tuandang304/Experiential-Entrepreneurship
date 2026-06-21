@@ -27,7 +27,7 @@ export default function AimaHero() {
           <img
             src="/aima-logo.png"
             alt="AIMA"
-            style={{ width: '62.2%', height: 'auto', display: 'block', filter: 'drop-shadow(0 26px 42px rgba(124,58,237,.42)) drop-shadow(0 6px 14px rgba(69,212,255,.3))', animation: 'aima-breathe 7.5s ease-in-out infinite', willChange: 'transform' }}
+            style={{ width: '62.2%', height: 'auto', display: 'block', animation: 'aima-breathe 7.5s ease-in-out infinite', willChange: 'transform' }}
           />
         </div>
       </div>

@@ -25,7 +25,7 @@ interface AppStoreState {
 
 export const useAppStore = create<AppStoreState>((set) => ({
   lang: "vi",
-  theme: "aurora",
+  theme: "ocean",
   profile: { name: "AIMA User", email: "contact@aima.studio", bio: bioDefault("vi") },
   brand: { ...brandDefaults("vi"), toneIdx: [0, 1, 3] },
   notif: [true, true, true, false],

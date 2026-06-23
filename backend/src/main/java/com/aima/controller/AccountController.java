@@ -14,15 +14,19 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import com.aima.config.swagger.SwaggerExamples;
+import com.aima.dto.response.PageResponse;
 import com.aima.dto.response.UserResponse;
 import com.aima.service.UserService;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -50,11 +54,14 @@ public class AccountController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "List all users",
-            description = "Returns every user account. Restricted to ADMIN."
+            summary = "List all users (paginated)",
+            description = "Returns user accounts in pages (query params: page, size, sort). " +
+                    "Defaults to 10 newest users per page. Restricted to ADMIN."
     )
-    public ApiResponse<List<UserResponse>> getAllUsers() {
-        return userService.getAllUsers();
+    public ApiResponse<PageResponse<UserResponse>> getAllUsers(
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable) {
+        return userService.getAllUsers(pageable);
     }
 
     @GetMapping("/{userId}")

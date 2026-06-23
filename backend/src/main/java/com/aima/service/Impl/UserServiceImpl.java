@@ -10,6 +10,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.aima.config.storage.StorageBuckets;
 import com.aima.dto.response.ApiResponse;
+import com.aima.dto.response.PageResponse;
 import com.aima.dto.response.UserResponse;
 import com.aima.entity.Role;
 import com.aima.entity.User;
@@ -32,7 +35,6 @@ import com.aima.service.UserService;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -79,15 +81,17 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public ApiResponse<List<UserResponse>> getAllUsers() {
-        List<User> users = userRepository.findAll();
+    @Transactional(readOnly = true)
+    public ApiResponse<PageResponse<UserResponse>> getAllUsers(Pageable pageable) {
+        Page<User> users = userRepository.findAll(pageable);
 
-        if (users.isEmpty()) {
+        if (users.getTotalElements() == 0) {
             throw new AppException(ErrorCode.USER_LIST_EMPTY);
         }
 
-        List<UserResponse> userResponses = userMapper.toUserResponseList(users);
-        return ApiResponse.success("Lấy danh sách người dùng thành công", userResponses);
+        PageResponse<UserResponse> result =
+                PageResponse.from(users, userMapper.toUserResponseList(users.getContent()));
+        return ApiResponse.success("Lấy danh sách người dùng thành công", result);
     }
 
     @Override

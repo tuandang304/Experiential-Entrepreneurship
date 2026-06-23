@@ -4,14 +4,15 @@ import com.aima.dto.request.*;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.DeleteAccountResponse;
 import com.aima.dto.response.MeResponse;
+import com.aima.dto.response.PageResponse;
 import com.aima.dto.response.UserResponse;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface UserService {
     ApiResponse<UserResponse> registerUser(UserRegisterRequest request);
-    ApiResponse<List<UserResponse>> getAllUsers();
+    ApiResponse<PageResponse<UserResponse>> getAllUsers(Pageable pageable);
     ApiResponse<UserResponse> getUserById(UUID userId);
     ApiResponse<MeResponse> getCurrentUser(String email);
     ApiResponse<MeResponse> updateCurrentUser(String email, UpdateProfileRequest request);

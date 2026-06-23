@@ -112,6 +112,45 @@ export const STRINGS = {
     pageSubAnalytics: 'Đo lường điều quan trọng', pageSubTrends: 'Điều gì đang thịnh hành', pageSubBrand: 'Bản sắc thương hiệu của bạn',
     pageSubProfile: 'Tài khoản của bạn', pageSubSettings: 'Tùy chọn & tích hợp', pageSubAdmin: 'Quản trị toàn hệ thống',
     userPlan: 'Gói Premium',
+    // ===== Quản trị hệ thống (cụm /admin/*) =====
+    // nav nhóm + mục con
+    secAdmin: 'QUẢN TRỊ HỆ THỐNG', backToApp: 'Quay lại ứng dụng',
+    navAdminOverview: 'Tổng quan', navAdminUsers: 'Quản lý người dùng', navAdminPosts: 'Bài đăng lỗi & bị từ chối',
+    navAdminSystem: 'Trạng thái hệ thống', navAdminLogs: 'Log hệ thống', navAdminApi: 'Version API nền tảng', navAdminRevenue: 'Quản lý doanh thu',
+    // page subtitles
+    pageSubAdminUsers: 'Quản lý tài khoản người dùng', pageSubAdminPosts: 'Bài đăng lỗi & bị nền tảng từ chối',
+    pageSubAdminSystem: 'Tình trạng dịch vụ thời gian thực', pageSubAdminLogs: 'Nhật ký lỗi hệ thống',
+    pageSubAdminApi: 'Phiên bản API các nền tảng', pageSubAdminRevenue: 'Doanh thu & gói dịch vụ',
+    // list chung (loading / empty / error)
+    listLoading: 'Đang tải dữ liệu...', listEmpty: 'Không có dữ liệu', listError: 'Không tải được dữ liệu', retry: 'Thử lại',
+    admSearchPh: 'Tìm kiếm...', filterAll: 'Tất cả', pgPrev: 'Trước', pgNext: 'Sau', pgInfo: 'Trang',
+    detail: 'Chi tiết', close: 'Đóng', colEmail: 'Email', colAction: 'Hành động',
+    // người dùng
+    filterRole: 'Vai trò', roleUser: 'Người dùng', roleAdmin: 'Quản trị', colRole: 'Vai trò', colCreated: 'Ngày tạo',
+    stActive: 'Hoạt động', stLocked: 'Đã khoá', stPendingDel: 'Chờ xoá',
+    usrLock: 'Khoá', usrUnlock: 'Mở khoá', usrDetailTitle: 'Chi tiết người dùng', usrLocked: 'Đã khoá tài khoản', usrUnlocked: 'Đã mở khoá tài khoản',
+    // bài đăng lỗi & từ chối
+    tabRejected: 'Bị nền tảng từ chối', tabSysError: 'Lỗi hệ thống',
+    colUser: 'Người dùng', colReason: 'Lý do', stRejected: 'Bị từ chối', stSysError: 'Lỗi hệ thống',
+    postDetailTitle: 'Chi tiết lỗi bài đăng', postPlatformErr: 'Lỗi nền tảng trả về', postReason: 'Lý do', postContent: 'Nội dung bài',
+    actRepost: 'Hỗ trợ đăng lại', actContact: 'Liên hệ người dùng',
+    // trạng thái hệ thống
+    sysServices: 'Dịch vụ hệ thống', sysUptime: 'Uptime', sysLoad: 'Biểu đồ tải hệ thống (24h)', sysAlerts: 'Cảnh báo', sysNoAlerts: 'Không có cảnh báo nào',
+    svcOperational: 'Hoạt động', svcDegraded: 'Suy giảm', svcDown: 'Gián đoạn',
+    // log hệ thống
+    colTime: 'Thời gian', colLevel: 'Mức độ', colModule: 'Module', colMessage: 'Nội dung',
+    filterLevel: 'Mức độ', filterFrom: 'Từ ngày', filterTo: 'Đến ngày', logDetailTitle: 'Chi tiết log',
+    // version API nền tảng
+    colCurrentVer: 'Version hiện tại', colLatestVer: 'Version mới nhất',
+    apiUpdate: 'Cập nhật', apiUpToDate: 'Mới nhất', apiOutdated: 'Có bản mới', apiUpdated: 'Đã cập nhật version',
+    apiHistory: 'Lịch sử thay đổi', apiHistoryTitle: 'Lịch sử version',
+    // doanh thu
+    revTotal: 'Tổng doanh thu', revOrders: 'Số giao dịch', revAvg: 'Giá trị TB/giao dịch', revGrowth: 'Tăng trưởng',
+    rev1m: '30 ngày', rev3m: '90 ngày', rev12m: '12 tháng', revChart: 'Doanh thu theo thời gian',
+    revTransactions: 'Giao dịch gần đây', revPlans: 'Cấu hình giá gói', revAddPlan: 'Thêm gói', revEditPlan: 'Sửa gói', revNewPlan: 'Gói mới',
+    revPlanName: 'Tên gói', revPlanPrice: 'Giá (đ/tháng)', revPlanActive: 'Đang bán',
+    revExport: 'Xuất báo cáo', revExportPdfTodo: 'Xuất PDF sẽ sớm có (đang phát triển).',
+    colTxn: 'Mã giao dịch', colAmount: 'Số tiền', colCustomer: 'Khách hàng',
   },
   en: {
     nHome: 'Home', nFeatures: 'Features', nPricing: 'Pricing', nResources: 'Resources',
@@ -204,6 +243,36 @@ export const STRINGS = {
     pageSubAnalytics: 'Measure what matters', pageSubTrends: 'What is trending now', pageSubBrand: 'Your brand identity',
     pageSubProfile: 'Your account', pageSubSettings: 'Preferences & integrations', pageSubAdmin: 'System administration',
     userPlan: 'Premium Plan',
+    // ===== System Administration (/admin/*) =====
+    secAdmin: 'ADMINISTRATION', backToApp: 'Back to app',
+    navAdminOverview: 'Overview', navAdminUsers: 'User management', navAdminPosts: 'Failed & rejected posts',
+    navAdminSystem: 'System status', navAdminLogs: 'System logs', navAdminApi: 'Platform API versions', navAdminRevenue: 'Revenue',
+    pageSubAdminUsers: 'Manage user accounts', pageSubAdminPosts: 'Failed & platform-rejected posts',
+    pageSubAdminSystem: 'Real-time service health', pageSubAdminLogs: 'System error logs',
+    pageSubAdminApi: 'Platform API versions', pageSubAdminRevenue: 'Revenue & plans',
+    listLoading: 'Loading data...', listEmpty: 'No data', listError: 'Could not load data', retry: 'Retry',
+    admSearchPh: 'Search...', filterAll: 'All', pgPrev: 'Prev', pgNext: 'Next', pgInfo: 'Page',
+    detail: 'Details', close: 'Close', colEmail: 'Email', colAction: 'Action',
+    filterRole: 'Role', roleUser: 'User', roleAdmin: 'Admin', colRole: 'Role', colCreated: 'Created',
+    stActive: 'Active', stLocked: 'Locked', stPendingDel: 'Pending deletion',
+    usrLock: 'Lock', usrUnlock: 'Unlock', usrDetailTitle: 'User details', usrLocked: 'Account locked', usrUnlocked: 'Account unlocked',
+    tabRejected: 'Rejected by platform', tabSysError: 'System error',
+    colUser: 'User', colReason: 'Reason', stRejected: 'Rejected', stSysError: 'System error',
+    postDetailTitle: 'Post error details', postPlatformErr: 'Platform error response', postReason: 'Reason', postContent: 'Post content',
+    actRepost: 'Assist re-post', actContact: 'Contact user',
+    sysServices: 'System services', sysUptime: 'Uptime', sysLoad: 'System load (24h)', sysAlerts: 'Alerts', sysNoAlerts: 'No active alerts',
+    svcOperational: 'Operational', svcDegraded: 'Degraded', svcDown: 'Down',
+    colTime: 'Time', colLevel: 'Level', colModule: 'Module', colMessage: 'Message',
+    filterLevel: 'Level', filterFrom: 'From', filterTo: 'To', logDetailTitle: 'Log details',
+    colCurrentVer: 'Current version', colLatestVer: 'Latest version',
+    apiUpdate: 'Update', apiUpToDate: 'Up to date', apiOutdated: 'Update available', apiUpdated: 'Version updated',
+    apiHistory: 'Change history', apiHistoryTitle: 'Version history',
+    revTotal: 'Total revenue', revOrders: 'Transactions', revAvg: 'Avg / transaction', revGrowth: 'Growth',
+    rev1m: '30 days', rev3m: '90 days', rev12m: '12 months', revChart: 'Revenue over time',
+    revTransactions: 'Recent transactions', revPlans: 'Plan pricing', revAddPlan: 'Add plan', revEditPlan: 'Edit plan', revNewPlan: 'New plan',
+    revPlanName: 'Plan name', revPlanPrice: 'Price (/mo)', revPlanActive: 'Active',
+    revExport: 'Export', revExportPdfTodo: 'PDF export is coming soon (in development).',
+    colTxn: 'Transaction ID', colAmount: 'Amount', colCustomer: 'Customer',
   },
 } as const;
 

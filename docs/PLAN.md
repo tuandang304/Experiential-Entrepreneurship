@@ -112,9 +112,11 @@
 - [ ] FR-77 Review needed / FR-78 reconnection needed / FR-79 new insight `[BE][FE]`
 
 ## 15. Admin
-- [ ] FR-80 Manage users `[BE][FE]`
-- [ ] FR-81 System status `[BE][FE]`
-- [ ] FR-82 Rejected content / FR-83 posting errors / FR-84 system logs `[BE][FE]`
+- [ ] FR-80 Manage users `[BE][FE]` — FE UI done 2026-06-23 (list + search/filter/pagination, lock/unlock, detail; mock via `api/admin.ts`, BE endpoint pending)
+- [ ] FR-81 System status `[BE][FE]` — FE UI done 2026-06-23 (service cards, 24h load chart, alerts; mock, BE pending)
+- [ ] FR-82 Rejected content / FR-83 posting errors / FR-84 system logs `[BE][FE]` — FE UI done 2026-06-23 (Posts page rejected/system tabs + error modal; Logs page level/date filter + detail; mock, BE pending)
+- [ ] Admin extras (FE) done 2026-06-23: Platform API versions (update + history), Revenue (period filter, chart, transactions, plan pricing config, export TXT/Excel; PDF stub TODO).
+- [ ] Admin UX (FE) done 2026-06-24: Administration split into its own interface (separate `AppShell variant="admin"` + admin sidebar) reached via an admin-only "Quản trị hệ thống" portal button in the app sidebar; role-guarded `/admin/*` (ProtectedRoute → AdminRoute). Sidebar body is vertically scrollable (`.sb-scroll`) on short viewports so items don't get squished.
 
 ## 16. Onboarding
 - [ ] FR-85 Onboarding wizard (Brand Profile → connect ≥1 account → first Strategy → tour) `[FE][BE]`
@@ -135,7 +137,7 @@
 - [ ] UI-07 Calendar / Schedule `[FE]`
 - [ ] UI-08 Analytics page `[FE]`
 - [ ] UI-09 Social Account page `[FE]`
-- [ ] UI-10 Admin Dashboard `[FE]`
+- [x] UI-10 Admin Dashboard `[FE]` — done 2026-06-23 (separated into a role-guarded System Administration module: Overview + Users + Failed/Rejected posts + System status + Logs + Platform API versions + Revenue)
 
 ## Cross-Cutting / Infrastructure
 - [ ] Database schema per DATA_MODEL.md (soft delete `deleted_at` everywhere) `[BE]`

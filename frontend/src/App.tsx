@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useApp } from "./context/AppContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import AdminRoute from "./auth/AdminRoute";
 import GuestRoute from "./auth/GuestRoute";
 import AppShell from "./components/AppShell";
 import ShareButton from "./components/ShareButton";
@@ -17,7 +18,13 @@ import Trends from "./pages/Trends";
 import Brand from "./pages/Brand";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
-import Admin from "./pages/Admin";
+import AdminOverview from "./pages/admin/Overview";
+import AdminUsers from "./pages/admin/Users";
+import AdminPosts from "./pages/admin/Posts";
+import AdminSystem from "./pages/admin/SystemStatus";
+import AdminLogs from "./pages/admin/Logs";
+import AdminApiVersions from "./pages/admin/ApiVersions";
+import AdminRevenue from "./pages/admin/Revenue";
 
 // Backend-driven flows kept from the original app (real URLs the server redirects to).
 import GoogleCallbackPage from "./pages/GoogleCallbackPage";
@@ -32,6 +39,19 @@ function AppLayout() {
       <AppShell>
         <Outlet />
       </AppShell>
+    </ProtectedRoute>
+  );
+}
+
+// Khu vực Quản trị hệ thống — giao diện riêng (sidebar admin), chỉ ADMIN.
+function AdminLayout() {
+  return (
+    <ProtectedRoute>
+      <AdminRoute>
+        <AppShell variant="admin">
+          <Outlet />
+        </AppShell>
+      </AdminRoute>
     </ProtectedRoute>
   );
 }
@@ -64,7 +84,17 @@ export default function App() {
           <Route path="/brand" element={<Brand />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/admin" element={<Admin />} />
+        </Route>
+
+        {/* Khu vực Quản trị hệ thống — tách riêng giao diện, chỉ ADMIN. */}
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminOverview />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/posts" element={<AdminPosts />} />
+          <Route path="/admin/system" element={<AdminSystem />} />
+          <Route path="/admin/logs" element={<AdminLogs />} />
+          <Route path="/admin/api-versions" element={<AdminApiVersions />} />
+          <Route path="/admin/revenue" element={<AdminRevenue />} />
         </Route>
 
         {/* Full brand-profile management (multi-profile CRUD). */}

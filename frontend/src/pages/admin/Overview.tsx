@@ -1,9 +1,9 @@
-import { useApp } from '../context/AppContext';
-import { useBreakpoint } from '../hooks/useBreakpoint';
-import { Icon, Card } from '../components/ui';
-import { adminStats, adminUsers, planDist, health } from '../data';
+import { useApp } from '../../context/AppContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { Icon, Card } from '../../components/ui';
+import { adminStats, adminUsers, planDist, health } from '../../data';
 
-export default function Admin() {
+export default function Overview() {
   const { t, lang, brandGradient } = useApp();
   const { isMobile, isTablet } = useBreakpoint();
   const sCards = adminStats(lang);

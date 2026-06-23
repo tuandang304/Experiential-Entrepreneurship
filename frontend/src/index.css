@@ -661,6 +661,22 @@ html {
   }
 }
 
+/* Vùng cuộn dọc của sidebar khi màn hình thấp — thanh cuộn mảnh, kín đáo. */
+.sb-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d9d2ec transparent;
+}
+.sb-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.sb-scroll::-webkit-scrollbar-thumb {
+  background: #d9d2ec;
+  border-radius: 99px;
+}
+.sb-scroll::-webkit-scrollbar-thumb:hover {
+  background: #c4bbe0;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 1024px) {
   .grid-split-wide {

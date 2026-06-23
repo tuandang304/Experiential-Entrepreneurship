@@ -108,7 +108,13 @@ const PAGE_KEYS = {
   brand: ['navBrand', 'pageSubBrand'],
   profile: ['navProfile', 'pageSubProfile'],
   settings: ['navSettings', 'pageSubSettings'],
-  admin: ['navAdmin', 'pageSubAdmin'],
+  admin: ['navAdminOverview', 'pageSubAdmin'],
+  adminUsers: ['navAdminUsers', 'pageSubAdminUsers'],
+  adminPosts: ['navAdminPosts', 'pageSubAdminPosts'],
+  adminSystem: ['navAdminSystem', 'pageSubAdminSystem'],
+  adminLogs: ['navAdminLogs', 'pageSubAdminLogs'],
+  adminApiVersions: ['navAdminApi', 'pageSubAdminApi'],
+  adminRevenue: ['navAdminRevenue', 'pageSubAdminRevenue'],
 } as const;
 
 function PageHeading() {
@@ -123,11 +129,11 @@ function PageHeading() {
   );
 }
 
-export default function AppShell({ children }: { children: ReactNode }) {
+export default function AppShell({ children, variant = 'app' }: { children: ReactNode; variant?: 'app' | 'admin' }) {
   const { isMobile } = useBreakpoint();
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: isMobile ? 'column' : 'row', background: '#f7f6fd' }}>
-      <Sidebar />
+      <Sidebar mode={variant} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <Topbar />
         <main style={{ flex: 1, padding: isMobile ? '18px 14px' : 28, overflow: 'auto' }}>{children}</main>

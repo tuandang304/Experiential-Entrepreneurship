@@ -17,7 +17,13 @@ export type Route =
   | 'brand'
   | 'profile'
   | 'settings'
-  | 'admin';
+  | 'admin'
+  | 'adminUsers'
+  | 'adminPosts'
+  | 'adminSystem'
+  | 'adminLogs'
+  | 'adminApiVersions'
+  | 'adminRevenue';
 
 export interface ThemeDef {
   brand: string;

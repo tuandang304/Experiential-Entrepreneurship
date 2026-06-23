@@ -5,7 +5,9 @@ import { useAuth } from "../auth/AuthContext";
 import { useApp } from "../context/AppContext";
 import { Loader } from "../components/ui";
 import PasswordStrengthBar from "../components/PasswordStrengthBar";
-import { passwordValid } from "../utils/password";
+import { passwordValid } from "../validations/password";
+import { passwordsMatch } from "../validations/authValidation";
+import { validateStep1 } from "../validations/profileValidation";
 
 // ---- Design tokens (khớp với Auth.tsx để onboarding nhất quán với app) ----
 const inputWrap = (error?: string): CSSProperties => ({
@@ -44,20 +46,6 @@ const EyeBtn = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
   </button>
 );
 
-// ---- Validation (mirror các rule của backend CompleteProfileRequest) ----
-// SĐT VN: 10-11 chữ số, bắt đầu bằng 0 (là tập con của regex backend ^[0-9]{10,11}$).
-const phoneOk = (v: string) => /^0\d{9,10}$/.test(v.trim());
-
-function validateStep1(fullName: string, phone: string, dob: string) {
-  const e: { fullName?: string; phone?: string; dob?: string } = {};
-  if (!fullName.trim()) e.fullName = "Vui lòng nhập họ và tên";
-  if (!phone.trim()) e.phone = "Vui lòng nhập số điện thoại";
-  else if (!phoneOk(phone)) e.phone = "Số điện thoại không hợp lệ (VD: 0901234567)";
-  if (!dob) e.dob = "Vui lòng chọn ngày sinh";
-  else if (dob > new Date().toISOString().split("T")[0]) e.dob = "Ngày sinh không được ở tương lai";
-  return e;
-}
-
 const STEPS = ["Thông tin cá nhân", "Thiết lập mật khẩu"];
 
 export default function CompleteProfilePage() {
@@ -88,7 +76,7 @@ export default function CompleteProfilePage() {
   // Validity realtime (để bật/tắt nút), độc lập với việc hiển thị lỗi inline.
   const step1Errs = useMemo(() => validateStep1(fullName, phone, dob), [fullName, phone, dob]);
   const step1Valid = Object.keys(step1Errs).length === 0;
-  const step2Valid = passwordValid(password) && confirm.length > 0 && password === confirm;
+  const step2Valid = passwordValid(password) && confirm.length > 0 && passwordsMatch(password, confirm);
 
   if (loading) {
     return <Loader fullScreen label="Đang tải..." />;
@@ -128,7 +116,7 @@ export default function CompleteProfilePage() {
     }
     const e2: Record<string, string> = {};
     if (!passwordValid(password)) e2.password = "Mật khẩu cần ≥ 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt";
-    if (password !== confirm) e2.confirm = "Mật khẩu xác nhận không khớp";
+    if (!passwordsMatch(password, confirm)) e2.confirm = "Mật khẩu xác nhận không khớp";
     if (Object.keys(e2).length > 0) {
       setErrors((p) => ({ ...p, ...e2 }));
       (e2.password ? pwRef : confirmRef).current?.focus();
@@ -265,7 +253,7 @@ export default function CompleteProfilePage() {
               <LockIcon />
               <input ref={confirmRef} type={showPw2 ? "text" : "password"} value={confirm}
                 onChange={(e) => { setConfirm(e.target.value); setErrors((p) => ({ ...p, confirm: undefined })); }}
-                onBlur={() => setErrors((p) => ({ ...p, confirm: confirm && confirm !== password ? "Mật khẩu xác nhận không khớp" : undefined }))}
+                onBlur={() => setErrors((p) => ({ ...p, confirm: confirm && !passwordsMatch(password, confirm) ? "Mật khẩu xác nhận không khớp" : undefined }))}
                 placeholder="Nhập lại mật khẩu" style={inputStyle} />
               <EyeBtn on={showPw2} onClick={() => setShowPw2((v) => !v)} />
             </div>

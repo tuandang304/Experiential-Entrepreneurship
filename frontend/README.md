@@ -41,7 +41,7 @@ tiền tố `VITE_`.
 
 ### Cách dùng trong code
 
-- Axios instance dùng chung: [`src/api/client.ts`](src/api/client.ts) đặt
+- Axios instance dùng chung: [`src/api/apiClient.ts`](src/api/apiClient.ts) đặt
   `baseURL: import.meta.env.VITE_API_BASE_URL`, `withCredentials: true`.
 - Mọi module API gọi bằng **đường dẫn tương đối**: `client.get("/users/me")`,
   `client.post("/brand-profiles", input)` — không bao giờ ghép full URL.
@@ -65,9 +65,10 @@ frontend/
     ├── i18n.ts              # từ điển song ngữ vi/en
     ├── types.ts             # type dùng chung
     ├── api/                 # tầng gọi backend (Axios)
-    │   ├── client.ts        # axios instance + baseURL từ env + interceptor lỗi
+    │   ├── apiClient.ts     # axios instance + baseURL từ env + interceptor lỗi
     │   ├── auth.ts          # đăng ký/đăng nhập/OTP/Google
     │   └── brandProfile.ts  # CRUD brand profile
+    ├── validations/         # kiểm tra dữ liệu dùng chung: password, authValidation, profileValidation
     ├── auth/                # AuthContext, ProtectedRoute, GuestRoute
     ├── store/               # Zustand: useAppStore (lang/theme/profile…), useUiStore
     ├── context/AppContext   # hook useApp() bọc store + điều hướng
@@ -84,7 +85,7 @@ frontend/
   backend set; FE không đọc token, luôn gọi `GET /users/me` để biết danh tính.
 - **State**: [Zustand](src/store/useAppStore.ts) giữ lang/theme/profile/brand; `useApp()` là API công
   khai để component tiêu thụ.
-- **API**: mọi response theo envelope `{ code, message, result }` (API-01). `client.ts` bóc lỗi thành
+- **API**: mọi response theo envelope `{ code, message, result }` (API-01). `apiClient.ts` bóc lỗi thành
   `ApiError` mang `code` của backend.
 
 ## Phạm vi (MVP)

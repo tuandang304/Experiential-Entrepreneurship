@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { useApp } from '../context/AppContext';
-import { strengthLevel } from '../utils/password';
+import { strengthLevel } from '../validations/password';
 
 const LABEL_KEY = { weak: 'pwWeak', fair: 'pwFair', strong: 'pwStrong' } as const;
 

@@ -1,4 +1,4 @@
-import client, { ApiResponse } from "./client";
+import client, { ApiResponse } from "./apiClient";
 
 export interface User {
   id: string;

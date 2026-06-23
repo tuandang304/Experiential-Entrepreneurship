@@ -11,6 +11,7 @@ import {
   updateBrandProfile,
 } from "../api/brandProfile";
 
+// TODO: cần endpoint backend trả enum platform/posting-frequency (hiện hardcode mirror enum BE).
 const PLATFORMS: Platform[] = ["FACEBOOK", "INSTAGRAM", "THREADS"];
 const FREQUENCIES: PostingFrequency[] = ["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"];
 

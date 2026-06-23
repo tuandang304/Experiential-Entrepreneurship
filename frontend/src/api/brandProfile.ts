@@ -1,4 +1,4 @@
-import client, { ApiResponse } from "./client";
+import client, { ApiResponse } from "./apiClient";
 
 export type Platform = "FACEBOOK" | "INSTAGRAM" | "THREADS";
 export type PostingFrequency = "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";

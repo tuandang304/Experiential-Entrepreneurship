@@ -28,7 +28,7 @@
 | Spring Boot Starter Security | (Boot-managed) | |
 | Spring Boot Starter Validation | (Boot-managed) | Bean Validation on request DTOs |
 | Spring Boot Starter Actuator | (Boot-managed) | `/actuator/health` |
-| Spring Boot Starter Mail | (Boot-managed) | OTP / password-reset emails |
+| Spring Boot Starter Mail | (Boot-managed) | Declared in pom but **vestigial** — OTP / password-reset emails now go through the **Brevo HTTP API** (`BrevoEmailSender` + `RestClient`), not SMTP. See §4. |
 | Spring Boot Starter Data Redis | (Boot-managed) | ACCESS token blacklist + REFRESH token tracking + OTP state |
 | Spring Boot Starter OAuth2 Client | (Boot-managed) | Google OAuth2 login (brings in Nimbus JOSE used by `JwtServiceImpl`) |
 | Spring Boot Starter WebFlux | (Boot-managed) | `WebClient` (reactive HTTP) |
@@ -151,7 +151,8 @@ backend/
             ├── UserDetailsServiceImpl.java  — Spring UserDetailsService: load user by email
             ├── CustomOAuth2UserServiceImpl.java — THE Google find/create path (uses OAuth2UserMapper)
             ├── OtpServiceImpl.java          — Redis-backed OTP
-            ├── EmailServiceImpl.java
+            ├── BrevoEmailSender.java        — sends HTML email via Brevo Transactional Email API (HTTP/443, RestClient) — Render free tier blocks SMTP ports 25/465/587
+            ├── EmailServiceImpl.java        — builds OTP / reset email bodies; delegates the actual send to BrevoEmailSender (no JavaMailSender/SMTP)
             ├── BrandProfileServiceImpl.java
             ├── SupabaseStorageServiceImpl.java — WebClient upload/delete/sign against Supabase Storage REST API
             ├── FileServiceImpl.java         — Wraps SupabaseStorageService + UserRepository; builds the ApiResponse envelope + result DTOs
@@ -304,6 +305,20 @@ because its `jti` is gone → 401.
 2. Clear both cookies via `CookieUtils`.
 3. If an access token is provided in the body: blacklist its `jti` in Redis.
 
+### Email transport (Brevo HTTP API)
+All transactional email (OTP, password-reset) is sent through the **Brevo Transactional Email API**
+over HTTPS (`BrevoEmailSender`, `RestClient` → `https://api.brevo.com/v3/smtp/email`) — **not SMTP**,
+because the Render free tier blocks SMTP ports 25/465/587. `EmailServiceImpl` only builds the subject/HTML
+body and delegates the send. Config: `brevo.api-key` / `brevo.sender.email` / `brevo.sender.name`
+(env `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`). The old `spring.mail.*` SMTP block and the
+mail health indicator were removed from `application.yml`.
+
+### Password policy (strong password everywhere)
+Registration, password reset, in-app change-password and complete-profile all enforce the **same** strong
+rule via `@Pattern(... message = "WEAK_PASSWORD")`: **≥ 8 chars incl. lowercase, uppercase, a digit and a
+special character** (`^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$`). The frontend mirrors this in
+`validations/password.ts`. (The earlier register-only min-6 letter+digit `INVALID_PASSWORD` rule is gone.)
+
 ### Password reset (OTP via email)
 `POST /users/forgot-password` → generate 6-digit OTP, store hashed in Redis with TTL, email it.
 `POST /users/verify-otp` → validate OTP, mark verified (short-lived flag in Redis).
@@ -432,7 +447,7 @@ APP_TIMEZONE, JWT_SIGNER_KEY
 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 FRONTEND_CALLBACK_URL                 # OAuth2 success/failure redirect, e.g. http://localhost:3000/auth/google/callback
 FRONTEND_BASE_URL                     # FE origin, e.g. http://localhost:3000 (default in application.yml)
-MAIL_USERNAME, MAIL_PASSWORD          # SMTP (Gmail) for OTP emails
+BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME   # Brevo Transactional Email API (HTTP) for OTP / reset emails; BREVO_SENDER_NAME defaults to "AIMA"
 SUPABASE_URL, SUPABASE_SERVICE_KEY    # Supabase Storage — service_role key is BACKEND ONLY, never expose to FE
 # Optional overrides (have defaults in application.yml):
 SUPABASE_ANON_KEY                     # kept for reference; not used by the backend

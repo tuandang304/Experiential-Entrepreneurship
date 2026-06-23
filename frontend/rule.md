@@ -80,7 +80,11 @@ Thứ tự ưu tiên khi tạo UI mới:
 - **Song ngữ**: chuỗi hiển thị lấy từ `t` (`useApp().t`, từ điển [`i18n.ts`](src/i18n.ts)) khi đã có key —
   không hardcode rải rác. Thêm chuỗi mới → thêm cả `vi` và `en`.
 - **Dữ liệu**: trang demo dùng mock trong [`data.ts`](src/data.ts). Dữ liệu thật **luôn qua tầng `api/`**
-  (Axios `client`), không `fetch` thẳng, không ghép URL — xem [`CLAUDE.md`](CLAUDE.md) §3.
+  (Axios `client` ở [`apiClient.ts`](src/api/apiClient.ts)), không `fetch` thẳng, không ghép URL — xem
+  [`CLAUDE.md`](CLAUDE.md) §3.
+- **Validation**: kiểm tra dữ liệu form (email/OTP/mật khẩu/SĐT…) lấy từ [`src/validations/`](src/validations/)
+  (`password`, `authValidation`, `profileValidation`) — **không** viết lại regex/điều kiện inline trong page.
+  Cần rule mới dùng nhiều nơi → thêm hàm vào `validations/` rồi import.
 - Xử lý lỗi API: hiển thị `ApiError.message`; rẽ nhánh theo `ApiError.code` khi cần (vd OTP sai).
 
 ## 8. Checklist trước khi xong một thay đổi UI
@@ -91,5 +95,6 @@ Thứ tự ưu tiên khi tạo UI mới:
 - [ ] Responsive ổn ở mobile (dùng `useBreakpoint` / `.grid-*`).
 - [ ] Animation mới có nhánh `prefers-reduced-motion`.
 - [ ] Chuỗi hiển thị qua `t` (vi + en).
+- [ ] Validation form import từ `src/validations/`, không lặp regex/điều kiện inline.
 - [ ] Không hardcode URL backend; gọi qua `client` + đường dẫn tương đối.
 - [ ] `npm run build` (tsc) không lỗi type.

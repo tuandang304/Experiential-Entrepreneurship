@@ -7,7 +7,8 @@ import { GradIcon } from '../components/ui';
 import AimaScene from '../components/AimaScene';
 import { register as apiRegister, GOOGLE_LOGIN_URL, type User } from '../api/auth';
 import PasswordStrengthBar from '../components/PasswordStrengthBar';
-import { passwordValid } from '../utils/password';
+import { passwordValid } from '../validations/password';
+import { validEmail, passwordsMatch } from '../validations/authValidation';
 import type { AuthForm, AuthErrors } from '../types';
 
 const inputWrap = (error?: string): CSSProperties => ({
@@ -38,8 +39,6 @@ const EyeBtn = ({ onClick }: { onClick: () => void }) => (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
   </button>
 );
-
-const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 export default function Auth() {
   const { t, lang, route, go, brandGradient, toggleLang } = useApp();
@@ -109,7 +108,7 @@ export default function Auth() {
     if (!f.password) er.password = t.errPwReq;
     else if (!passwordValid(f.password)) er.password = t.errPwWeak;
     if (!f.confirm) er.confirm = t.errConfirmReq;
-    else if (f.confirm !== f.password) er.confirm = t.errConfirmBad;
+    else if (!passwordsMatch(f.password, f.confirm)) er.confirm = t.errConfirmBad;
     if (!agree) er.agree = t.errAgree;
     setErrors(er);
     if (Object.keys(er).length > 0) return;

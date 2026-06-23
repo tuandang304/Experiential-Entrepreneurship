@@ -31,7 +31,7 @@ src/
 ├── types.ts              — type/interface dùng chung (Route, ThemeKey, Platform…)
 ├── data.ts               — dữ liệu mock cho UI demo
 ├── api/
-│   ├── client.ts         — axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL }) + interceptor
+│   ├── apiClient.ts      — axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL }) + interceptor
 │   ├── auth.ts           — register/login/logout/getProfile/OTP/completeProfile + GOOGLE_LOGIN_URL;
 │   │                       changePasswordInit/Confirm, requestDeleteAccount/restoreAccount (dùng ở trang Hồ sơ).
 │   │                       updateProfile nhận thêm avatarUrl (tuỳ chọn); uploadAvatar(file) → POST /files/avatar trả URL công khai.
@@ -48,6 +48,9 @@ src/
 ├── components/           — AppShell, Sidebar, LandingHeader, UserMenu, ShareButton, ui.tsx,
 │                           Modal (overlay dùng chung), ChangePasswordModal (đổi mật khẩu 3 bước), …
 ├── hooks/                — useBreakpoint (responsive), useReveal (scroll reveal)
+├── validations/          — logic kiểm tra dữ liệu dùng chung (1 nguồn, không lặp inline):
+│                           password.ts (PASSWORD_RULE + độ mạnh), authValidation.ts
+│                           (validEmail/otpValid/passwordsMatch), profileValidation.ts (phoneOk/validateStep1)
 └── pages/                — 1 file / route: Landing, Auth, Dashboard, Create, Calendar,
                             Analytics, Trends, Brand, Profile, Settings, Admin,
                             ForgotPassword, CompleteProfile, GoogleCallback, BrandProfile
@@ -59,7 +62,7 @@ src/
 
 - Biến sống trong `.env` (đã `.gitignore`); mẫu ở `.env.example`. Vite **chỉ** expose biến tiền tố `VITE_`.
 - Type khai báo ở [`src/vite-env.d.ts`](src/vite-env.d.ts) (`ImportMetaEnv.VITE_API_BASE_URL`).
-- Axios instance dùng chung [`src/api/client.ts`](src/api/client.ts) đặt `baseURL` = biến đó.
+- Axios instance dùng chung [`src/api/apiClient.ts`](src/api/apiClient.ts) đặt `baseURL` = biến đó.
   **Mọi nơi gọi API dùng đường dẫn tương đối** (`client.get("/users")`), không ghép full URL.
 - Điều hướng cả trang (Google login) ghép tuyệt đối: `` `${import.meta.env.VITE_API_BASE_URL}/...` ``.
 - Đổi `.env` → **phải restart dev server**.
@@ -67,8 +70,11 @@ src/
 
 ## 4. Quy ước code
 
-- **Gọi API:** luôn qua `client` trong `api/client.ts`, không `fetch` trực tiếp, không tạo axios instance khác.
+- **Gọi API:** luôn qua `client` trong `api/apiClient.ts`, không `fetch` trực tiếp, không tạo axios instance khác.
   Thêm endpoint mới → thêm hàm trong `api/*.ts` trả `data.result`, dùng type cho request/response.
+- **Validation:** logic kiểm tra dữ liệu (email/OTP/mật khẩu/SĐT…) đặt ở `src/validations/`, import dùng lại;
+  không viết lại regex/điều kiện inline trong component. Quy tắc mật khẩu ở `validations/password.ts` (đồng bộ
+  `WEAK_PASSWORD` của backend: ≥8 ký tự gồm hoa, thường, số, ký tự đặc biệt).
 - **Response envelope:** backend trả `{ code, message, result }` (API-01). Lỗi đã được interceptor bóc thành
   `ApiError` mang `.code` (vd 1072) — UI xử lý theo `code`, hiển thị `.message`.
 - **Auth:** token nằm trong cookie HttpOnly (FE không đọc). Sau login/redirect, gọi `refreshUser()` →

@@ -2,10 +2,11 @@ import { FormEvent, useEffect, useState, type CSSProperties } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../auth/AuthContext';
 import { changePasswordInit, changePasswordConfirm, verifyOtp } from '../api/auth';
-import type { ApiError } from '../api/client';
+import type { ApiError } from '../api/apiClient';
 import Modal from './Modal';
 import PasswordStrengthBar from './PasswordStrengthBar';
-import { passwordValid } from '../utils/password';
+import { passwordValid } from '../validations/password';
+import { otpValid, passwordsMatch } from '../validations/authValidation';
 
 type Step = 'current' | 'otp' | 'new';
 
@@ -78,7 +79,7 @@ export default function ChangePasswordModal({ onClose, onSuccess }: { onClose: (
     e.preventDefault();
     setError('');
     if (!otpCode) return setError(t.errOtpReq);
-    if (!/^\d{6}$/.test(otpCode)) return setError(t.errOtpBad);
+    if (!otpValid(otpCode)) return setError(t.errOtpBad);
     setSubmitting(true);
     try {
       // Xác thực OTP ở backend trước khi cho qua bước nhập mật khẩu mới.
@@ -101,7 +102,7 @@ export default function ChangePasswordModal({ onClose, onSuccess }: { onClose: (
     setError('');
     if (!newPassword) return setError(t.errPwReq);
     if (!passwordValid(newPassword)) return setError(t.errPwWeak);
-    if (newPassword !== confirmPassword) return setError(t.errConfirmBad);
+    if (!passwordsMatch(newPassword, confirmPassword)) return setError(t.errConfirmBad);
     setSubmitting(true);
     try {
       await changePasswordConfirm({ otpCode, newPassword, confirmPassword });

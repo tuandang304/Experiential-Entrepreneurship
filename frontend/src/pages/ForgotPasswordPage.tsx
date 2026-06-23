@@ -4,9 +4,10 @@ import { useApp } from "../context/AppContext";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import AimaScene from "../components/AimaScene";
 import { forgotPassword, resetPassword, verifyOtp } from "../api/auth";
-import type { ApiError } from "../api/client";
+import type { ApiError } from "../api/apiClient";
 import PasswordStrengthBar from "../components/PasswordStrengthBar";
-import { passwordValid } from "../utils/password";
+import { passwordValid } from "../validations/password";
+import { validEmail, otpValid, passwordsMatch } from "../validations/authValidation";
 
 type Step = "email" | "otp" | "reset";
 
@@ -45,8 +46,6 @@ const EyeBtn = ({ onClick }: { onClick: () => void }) => (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
   </button>
 );
-
-const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 export default function ForgotPasswordPage() {
   const { t, lang, brandGradient, toggleLang } = useApp();
@@ -102,7 +101,7 @@ export default function ForgotPasswordPage() {
     setError("");
     setMessage("");
     if (!otpCode) return setError(t.errOtpReq);
-    if (!/^\d{6}$/.test(otpCode)) return setError(t.errOtpBad);
+    if (!otpValid(otpCode)) return setError(t.errOtpBad);
     setSubmitting(true);
     try {
       await verifyOtp(email, otpCode);
@@ -126,7 +125,7 @@ export default function ForgotPasswordPage() {
     setError("");
     if (!newPassword) return setError(t.errPwReq);
     if (!passwordValid(newPassword)) return setError(t.errPwWeak);
-    if (newPassword !== confirmPassword) return setError(t.errConfirmBad);
+    if (!passwordsMatch(newPassword, confirmPassword)) return setError(t.errConfirmBad);
     setSubmitting(true);
     try {
       await resetPassword({ email, otpCode, newPassword, confirmPassword });

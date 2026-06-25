@@ -2,6 +2,7 @@ package com.aima.entity;
 
 import com.aima.enums.Platform;
 import com.aima.enums.PostingFrequency;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -11,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -67,4 +69,24 @@ public class BrandProfile extends BaseEntity {
     @CollectionTable(name = "brand_profile_time_slots", joinColumns = @JoinColumn(name = "brand_profile_id"))
     @Column(name = "time_slot", length = 30)
     List<String> preferredTimes = new ArrayList<>();
+
+    @Column(name = "logo_url", length = 500)
+    String logoUrl;
+
+    // Cờ "Hồ sơ đang dùng" — tối đa 1 active / user (xử lý ở service layer).
+    @Column(name = "is_active", nullable = false)
+    Boolean isActive = false;
+
+    // Độ hoàn thiện 0–100; có thể tính động thay vì lưu cứng.
+    @Column(name = "brand_health_score")
+    Integer brandHealthScore;
+
+    @OneToMany(mappedBy = "brandProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<ContentStrategy> contentStrategies = new ArrayList<>();
+
+    @OneToMany(mappedBy = "brandProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<TrendResearchSession> trendResearchSessions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "brandProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<ContentItem> contentItems = new ArrayList<>();
 }

@@ -74,4 +74,10 @@ public class User extends BaseEntity {
     @EqualsAndHashCode.Exclude
     @Builder.Default
     List<BrandProfile> brandProfiles = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    List<PlatformAccount> platformAccounts = new ArrayList<>();
 }

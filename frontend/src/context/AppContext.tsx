@@ -5,6 +5,7 @@ import { THEMES } from '../theme';
 import { getDict } from '../i18n';
 import { useAuth } from '../auth/AuthContext';
 import { useAppStore } from '../store/useAppStore';
+import { useUiStore } from '../store/useUiStore';
 
 // State của app sống trong Zustand (useAppStore). File này giữ nguyên API công khai
 // `useApp()` + `AppProvider` để 19 component tiêu thụ không phải đổi import. Phần
@@ -72,10 +73,19 @@ export function useApp() {
 
   const go = useCallback(
     (r: Route) => {
+      // Khi mở Hồ sơ/Cài đặt từ một khu vực khác (vd Quản trị/Bảng điều khiển),
+      // nhớ lại route gốc để sidebar vẫn highlight đúng chỗ; rời đi thì xóa.
+      const current = ROUTE_BY_PATH[location.pathname] ?? 'dashboard';
+      const setProfileOrigin = useUiStore.getState().setProfileOrigin;
+      if (r === 'profile' || r === 'settings') {
+        if (current !== 'profile' && current !== 'settings') setProfileOrigin(current);
+      } else {
+        setProfileOrigin(null);
+      }
       navigate(PATH_BY_ROUTE[r]);
       if (typeof window !== 'undefined') window.scrollTo(0, 0);
     },
-    [navigate]
+    [navigate, location.pathname]
   );
 
   return {

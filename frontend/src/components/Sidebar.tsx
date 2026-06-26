@@ -14,22 +14,23 @@ interface Item {
   badge?: string;
 }
 
-/**
- * Sidebar dùng cho 2 khu vực tách biệt:
- *  - mode="app"   → ứng dụng chính (Bảng điều khiển…). Nếu là ADMIN, hiện thêm
- *    một nút "Quản trị hệ thống" để chuyển sang khu vực admin riêng.
- *  - mode="admin" → khu vực Quản trị hệ thống (menu admin + nút quay lại app).
- * Hai khu vực KHÔNG dùng chung danh sách menu. Phần thân cuộn dọc được khi
- * màn hình thấp để các mục không bị chèn / mất thuộc tính.
- */
 export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
   const { t, route, go, brandGradient, logout } = useApp();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const isAdminArea = mode === 'admin';
   const { isMobile } = useBreakpoint();
-  const { sidebarCollapsed, toggleSidebar, autoCollapse, toggleAutoCollapse, setSidebarCollapsed } = useUiStore();
+  const { sidebarCollapsed, toggleSidebar, autoCollapse, toggleAutoCollapse, setSidebarCollapsed, profileOrigin } = useUiStore();
   const [hover, setHover] = useState(false);
+
+  // Hồ sơ/Cài đặt là route khu "app", nhưng nếu mở từ khu Quản trị thì vẫn giữ
+  // sidebar admin và highlight ở mục gốc (vd Trạng thái hệ thống / Bảng điều khiển)
+  // thay vì nhảy về — dùng profileOrigin đã ghi lại lúc điều hướng.
+  // Hồ sơ/Cài đặt là route khu "app"; nếu mở từ khu Quản trị thì vẫn giữ sidebar
+  // admin (danh sách mục + nút quay lại) để không mất ngữ cảnh — nhưng highlight
+  // chỉ nằm ở đúng tab đang mở, không giữ sáng tab trước đó.
+  const onProfilePage = route === 'profile' || route === 'settings';
+  const adminOrigin = onProfilePage && !!profileOrigin && profileOrigin.startsWith('admin');
+  const isAdminArea = mode === 'admin' || adminOrigin;
 
   const collapsed = !isMobile && (autoCollapse ? !hover : sidebarCollapsed);
 
@@ -207,10 +208,60 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
         transition: 'width .2s ease, padding .2s ease',
       }}
     >
-      {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : collapsed ? 'center' : 'flex-start', gap: 10, padding: isMobile ? '0 6px 0 0' : '4px 4px 18px', flex: 'none' }}>
-        <button onClick={() => go('landing')} title={t.nHome} aria-label={t.nHome} style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <img src="/aima-logo.png" alt="AIMA" style={{ height: 38, width: 'auto' }} />
+      {/* Logo: chuyển mượt giữa bố cục NGANG (mở: icon trái + chữ phải) và
+          DỌC (đóng: icon trên + chữ dưới). Hai ảnh xếp chồng, crossfade opacity
+          + scale nhẹ để chữ "AIMA" như trượt về đúng vị trí, không cut cứng. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'flex-start' : 'center', padding: isMobile ? '0 6px 0 0' : collapsed ? '4px 0 16px' : '4px 4px 16px', flex: 'none' }}>
+        <button
+          onClick={() => go('landing')}
+          title={t.nHome}
+          aria-label={t.nHome}
+          style={{
+            position: 'relative',
+            display: 'block',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            width: !isMobile && collapsed ? 52 : 156,
+            height: !isMobile && collapsed ? 46 : 46,
+            transition: 'width .3s cubic-bezier(.4,0,.2,1), height .3s cubic-bezier(.4,0,.2,1)',
+          }}
+        >
+          {/* Ngang — hiển thị khi sidebar MỞ */}
+          <img
+            src="/aima-h.png"
+            alt="AIMA"
+            aria-hidden={!isMobile && collapsed}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              height: 38,
+              width: 'auto',
+              transform: `translate(-50%,-50%) scale(${!isMobile && collapsed ? 0.85 : 1})`,
+              opacity: !isMobile && collapsed ? 0 : 1,
+              transition: 'opacity .28s ease, transform .3s cubic-bezier(.4,0,.2,1)',
+              pointerEvents: 'none',
+            }}
+          />
+          {/* Dọc — hiển thị khi sidebar ĐÓNG */}
+          <img
+            src="/aima-v.png"
+            alt="AIMA"
+            aria-hidden={isMobile || !collapsed}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              height: 42,
+              width: 'auto',
+              transform: `translate(-50%,-50%) scale(${!isMobile && collapsed ? 1 : 0.85})`,
+              opacity: !isMobile && collapsed ? 1 : 0,
+              transition: 'opacity .28s ease, transform .3s cubic-bezier(.4,0,.2,1)',
+              pointerEvents: 'none',
+            }}
+          />
         </button>
       </div>
 

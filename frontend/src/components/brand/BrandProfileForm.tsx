@@ -2,8 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Card, Icon } from '../ui';
-import { brandToneLabels, industryOptions, audienceSampleOptions, TIME_SLOT_OPTIONS } from '../../data';
-import { createBrandProfile, updateBrandProfile, type BrandProfile, type BrandProfileInput, type Platform, type PostingFrequency } from '../../api/brandProfile';
+import { brandToneLabels, industryOptions, audienceSampleOptions } from '../../data';
+import { createBrandProfile, updateBrandProfile, type BrandProfile, type BrandProfileInput, type Platform } from '../../api/brandProfile';
 import { validateBrandProfile, type BrandFormErrors } from '../../validations/brandValidation';
 import type { Dict } from '../../i18n';
 import AiBrandPanel from './AiBrandPanel';
@@ -11,13 +11,6 @@ import { brandHealth } from './brandHealth';
 import { Field, ChipMultiSelect, TagInput, PlatformSelect, LogoUploader, fieldInput } from './chips';
 
 const splitTags = (s: string | null): string[] => (s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
-
-const FREQ_OPTIONS: [PostingFrequency, keyof Dict][] = [
-  ['DAILY', 'freqDaily'],
-  ['WEEKLY', 'freqWeekly'],
-  ['BIWEEKLY', 'freqBiweekly'],
-  ['MONTHLY', 'freqMonthly'],
-];
 
 export default function BrandProfileForm({ profile, onClose, onSaved }: { profile: BrandProfile | null; onClose: () => void; onSaved: (p: BrandProfile, created: boolean) => void }) {
   const { t, lang, brandGradient } = useApp();
@@ -35,8 +28,6 @@ export default function BrandProfileForm({ profile, onClose, onSaved }: { profil
   const [dos, setDos] = useState<string[]>(profile?.brandDos ?? []);
   const [donts, setDonts] = useState<string[]>(profile?.brandDonts ?? []);
   const [platforms, setPlatforms] = useState<Platform[]>(profile?.platforms ?? []);
-  const [frequency, setFrequency] = useState<PostingFrequency>(profile?.postingFrequency ?? 'WEEKLY');
-  const [times, setTimes] = useState<string[]>(profile?.preferredTimes ?? []);
   const [errors, setErrors] = useState<BrandFormErrors>({});
   const [saving, setSaving] = useState<'full' | 'draft' | null>(null);
   const [apiError, setApiError] = useState('');
@@ -54,8 +45,6 @@ export default function BrandProfileForm({ profile, onClose, onSaved }: { profil
     brandVoice: voiceTones.join(', ') || undefined,
     targetAudience: targetAudience.trim(),
     platforms,
-    postingFrequency: frequency,
-    preferredTimes: times,
     logoUrl, // mock: base64/data URL. TODO(backend): upload lên storage thật.
     brandKeywords: keywords,
     brandDos: dos,
@@ -155,23 +144,10 @@ export default function BrandProfileForm({ profile, onClose, onSaved }: { profil
             </Field>
           </Section>
 
-          {/* Cụm 3 — Lịch & Kênh đăng */}
-          <Section title={t.bpSecSchedule}>
+          {/* Cụm 3 — Kênh đăng (tần suất & khung giờ đã chuyển sang Chiến lược content) */}
+          <Section title={t.bpSecChannels}>
             <Field label={t.bpfPlatforms} required error={err('platforms')}>
               <PlatformSelect value={platforms} onChange={setPlatforms} />
-            </Field>
-            <Field label={t.bpfFreq}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {FREQ_OPTIONS.map(([val, key]) => {
-                  const on = frequency === val;
-                  return (
-                    <span key={val} onClick={() => setFrequency(val)} style={{ border: `1.5px solid ${on ? 'transparent' : '#ece8f6'}`, borderRadius: 10, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: on ? brandGradient : '#fff', color: on ? '#fff' : '#3f3a55' }}>{t[key]}</span>
-                  );
-                })}
-              </div>
-            </Field>
-            <Field label={t.bpfTimes}>
-              <ChipMultiSelect options={TIME_SLOT_OPTIONS} value={times} onChange={setTimes} />
             </Field>
           </Section>
 

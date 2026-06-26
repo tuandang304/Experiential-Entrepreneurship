@@ -1,7 +1,6 @@
 package com.aima.entity;
 
 import com.aima.enums.Platform;
-import com.aima.enums.PostingFrequency;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -43,7 +42,7 @@ public class BrandProfile extends BaseEntity {
     @Column(nullable = false, length = 100)
     String industry;
 
-    @Column(columnDefinition = "text")
+    @Column(columnDefinition = "text", length = 500)
     String description;
 
     @Column(name = "brand_voice", length = 255)
@@ -61,14 +60,23 @@ public class BrandProfile extends BaseEntity {
     @Column(name = "platform", length = 20)
     Set<Platform> platforms = new HashSet<>();
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "posting_frequency", nullable = false, length = 20)
-    PostingFrequency postingFrequency;
+    // Nhận diện thương hiệu (do UI gửi lên). LAZY để tránh MultipleBagFetchException
+    // khi entity có nhiều List @ElementCollection — service đang @Transactional nên
+    // mapper vẫn đọc được trước khi đóng transaction.
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "brand_profile_keywords", joinColumns = @JoinColumn(name = "brand_profile_id"))
+    @Column(name = "keyword", length = 100)
+    List<String> brandKeywords = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "brand_profile_time_slots", joinColumns = @JoinColumn(name = "brand_profile_id"))
-    @Column(name = "time_slot", length = 30)
-    List<String> preferredTimes = new ArrayList<>();
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "brand_profile_dos", joinColumns = @JoinColumn(name = "brand_profile_id"))
+    @Column(name = "do_item", length = 150)
+    List<String> brandDos = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "brand_profile_donts", joinColumns = @JoinColumn(name = "brand_profile_id"))
+    @Column(name = "dont_item", length = 150)
+    List<String> brandDonts = new ArrayList<>();
 
     @Column(name = "logo_url", length = 500)
     String logoUrl;

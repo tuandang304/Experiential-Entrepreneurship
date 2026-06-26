@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useUiStore } from '../store/useUiStore';
 import { Icon } from '../components/ui';
-import { resetMockData } from '../api/mockSeed';
 import BrandProfileList from '../components/brand/BrandProfileList';
 import StrategyManager from '../components/brand/StrategyManager';
 
@@ -28,9 +27,6 @@ export default function Brand() {
     return () => setSidebarCollapsed(prev);
   }, [setSidebarCollapsed]);
 
-  // Nút tiện dụng để xem lại UI với dữ liệu mẫu sạch (mock localStorage, không gọi backend).
-  const onReset = () => { resetMockData(); window.location.reload(); };
-
   const tabBtn = (key: Tab, label: string) => {
     const active = tab === key;
     return (
@@ -51,17 +47,13 @@ export default function Brand() {
           {tabBtn('brand', t.bpTabBrand)}
           {tabBtn('strategy', t.bpTabStrategy)}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {tab === 'strategy' && (
+        {tab === 'strategy' && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
             <a href="#" onClick={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: '#7c3aed', background: '#f4ecff', border: '1px solid #e7d9fb', borderRadius: 10, padding: '9px 14px', cursor: 'pointer' }}>
               <Icon path="M12 17h.01M12 13a2 2 0 10-2-2 M12 21a9 9 0 110-18 9 9 0 010 18z" size={16} stroke="#7c3aed" />{t.csGuide}
             </a>
-          )}
-          {/* MOCK: reset & nạp lại dữ liệu mẫu (xem api/mockSeed.ts). Bỏ khi nối backend thật. */}
-          <button onClick={onReset} title={t.bpResetMock} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: '#6b6680', background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 10, padding: '9px 14px', cursor: 'pointer' }}>
-            <Icon path="M3 12a9 9 0 1 0 3-6.7L3 8M3 4v4h4" size={15} stroke="#6b6680" />{t.bpResetMock}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {tab === 'brand' ? <BrandProfileList /> : <StrategyManager />}

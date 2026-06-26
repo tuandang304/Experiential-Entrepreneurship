@@ -10,8 +10,6 @@ import java.util.UUID;
 
 @Repository
 public interface BrandProfileRepository extends JpaRepository<BrandProfile, UUID> {
-
     List<BrandProfile> findByUser_IdAndDeletedAtIsNull(UUID userId);
-
     Optional<BrandProfile> findByIdAndUser_IdAndDeletedAtIsNull(UUID id, UUID userId);
 }

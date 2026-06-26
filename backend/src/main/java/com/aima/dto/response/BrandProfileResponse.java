@@ -1,7 +1,6 @@
 package com.aima.dto.response;
 
 import com.aima.enums.Platform;
-import com.aima.enums.PostingFrequency;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -47,11 +46,17 @@ public class BrandProfileResponse {
     @Schema(description = "Platforms to publish on.")
     Set<Platform> platforms;
 
-    @Schema(description = "Posting frequency.")
-    PostingFrequency postingFrequency;
+    @Schema(description = "Brand keywords.")
+    List<String> brandKeywords;
 
-    @Schema(description = "Preferred posting time slots.")
-    List<String> preferredTimes;
+    @Schema(description = "Things the brand should do in its content.")
+    List<String> brandDos;
+
+    @Schema(description = "Things the brand should avoid in its content.")
+    List<String> brandDonts;
+
+    @Schema(description = "Logo URL.", example = "https://.../logo.png")
+    String logoUrl;
 
     @Schema(description = "Creation timestamp.", example = "2026-06-08T09:30:00")
     LocalDateTime createdAt;

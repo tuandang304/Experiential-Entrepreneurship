@@ -1,9 +1,5 @@
 package com.aima.entity;
 
-import com.aima.enums.ContentGoal;
-import com.aima.enums.ContentStyle;
-import com.aima.enums.ContentType;
-import com.aima.enums.CtaType;
 import com.aima.enums.Platform;
 import com.aima.enums.StrategyStatus;
 import jakarta.persistence.*;
@@ -16,7 +12,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Content strategy attached to a brand profile (BR-02: one brand → many strategies).
+ * Content strategy attached to a brand profile (BR-02: one brand → many
+ * strategies).
  */
 @Getter
 @Setter
@@ -32,17 +29,18 @@ public class ContentStrategy extends BaseEntity {
     @EqualsAndHashCode.Exclude
     BrandProfile brandProfile;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "content_strategy_goals", joinColumns = @JoinColumn(name = "content_strategy_id"))
-    @Column(name = "goal", length = 30)
-    Set<ContentGoal> goals = new HashSet<>();
+    @Column(name = "name", nullable = false, length = 150)
+    String name;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "content_strategy_goals", joinColumns = @JoinColumn(name = "content_strategy_id"))
+    @Column(name = "goal", length = 150)
+    List<String> goals = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "content_strategy_content_types", joinColumns = @JoinColumn(name = "content_strategy_id"))
-    @Column(name = "content_type", length = 30)
-    Set<ContentType> contentTypes = new HashSet<>();
+    @Column(name = "content_type", length = 150)
+    List<String> contentTypes = new ArrayList<>();
 
     @Column(name = "posts_per_week", nullable = false)
     Integer postsPerWeek;
@@ -63,23 +61,22 @@ public class ContentStrategy extends BaseEntity {
     @Column(name = "audience", length = 150)
     List<String> targetAudience = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "content_strategy_styles", joinColumns = @JoinColumn(name = "content_strategy_id"))
-    @Column(name = "style", length = 30)
-    Set<ContentStyle> contentStyle = new HashSet<>();
+    @Column(name = "style", length = 150)
+    List<String> contentStyle = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "content_strategy_cta_types", joinColumns = @JoinColumn(name = "content_strategy_id"))
-    @Column(name = "cta_type", length = 30)
-    Set<CtaType> ctaTypes = new HashSet<>();
+    @Column(name = "cta_type", length = 150)
+    List<String> ctaTypes = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     StrategyStatus status = StrategyStatus.DRAFT;
 
-    // Cha phụ của StrategyAdjustment: KHÔNG cascade (8.18: "Xóa ContentStrategy → không cascade").
+    // Cha phụ của StrategyAdjustment: KHÔNG cascade (8.18: "Xóa ContentStrategy →
+    // không cascade").
     @OneToMany(mappedBy = "strategy")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

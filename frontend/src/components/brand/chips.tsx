@@ -35,19 +35,52 @@ const chipStyle = (active: boolean, grad: string): CSSProperties => ({
   transition: 'background .15s',
 });
 
-/** Chọn nhiều từ một danh sách option có sẵn (mục tiêu / loại nội dung / phong cách). */
-export function ChipMultiSelect({ options, value, onChange, max }: { options: string[]; value: string[]; onChange: (next: string[]) => void; max?: number }) {
-  const { brandGradient } = useApp();
+/**
+ * Chọn nhiều từ danh sách gợi ý. Khi `creatable` bật → combobox: vừa chọn gợi ý vừa tự gõ
+ * giá trị mới (lưu nguyên văn) — giá trị tự nhập (ngoài gợi ý) hiển thị thành chip có nút xoá.
+ */
+export function ChipMultiSelect({ options, value, onChange, max, creatable }: { options: string[]; value: string[]; onChange: (next: string[]) => void; max?: number; creatable?: boolean }) {
+  const { brandGradient, t } = useApp();
+  const [draft, setDraft] = useState('');
+  const atMax = !!max && value.length >= max; // tôn trọng giới hạn (vd tối đa 5 loại nội dung)
   const toggle = (opt: string) => {
     if (value.includes(opt)) return onChange(value.filter((v) => v !== opt));
-    if (max && value.length >= max) return; // tôn trọng giới hạn (vd tối đa 5 loại nội dung)
+    if (atMax) return;
     onChange([...value, opt]);
   };
+  const add = (raw: string) => {
+    const v = raw.trim();
+    setDraft('');
+    if (!v || value.includes(v) || atMax) return;
+    onChange([...value, v]);
+  };
+  const custom = creatable ? value.filter((v) => !options.includes(v)) : []; // giá trị tự nhập (ngoài gợi ý)
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      {options.map((opt) => (
-        <span key={opt} onClick={() => toggle(opt)} style={chipStyle(value.includes(opt), brandGradient)}>{opt}</span>
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {options.map((opt) => (
+          <span key={opt} onClick={() => toggle(opt)} style={chipStyle(value.includes(opt), brandGradient)}>{opt}</span>
+        ))}
+        {custom.map((v) => (
+          <span key={v} style={{ ...chipStyle(true, brandGradient), display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            {v}
+            <button onClick={() => onChange(value.filter((x) => x !== v))} aria-label="Remove" style={{ border: 'none', background: 'rgba(255,255,255,.25)', color: '#fff', borderRadius: 6, width: 16, height: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
+          </span>
+        ))}
+      </div>
+      {creatable && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(draft); } }}
+            placeholder={t.csAddPh}
+            disabled={atMax}
+            style={{ ...fieldInput, flex: 1, opacity: atMax ? 0.6 : 1 }}
+          />
+          <button onClick={() => add(draft)} disabled={atMax} style={{ flex: 'none', border: '1.5px dashed #d6cdf0', background: '#faf8ff', borderRadius: 11, padding: '0 14px', fontSize: 13, fontWeight: 700, color: '#7c5cff', cursor: atMax ? 'not-allowed' : 'pointer', opacity: atMax ? 0.6 : 1 }}>+ {t.csAddCustom}</button>
+        </div>
+      )}
     </div>
   );
 }

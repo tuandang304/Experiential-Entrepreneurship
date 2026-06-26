@@ -78,7 +78,11 @@ export default function StrategyManager() {
           <Icon path="M12 5v14M5 12h14" size={15} stroke="#fff" />{t.csCreate}
         </button>
       </div>
-      <SearchInput value={query} onChange={setQuery} placeholder={t.csSearchPh} />
+      {/* Bọc trong flex-row để flex-basis '1 1 220px' của SearchInput áp vào CHIỀU RỘNG
+          (không phải chiều cao như khi nằm trực tiếp trong cột) → ô search cao bình thường. */}
+      <div style={{ display: 'flex' }}>
+        <SearchInput value={query} onChange={setQuery} placeholder={t.csSearchPh} />
+      </div>
       <FilterSelect value={status} onChange={setStatus} options={[['all', t.csAllStatus], ['ACTIVE', t.csStActive], ['PAUSED', t.csStPaused], ['DRAFT', t.csStDraft]]} />
 
       {load === 'loading' ? (

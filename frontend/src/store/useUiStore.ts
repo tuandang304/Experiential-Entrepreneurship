@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { Route } from "../types";
 
 // UI-only global state (tách biệt hoàn toàn với AuthContext — auth vẫn do
 // AuthProvider quản lý). Dùng cho landing header: trạng thái cuộn dùng chung
@@ -16,6 +17,10 @@ interface UiState {
   setSidebarCollapsed: (v: boolean) => void;
   autoCollapse: boolean;
   toggleAutoCollapse: () => void;
+  // Route mà từ đó người dùng mở Hồ sơ/Cài đặt. Giữ để sidebar vẫn highlight
+  // đúng khu vực gốc (vd đang ở Quản trị/Bảng điều khiển) thay vì nhảy về.
+  profileOrigin: Route | null;
+  setProfileOrigin: (r: Route | null) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -30,4 +35,6 @@ export const useUiStore = create<UiState>((set) => ({
   setSidebarCollapsed: (v) => set((s) => (s.sidebarCollapsed === v ? s : { sidebarCollapsed: v })),
   autoCollapse: false,
   toggleAutoCollapse: () => set((s) => ({ autoCollapse: !s.autoCollapse })),
+  profileOrigin: null,
+  setProfileOrigin: (r) => set((s) => (s.profileOrigin === r ? s : { profileOrigin: r })),
 }));

@@ -41,8 +41,9 @@ class BrandProfileTest {
                   "targetAudience": "Women 18-35",
                   "contentGoal": "Brand awareness",
                   "platforms": ["FACEBOOK", "INSTAGRAM"],
-                  "postingFrequency": "DAILY",
-                  "preferredTimes": ["08:00-09:00", "20:00-21:00"]
+                  "brandKeywords": ["clean beauty", "skincare"],
+                  "brandDos": ["Be authentic"],
+                  "brandDonts": ["Hard selling"]
                 }
                 """;
     }
@@ -80,7 +81,7 @@ class BrandProfileTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.result.brandName").value("Acme Cosmetics"))
                 .andExpect(jsonPath("$.result.platforms.length()").value(2))
-                .andExpect(jsonPath("$.result.postingFrequency").value("DAILY"));
+                .andExpect(jsonPath("$.result.brandKeywords.length()").value(2));
 
         mockMvc.perform(get("/api/brand-profiles").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -92,7 +93,7 @@ class BrandProfileTest {
         String token = authToken("brand-validate@example.com");
         String body = """
                 {"brandName":"","industry":"Cosmetics","targetAudience":"Women",
-                 "platforms":["FACEBOOK"],"postingFrequency":"DAILY"}
+                 "platforms":["FACEBOOK"]}
                 """;
         mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(body))
@@ -105,25 +106,12 @@ class BrandProfileTest {
         String token = authToken("brand-platform@example.com");
         String body = """
                 {"brandName":"Acme","industry":"Cosmetics","targetAudience":"Women",
-                 "platforms":[],"postingFrequency":"DAILY"}
+                 "platforms":[]}
                 """;
         mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("platforms: Select at least one platform"));
-    }
-
-    @Test
-    void rejectsInvalidFrequency() throws Exception {
-        String token = authToken("brand-frequency@example.com");
-        String body = """
-                {"brandName":"Acme","industry":"Cosmetics","targetAudience":"Women",
-                 "platforms":["FACEBOOK"],"postingFrequency":"HOURLY"}
-                """;
-        mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
-                        .contentType(APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(400));
     }
 
     @Test

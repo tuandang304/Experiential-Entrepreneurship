@@ -87,8 +87,16 @@ public enum ErrorCode {
     INDUSTRY_REQUIRED(1701, "Lĩnh vực không được để trống", HttpStatus.BAD_REQUEST),
     TARGET_AUDIENCE_REQUIRED(1702, "Đối tượng mục tiêu không được để trống", HttpStatus.BAD_REQUEST),
     PLATFORM_REQUIRED(1703, "Vui lòng chọn ít nhất một nền tảng", HttpStatus.BAD_REQUEST),
-    POSTING_FREQUENCY_REQUIRED(1704, "Tần suất đăng bài không được để trống", HttpStatus.BAD_REQUEST),
     BRAND_PROFILE_NOT_FOUND(1705, "Không tìm thấy hồ sơ thương hiệu", HttpStatus.NOT_FOUND),
+
+    // CONTENT STRATEGY ERRORS
+    BRAND_ID_REQUIRED(1710, "Thiếu mã hồ sơ thương hiệu", HttpStatus.BAD_REQUEST),
+    STRATEGY_NAME_REQUIRED(1711, "Tên chiến lược không được để trống", HttpStatus.BAD_REQUEST),
+    STRATEGY_GOAL_REQUIRED(1712, "Vui lòng chọn ít nhất một mục tiêu", HttpStatus.BAD_REQUEST),
+    STRATEGY_CONTENT_TYPE_REQUIRED(1713, "Vui lòng chọn ít nhất một loại nội dung", HttpStatus.BAD_REQUEST),
+    STRATEGY_POSTS_PER_WEEK_REQUIRED(1714, "Tần suất đăng không được để trống", HttpStatus.BAD_REQUEST),
+    CONTENT_STRATEGY_NOT_FOUND(1715, "Không tìm thấy chiến lược nội dung", HttpStatus.NOT_FOUND),
+    STRATEGY_STATUS_REQUIRED(1716, "Trạng thái chiến lược không được để trống", HttpStatus.BAD_REQUEST),
 
     // OAUTH2 ERRORS
     OAUTH2_EMAIL_NOT_VERIFIED(2001, "Email Google chưa được xác thực. Vui lòng xác thực email trước khi đăng nhập.", HttpStatus.BAD_REQUEST),

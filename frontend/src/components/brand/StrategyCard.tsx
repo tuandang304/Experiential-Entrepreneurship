@@ -22,7 +22,7 @@ export default function StrategyCard({ s, selected, onSelect, onToggleStatus }: 
   return (
     <div
       onClick={onSelect}
-      style={{ cursor: 'pointer', border: selected ? '2px solid transparent' : '1px solid #efeaf8', backgroundImage: selected ? `linear-gradient(#fff,#fff), ${brandGradient}` : undefined, backgroundOrigin: 'border-box', backgroundClip: selected ? 'padding-box, border-box' : undefined, background: selected ? undefined : '#fff', borderRadius: 14, padding: 15, display: 'flex', flexDirection: 'column', gap: 9 }}
+      style={{ cursor: 'pointer', border: selected ? '2px solid transparent' : '1px solid #efeaf8', backgroundImage: selected ? `linear-gradient(#fdfbff,#fdfbff), ${brandGradient}` : undefined, backgroundOrigin: 'border-box', backgroundClip: selected ? 'padding-box, border-box' : undefined, background: selected ? undefined : '#fff', borderRadius: 14, padding: 15, display: 'flex', flexDirection: 'column', gap: 9, boxShadow: selected ? '0 16px 32px -16px rgba(139,92,246,.75)' : '0 1px 2px rgba(20,20,40,.04)', transform: selected ? 'translateY(-1px)' : 'none', transition: 'box-shadow .18s ease, transform .18s ease' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <span style={{ flex: 1, fontFamily: "'Plus Jakarta Sans'", fontWeight: 700, fontSize: 14.5, color: '#211c38' }}>{s.name || '—'}</span>

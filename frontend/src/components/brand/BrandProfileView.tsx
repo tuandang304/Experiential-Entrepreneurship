@@ -18,7 +18,6 @@ export default function BrandProfileView({ profile, onClose, onEdit }: { profile
   const { percent, missing } = brandHealth(profile);
   const tones = splitTags(profile.brandVoice);
   const audiences = splitTags(profile.targetAudience);
-  const freqLabel = { DAILY: t.freqDaily, WEEKLY: t.freqWeekly, BIWEEKLY: t.freqBiweekly, MONTHLY: t.freqMonthly }[profile.postingFrequency];
 
   return (
     <div className="view-pop" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -56,14 +55,12 @@ export default function BrandProfileView({ profile, onClose, onEdit }: { profile
           </Card>
 
           <Card style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 15, color: '#211c38', borderBottom: '1px solid #f1eef8', paddingBottom: 12 }}>{t.bpSecSchedule}</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 15, color: '#211c38', borderBottom: '1px solid #f1eef8', paddingBottom: 12 }}>{t.bpSecChannels}</div>
             <Row label={t.bpfPlatforms} value={
               <div style={{ display: 'flex', gap: 8 }}>
                 {profile.platforms.length === 0 ? <span style={{ fontSize: 13, color: '#b3acc6' }}>—</span> : profile.platforms.map((p) => { const pl = PLATFORMS.find((x) => x.tag === TAG_BY_ENUM[p]); return pl ? <PlatformTag key={p} tag={pl.tag} bg={pl.bg} size={30} radius={9} /> : null; })}
               </div>
             } />
-            <Row label={t.bpfFreq} value={<span style={val}>{freqLabel}</span>} />
-            <Row label={t.bpfTimes} value={<ReadChips items={profile.preferredTimes} />} />
           </Card>
         </div>
 

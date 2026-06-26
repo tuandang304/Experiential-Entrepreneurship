@@ -1,11 +1,9 @@
 package com.aima.dto.request;
 
 import com.aima.enums.Platform;
-import com.aima.enums.PostingFrequency;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +16,7 @@ import java.util.Set;
 
 /**
  * FR-09 validation: brand name, industry and target audience must not be empty;
- * at least one platform; a valid posting frequency.
+ * at least one platform.
  */
 @Data
 @Builder
@@ -55,10 +53,12 @@ public class BrandProfileRequest {
     @Schema(description = "Platforms to publish on.", requiredMode = Schema.RequiredMode.REQUIRED)
     Set<Platform> platforms;
 
-    @NotNull(message = "POSTING_FREQUENCY_REQUIRED")
-    @Schema(description = "How often content should be posted.", requiredMode = Schema.RequiredMode.REQUIRED)
-    PostingFrequency postingFrequency;
+    @Schema(description = "Brand keywords.", example = "[\"AI Marketing\", \"Automation\"]")
+    List<String> brandKeywords;
 
-    @Schema(description = "Preferred posting time slots.", example = "[\"09:00\", \"18:00\"]")
-    List<String> preferredTimes;
+    @Schema(description = "Things the brand should do in its content.", example = "[\"Be concise\", \"Stay positive\"]")
+    List<String> brandDos;
+
+    @Schema(description = "Things the brand should avoid in its content.", example = "[\"Hard selling\", \"Negativity\"]")
+    List<String> brandDonts;
 }

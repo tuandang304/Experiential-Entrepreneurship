@@ -23,14 +23,14 @@
 - [x] Forgot password flow (forgot-password → verify-otp → reset-password) `[BE][FE]` — done 2026-06-18
 
 ## 2. Brand Profile
-- [x] FR-05 Create brand profile (name, industry, description, voice, audience, goals, platforms, frequency, time slots) `[BE][FE]` — done 2026-06-13
+- [x] FR-05 Create brand profile (name, industry, description, voice, audience, keywords, do/don't, platforms) `[BE][FE]` — done 2026-06-13 (posting frequency & time slots moved to Content Strategy 2026-06-26)
 - [x] FR-06 Update / FR-07 View / FR-08 Delete `[BE][FE]` — done 2026-06-13
 - [x] FR-09 Validation (required fields, ≥1 platform, valid frequency) `[BE]` — done 2026-06-13
 
 ## 3. Content Strategy
-- [ ] FR-10 Create strategy (goals, content types, frequency, platforms, slots, audience, style, CTA) `[BE][FE]`
-- [ ] FR-11 Update / FR-12 List `[BE][FE]`
-- [ ] FR-13 Activate/Pause (paused → no new content, no auto-scheduling) `[BE]`
+- [x] FR-10 Create strategy (goals, content types, frequency, platforms, slots, audience, style, CTA) `[BE][FE]` — done 2026-06-26 (goals/types/styles/ctas = free-text List<String>, combobox chọn+tự nhập; FE nối API thật)
+- [x] FR-11 Update / FR-12 List `[BE][FE]` — done 2026-06-26 (list ±brandId; CRUD theo pattern BrandProfile)
+- [x] FR-13 Activate/Pause (paused → no new content, no auto-scheduling) `[BE]` — done 2026-06-26 (PATCH /content-strategies/{id}/status)
 
 ## 4. Social Media Connection
 - [ ] FR-14 OAuth connect — Facebook `[BE][FE]`
@@ -131,7 +131,7 @@
 - [ ] UI-01 Landing Page `[FE]`
 - [ ] UI-02 Dashboard `[FE]`
 - [x] UI-03 Brand Profile page `[FE]` — done 2026-06-25 (list-first: card list + search/industry filter + "đang dùng" active select + slide-over create/edit + read-only "AI đã hiểu" panel + AI Brand Health; uses real /brand-profiles API)
-- [x] UI-04 Content Strategy page `[FE]` — done 2026-06-25 (list-left + detail 01–08 + summary + DRAFT/ACTIVE/PAUSED toggle, gộp vào /brand 2 tab; FE mock `api/contentStrategy.ts` — TODO nối BE FR-10..13)
+- [x] UI-04 Content Strategy page `[FE]` — done 2026-06-25 (list-left + detail 01–08 + summary + DRAFT/ACTIVE/PAUSED toggle, gộp vào /brand 2 tab); nối BE thật `api/contentStrategy.ts` 2026-06-26
 - [ ] UI-05 Trend Research page `[FE]`
 - [ ] UI-06 Content Workspace `[FE]`
 - [ ] UI-07 Calendar / Schedule `[FE]`

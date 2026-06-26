@@ -35,8 +35,8 @@ public interface BrandProfileMapper {
         return value == null ? null : value.trim();
     }
 
-    // Never store a null collection: a missing list becomes an empty one.
-    default List<String> mapPreferredTimes(List<String> times) {
-        return times == null ? new ArrayList<>() : new ArrayList<>(times);
+    // Never store a null collection: a missing list (keywords / dos / donts) becomes an empty one.
+    default List<String> mapStringList(List<String> values) {
+        return values == null ? new ArrayList<>() : new ArrayList<>(values);
     }
 }

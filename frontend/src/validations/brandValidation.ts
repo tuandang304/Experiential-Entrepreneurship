@@ -1,7 +1,7 @@
 // Validation cho Hồ sơ thương hiệu (FR-09) và Chiến lược content (FR-13).
 // Trả về KEY i18n (không hardcode chuỗi) — component map qua `t[key]` để hiện inline.
 // Mirror backend BrandProfileRequest: brandName / industry / targetAudience không trống,
-// ít nhất 1 nền tảng. (postingFrequency được FE gửi default ngầm nên không validate ở đây.)
+// ít nhất 1 nền tảng.
 
 import type { Platform } from "../api/brandProfile";
 

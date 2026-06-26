@@ -27,22 +27,19 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
   const [styles, setStyles] = useState<string[]>(strategy?.styles ?? []);
   const [ctas, setCtas] = useState<string[]>(strategy?.ctas ?? []);
   const [errors, setErrors] = useState<StrategyFormErrors>({});
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<'full' | 'draft' | null>(null);
   const [apiError, setApiError] = useState('');
 
   const summaryLike = { goals, postsPerWeek, platforms, audiences, styles, ctas };
 
-  const submit = async () => {
-    const errs = validateStrategy({ name, goals, contentTypes, platforms });
-    setErrors(errs);
-    if (Object.keys(errs).length) return;
+  const persist = async (status: ContentStrategy['status'], kind: 'full' | 'draft') => {
     const payload: ContentStrategyInput = {
       brandId,
       name: name.trim(),
-      status: strategy?.status ?? 'DRAFT', // tạo mới = Nháp
+      status,
       goals, contentTypes, postsPerWeek, platforms, timeSlots, audiences, styles, ctas,
     };
-    setSaving(true);
+    setSaving(kind);
     setApiError('');
     try {
       const saved = strategy ? await updateContentStrategy(strategy.id, payload) : await createContentStrategy(payload);
@@ -50,11 +47,27 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
     } catch (err) {
       setApiError((err as Error).message);
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
+  // Lưu chính — validate đầy đủ FR-13; giữ status hiện tại, tạo mới mặc định Nháp.
+  const submit = () => {
+    const errs = validateStrategy({ name, goals, contentTypes, platforms });
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
+    persist(strategy?.status ?? 'DRAFT', 'full');
+  };
+
+  // Lưu nháp — chỉ cần tên để nhận diện; luôn lưu ở trạng thái Nháp.
+  const saveDraft = () => {
+    if (!name.trim()) { setErrors({ name: 'csErrName' }); return; }
+    setErrors({});
+    persist('DRAFT', 'draft');
+  };
+
   const err = (k: keyof StrategyFormErrors) => (errors[k] ? t[errors[k] as keyof Dict] : undefined);
+  const busy = saving !== null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -70,8 +83,8 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
       </Field>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-        <Box><Field step="01" label={t.csGoal} required help={t.csGoalHelp} error={err('goals')}><ChipMultiSelect options={strategyGoalOptions(lang)} value={goals} onChange={setGoals} /></Field></Box>
-        <Box><Field step="02" label={t.csTypes} required help={t.csTypesHelp} error={err('contentTypes')}><ChipMultiSelect options={contentTypeOptions(lang)} value={contentTypes} onChange={setContentTypes} max={5} /></Field></Box>
+        <Box><Field step="01" label={t.csGoal} required help={t.csGoalHelp} error={err('goals')}><ChipMultiSelect options={strategyGoalOptions(lang)} value={goals} onChange={setGoals} creatable /></Field></Box>
+        <Box><Field step="02" label={t.csTypes} required help={t.csTypesHelp} error={err('contentTypes')}><ChipMultiSelect options={contentTypeOptions(lang)} value={contentTypes} onChange={setContentTypes} max={5} creatable /></Field></Box>
         <Box><Field step="03" label={t.csFreq} required help={t.csFreqHelp}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {POSTS_PER_WEEK_OPTIONS.map((n) => (
@@ -82,16 +95,17 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
         <Box><Field step="04" label={t.csPlatforms} required help={t.csPlatformsHelp} error={err('platforms')}><PlatformSelect value={platforms} onChange={setPlatforms} /></Field></Box>
         <Box><Field step="05" label={t.csTimes} required help={t.csTimesHelp}><TagInput value={timeSlots} onChange={setTimeSlots} addLabel={t.csAddTime} suggestions={TIME_SLOT_OPTIONS} /></Field></Box>
         <Box><Field step="06" label={t.csAudience} required help={t.csAudienceHelp}><TagInput value={audiences} onChange={setAudiences} addLabel={t.csAddAudience} suggestions={audienceSampleOptions(lang)} /></Field></Box>
-        <Box><Field step="07" label={t.csStyle} required help={t.csStyleHelp}><ChipMultiSelect options={contentStyleOptions(lang)} value={styles} onChange={setStyles} /></Field></Box>
+        <Box><Field step="07" label={t.csStyle} required help={t.csStyleHelp}><ChipMultiSelect options={contentStyleOptions(lang)} value={styles} onChange={setStyles} creatable /></Field></Box>
         <Box><Field step="08" label={t.csCta} required help={t.csCtaHelp}><TagInput value={ctas} onChange={setCtas} addLabel={t.csAddCta} suggestions={ctaSampleOptions(lang)} /></Field></Box>
       </div>
 
       <StrategySummary s={summaryLike} />
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {strategy && onDelete && <button onClick={onDelete} style={{ border: '1px solid #f3c9d6', background: '#fff', borderRadius: 12, padding: '11px 18px', fontSize: 14, fontWeight: 700, color: '#dc2626', cursor: 'pointer' }}>{t.csDeleteBtn}</button>}
-        <button onClick={onCancel} style={{ marginLeft: 'auto', border: '1px solid #ece8f6', background: '#fff', borderRadius: 12, padding: '11px 22px', fontSize: 14, fontWeight: 700, color: '#5b5670', cursor: 'pointer' }}>{t.csCancel}</button>
-        <button onClick={submit} disabled={saving} style={{ border: 'none', borderRadius: 12, padding: '11px 26px', fontSize: 14, fontWeight: 700, color: '#fff', background: 'var(--brand)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.75 : 1 }}>{saving ? t.processing : t.csSave}</button>
+        {strategy && onDelete && <button onClick={onDelete} disabled={busy} style={{ border: '1px solid #f3c9d6', background: '#fff', borderRadius: 12, padding: '11px 18px', fontSize: 14, fontWeight: 700, color: '#dc2626', cursor: 'pointer' }}>{t.csDeleteBtn}</button>}
+        <button onClick={onCancel} disabled={busy} style={{ marginLeft: 'auto', border: '1px solid #ece8f6', background: '#fff', borderRadius: 12, padding: '11px 22px', fontSize: 14, fontWeight: 700, color: '#5b5670', cursor: 'pointer' }}>{t.csCancel}</button>
+        <button onClick={saveDraft} disabled={busy} style={{ border: '1.5px solid #d6cdf0', background: '#faf8ff', borderRadius: 12, padding: '11px 22px', fontSize: 14, fontWeight: 700, color: '#7c5cff', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.75 : 1 }}>{saving === 'draft' ? t.processing : t.bpSaveDraft}</button>
+        <button onClick={submit} disabled={busy} style={{ border: 'none', borderRadius: 12, padding: '11px 26px', fontSize: 14, fontWeight: 700, color: '#fff', background: 'var(--brand)', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.75 : 1 }}>{saving === 'full' ? t.processing : t.csSave}</button>
       </div>
     </div>
   );

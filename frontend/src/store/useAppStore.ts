@@ -1,14 +1,14 @@
 import { create } from "zustand";
 import type { Lang, ThemeKey, ProfileState, BrandState } from "../types";
 import { brandDefaults, bioDefault } from "../data";
-import { ACTIVE_BRAND_KEY } from "../api/mockSeed";
 
 // State thuần của app (trước đây nằm trong AppContext) → chuyển sang Zustand.
 // KHÔNG đụng tới điều hướng (React Router) và auth: phần đó vẫn nằm trong hook
 // useApp() vì cần các hook useNavigate/useLocation/useAuth.
 // "Hồ sơ đang dùng" (active) làm nền cho Agent AI. Chưa có ở backend → giữ ở FE
-// (localStorage, key ACTIVE_BRAND_KEY ở api/mockSeed) cho tới khi BE bổ sung cờ active.
+// (localStorage, key ACTIVE_BRAND_KEY) cho tới khi BE bổ sung cờ active.
 // Chỉ MỘT hồ sơ active tại một thời điểm.
+const ACTIVE_BRAND_KEY = "aima.activeBrandId";
 const readActiveBrand = (): string | null => {
   try {
     return localStorage.getItem(ACTIVE_BRAND_KEY);

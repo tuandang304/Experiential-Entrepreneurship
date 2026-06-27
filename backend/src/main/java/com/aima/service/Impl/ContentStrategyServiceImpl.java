@@ -20,6 +20,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +47,9 @@ public class ContentStrategyServiceImpl implements ContentStrategyService {
         ContentStrategy strategy = contentStrategyMapper.toContentStrategy(request);
         strategy.setBrandProfile(brand);
         if (strategy.getStatus() == null) strategy.setStatus(StrategyStatus.DRAFT); // tạo mới = Nháp
+        if (!StringUtils.hasText(strategy.getFrequencyUnit())) {
+            strategy.setFrequencyUnit(ContentStrategy.DEFAULT_FREQUENCY_UNIT);
+        }
         ContentStrategy saved = contentStrategyRepository.save(strategy);
 
         return ApiResponse.success("Tạo chiến lược nội dung thành công",
@@ -82,6 +86,9 @@ public class ContentStrategyServiceImpl implements ContentStrategyService {
     public ApiResponse<ContentStrategyResponse> update(String email, UUID id, ContentStrategyRequest request) {
         ContentStrategy strategy = find(currentUser(email).getId(), id);
         contentStrategyMapper.updateContentStrategy(strategy, request);
+        if (!StringUtils.hasText(strategy.getFrequencyUnit())) {
+            strategy.setFrequencyUnit(ContentStrategy.DEFAULT_FREQUENCY_UNIT);
+        }
         ContentStrategy saved = contentStrategyRepository.save(strategy);
         return ApiResponse.success("Cập nhật chiến lược nội dung thành công",
                 contentStrategyMapper.toContentStrategyResponse(saved));

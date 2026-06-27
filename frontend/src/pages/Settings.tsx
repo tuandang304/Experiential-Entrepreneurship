@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
@@ -421,8 +422,15 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
     } catch { return '—'; }
   };
 
-  // ——— Dropdown menu for row actions ———
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  // ——— Dropdown menu for row actions (fixed portal to prevent table overflow clipping) ———
+  const [openMenu, setOpenMenu] = useState<{ id: string; rect: DOMRect; act: 'refresh' | 'reconnect' } | null>(null);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const handleScroll = () => setOpenMenu(null);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [openMenu]);
 
   // ——— Render ———
   return (
@@ -650,7 +658,7 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
 
                         {/* Actions */}
                         <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, position: 'relative' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {act === 'refresh' && (
                               <>
                                 <button
@@ -665,33 +673,14 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
                                   </svg>
                                 </button>
                                 <button
-                                  onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
-                                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, fontSize: 16, color: '#8a85a0', fontWeight: 700 }}
+                                  onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setOpenMenu(openMenu?.id === c.id ? null : { id: c.id, rect, act: 'refresh' });
+                                  }}
+                                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 16, color: '#8a85a0', fontWeight: 700, borderRadius: 6 }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f4f1fb'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                                 >⋯</button>
-                                {openMenu === c.id && (
-                                  <div style={{
-                                    position: 'absolute', right: 0, top: '100%', zIndex: 20,
-                                    background: '#fff', border: '1px solid #efeaf8', borderRadius: 10,
-                                    boxShadow: '0 8px 24px rgba(0,0,0,.1)', minWidth: 150, overflow: 'hidden',
-                                  }}>
-                                    <button
-                                      onClick={() => { handleValidate(c.id); setOpenMenu(null); }}
-                                      style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: '#3f3a55', cursor: 'pointer' }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#faf6ff'; }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                                    >
-                                      {t.seCheckStatus}
-                                    </button>
-                                    <button
-                                      onClick={() => { handleDisconnect(c.id); setOpenMenu(null); }}
-                                      style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: '#dc2626', cursor: 'pointer' }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#fff5f5'; }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                                    >
-                                      {lang === 'en' ? 'Disconnect' : 'Ngắt kết nối'}
-                                    </button>
-                                  </div>
-                                )}
                               </>
                             )}
                             {act === 'reconnect' && (
@@ -706,25 +695,14 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
                                   }}
                                 >{t.seReconnect}</button>
                                 <button
-                                  onClick={() => setOpenMenu(openMenu === c.id ? null : c.id)}
-                                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 4, fontSize: 16, color: '#8a85a0', fontWeight: 700 }}
+                                  onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    setOpenMenu(openMenu?.id === c.id ? null : { id: c.id, rect, act: 'reconnect' });
+                                  }}
+                                  style={{ border: 'none', background: 'none', cursor: 'pointer', padding: '4px 8px', fontSize: 16, color: '#8a85a0', fontWeight: 700, borderRadius: 6 }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f4f1fb'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                                 >⋯</button>
-                                {openMenu === c.id && (
-                                  <div style={{
-                                    position: 'absolute', right: 0, top: '100%', zIndex: 20,
-                                    background: '#fff', border: '1px solid #efeaf8', borderRadius: 10,
-                                    boxShadow: '0 8px 24px rgba(0,0,0,.1)', minWidth: 150, overflow: 'hidden',
-                                  }}>
-                                    <button
-                                      onClick={() => { handleDisconnect(c.id); setOpenMenu(null); }}
-                                      style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: '#dc2626', cursor: 'pointer' }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#fff5f5'; }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                                    >
-                                      {lang === 'en' ? 'Disconnect' : 'Ngắt kết nối'}
-                                    </button>
-                                  </div>
-                                )}
                               </>
                             )}
                             {act === 'connect' && (
@@ -792,6 +770,50 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
           <InfoItem emoji="🛡️" label={t.seInfoCheckLabel} desc={t.seInfoCheck} />
         </div>
       </Card>
+
+      {/* ——— Portal Dropdown Menu ——— */}
+      {openMenu && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+          onClick={() => setOpenMenu(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: openMenu.rect.bottom + 6,
+              left: Math.max(10, openMenu.rect.right - 160),
+              zIndex: 9999,
+              background: '#fff',
+              border: '1px solid #efeaf8',
+              borderRadius: 12,
+              boxShadow: '0 10px 30px rgba(0,0,0,.15)',
+              minWidth: 160,
+              overflow: 'hidden',
+            }}
+          >
+            {openMenu.act === 'refresh' && (
+              <button
+                onClick={() => { handleValidate(openMenu.id); setOpenMenu(null); }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '11px 16px', fontSize: 12.5, fontWeight: 600, color: '#3f3a55', cursor: 'pointer' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#faf6ff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+              >
+                {t.seCheckStatus}
+              </button>
+            )}
+            <button
+              onClick={() => { handleDisconnect(openMenu.id); setOpenMenu(null); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '11px 16px', fontSize: 12.5, fontWeight: 600, color: '#dc2626', cursor: 'pointer' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#fff5f5'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+            >
+              {lang === 'en' ? 'Disconnect' : 'Ngắt kết nối'}
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

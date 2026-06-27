@@ -61,4 +61,7 @@ public class BrandProfileRequest {
 
     @Schema(description = "Things the brand should avoid in its content.", example = "[\"Hard selling\", \"Negativity\"]")
     List<String> brandDonts;
+
+    @Schema(description = "Brand logo URL or base64 data URL.")
+    String logoUrl;
 }

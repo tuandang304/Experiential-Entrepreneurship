@@ -121,7 +121,7 @@ public class MetaOAuthServiceImpl implements MetaOAuthService {
         MetaApiClient.MetaUser me = metaApiClient.getMe(Platform.FACEBOOK, longToken.accessToken());
 
         PlatformAccount userConn = upsert(user, Platform.FACEBOOK, me.id(),
-                me.name() != null ? me.name() : "Facebook User", me.username(), null,
+                me.name() != null ? me.name() : "Facebook User", me.username(), me.pictureUrl(),
                 PlatformAccountType.USER, TokenType.LONG_LIVED_USER_TOKEN,
                 longToken.accessToken(), null, expiry(longToken.expiresInSeconds()),
                 metaProperties.facebook().scopes(), null);

@@ -31,7 +31,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-@Transactional
 public class PlatformConnectionServiceImpl implements PlatformConnectionService {
 
     MetaOAuthService metaOAuthService;

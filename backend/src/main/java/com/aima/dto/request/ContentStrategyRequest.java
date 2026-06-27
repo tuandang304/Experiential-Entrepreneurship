@@ -51,9 +51,12 @@ public class ContentStrategyRequest {
             requiredMode = Schema.RequiredMode.REQUIRED)
     List<String> contentTypes;
 
-    @NotNull(message = "STRATEGY_POSTS_PER_WEEK_REQUIRED")
-    @Schema(description = "Posts per week.", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
-    Integer postsPerWeek;
+    @NotNull(message = "STRATEGY_FREQUENCY_COUNT_REQUIRED")
+    @Schema(description = "Post frequency count.", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
+    Integer frequencyCount;
+
+    @Schema(description = "Post frequency unit (DAY, WEEK, MONTH, YEAR).", example = "WEEK")
+    String frequencyUnit;
 
     @NotEmpty(message = "PLATFORM_REQUIRED")
     @Schema(description = "Platforms to publish on.", requiredMode = Schema.RequiredMode.REQUIRED)

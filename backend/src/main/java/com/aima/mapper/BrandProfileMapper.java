@@ -18,13 +18,17 @@ public interface BrandProfileMapper {
 
     List<BrandProfileResponse> toBrandProfileResponseList(List<BrandProfile> brandProfiles);
 
+    // logoUrl is owned entirely by the service (it stores the private bucket PATH, not the
+    // request's data-URL/signed-URL), so never let MapStruct copy request.logoUrl onto the entity.
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "logoUrl", ignore = true)
     @Mapping(target = "brandName", source = "brandName", qualifiedByName = "trim")
     @Mapping(target = "industry", source = "industry", qualifiedByName = "trim")
     @Mapping(target = "targetAudience", source = "targetAudience", qualifiedByName = "trim")
     BrandProfile toBrandProfile(BrandProfileRequest request);
 
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "logoUrl", ignore = true)
     @Mapping(target = "brandName", source = "brandName", qualifiedByName = "trim")
     @Mapping(target = "industry", source = "industry", qualifiedByName = "trim")
     @Mapping(target = "targetAudience", source = "targetAudience", qualifiedByName = "trim")

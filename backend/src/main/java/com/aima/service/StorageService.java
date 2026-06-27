@@ -8,6 +8,8 @@ public interface StorageService {
 
     String uploadAvatarFromUrl(String imageUrl, String userId);
 
-    String getSignedUrl(String path, int expiresInSeconds);
+    String uploadBase64BrandLogo(String dataUrl, String userId);
+
+    String getSignedUrl(String bucket, String path, int expiresInSeconds);
     void deleteFile(String bucket, String path);
 }

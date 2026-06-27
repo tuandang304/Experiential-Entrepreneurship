@@ -94,7 +94,7 @@ public enum ErrorCode {
     STRATEGY_NAME_REQUIRED(1711, "Tên chiến lược không được để trống", HttpStatus.BAD_REQUEST),
     STRATEGY_GOAL_REQUIRED(1712, "Vui lòng chọn ít nhất một mục tiêu", HttpStatus.BAD_REQUEST),
     STRATEGY_CONTENT_TYPE_REQUIRED(1713, "Vui lòng chọn ít nhất một loại nội dung", HttpStatus.BAD_REQUEST),
-    STRATEGY_POSTS_PER_WEEK_REQUIRED(1714, "Tần suất đăng không được để trống", HttpStatus.BAD_REQUEST),
+    STRATEGY_FREQUENCY_COUNT_REQUIRED(1714, "Tần suất đăng không được để trống", HttpStatus.BAD_REQUEST),
     CONTENT_STRATEGY_NOT_FOUND(1715, "Không tìm thấy chiến lược nội dung", HttpStatus.NOT_FOUND),
     STRATEGY_STATUS_REQUIRED(1716, "Trạng thái chiến lược không được để trống", HttpStatus.BAD_REQUEST),
 

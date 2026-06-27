@@ -64,11 +64,8 @@ jwt:
   refreshTokenExpiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800}
 
 supabase:
-  # URL dự án Supabase, ví dụ https://xyz.supabase.co
   url: ${SUPABASE_URL}
-  # Anon key (public) — không dùng ở backend, giữ để tham chiếu/đầy đủ cấu hình.
   anon-key: ${SUPABASE_ANON_KEY:}
-  # service_role key — toàn quyền Storage, CHỈ dùng ở backend, KHÔNG lộ ra frontend.
   service-key: ${SUPABASE_SERVICE_KEY}
 
 otp:
@@ -105,12 +102,13 @@ meta:
     app-id: ${META_FACEBOOK_APP_ID:}
     app-secret: ${META_FACEBOOK_APP_SECRET:}
     redirect-uri: ${META_FACEBOOK_REDIRECT_URI:}
-    scopes: pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish,business_management,pages_manage_metadata
+    scopes: ${META_FACEBOOK_SCOPES:}
+
   threads:
     app-id: ${META_THREADS_APP_ID:}
     app-secret: ${META_THREADS_APP_SECRET:}
     redirect-uri: ${META_THREADS_REDIRECT_URI:}
-    scopes: threads_basic,threads_content_publish,threads_manage_insights
+    scopes: ${META_THREADS_SCOPES:}
   graph-base-url: ${META_GRAPH_BASE_URL:https://graph.facebook.com}
   threads-base-url: ${META_THREADS_BASE_URL:https://graph.threads.net}
   # Bật appsecret_proof cho mọi request Meta (bắt buộc ở production).

@@ -159,16 +159,18 @@ export function LogoSquare({ logoUrl, brandName, size = 96 }: { logoUrl: string 
   );
 }
 
-/** Upload/đổi/xóa logo. Mock: lưu base64 (data URL) ở FE. TODO: upload storage thật khi có BE. */
+/** Upload/đổi/xóa logo (tích hợp trực tiếp vào CRUD brandProfile). */
 export function LogoUploader({ logoUrl, brandName, onChange }: { logoUrl: string | null; brandName: string; onChange: (url: string | null) => void }) {
   const { t } = useApp();
   const inputRef = useRef<HTMLInputElement>(null);
+
   const pick = (file?: File) => {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => onChange(reader.result as string); // base64 data URL (mock)
+    reader.onload = () => onChange(reader.result as string); // base64 data URL cho CRUD xử lý
     reader.readAsDataURL(file);
   };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
       <LogoSquare logoUrl={logoUrl} brandName={brandName} />

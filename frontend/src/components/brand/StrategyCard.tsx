@@ -1,6 +1,7 @@
 import { useApp } from '../../context/AppContext';
 import StatusBadge, { type Tone } from '../admin/StatusBadge';
 import type { ContentStrategy, StrategyStatus } from '../../api/contentStrategy';
+import { FREQUENCY_UNIT_OPTIONS } from '../../data';
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -14,8 +15,9 @@ export function statusMeta(s: StrategyStatus, t: ReturnType<typeof useApp>['t'])
 }
 
 export default function StrategyCard({ s, selected, onSelect, onToggleStatus }: { s: ContentStrategy; selected: boolean; onSelect: () => void; onToggleStatus: (next: StrategyStatus) => void }) {
-  const { t, brandGradient } = useApp();
+  const { t, lang, brandGradient } = useApp();
   const meta = statusMeta(s.status, t);
+  const unitLabel = FREQUENCY_UNIT_OPTIONS(lang).find((u) => u.value === (s.frequencyUnit ?? 'WEEK'))?.label ?? '';
   // FR-13: ACTIVE → Tạm dừng (PAUSED); DRAFT/PAUSED → Kích hoạt (ACTIVE). Cả DRAFT & PAUSED đều chặn Agent AI.
   const runnable = s.status === 'ACTIVE';
 
@@ -30,7 +32,7 @@ export default function StrategyCard({ s, selected, onSelect, onToggleStatus }: 
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8a85a0' }}>
-        <span style={{ background: '#f4f1fb', color: '#5b4b86', borderRadius: 7, padding: '3px 9px', fontWeight: 700 }}>{s.postsPerWeek} {t.csPostsPerWeek}</span>
+        <span style={{ background: '#f4f1fb', color: '#5b4b86', borderRadius: 7, padding: '3px 9px', fontWeight: 700 }}>{s.frequencyCount ?? 3} {t.csPostsPer} {unitLabel}</span>
         <span>{t.csUpdatedAt}: {fmtDate(s.updatedAt)}</span>
       </div>
 

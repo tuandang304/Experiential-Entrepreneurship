@@ -22,6 +22,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +43,7 @@ public class StorageServiceImpl implements StorageService {
 
     static final String BUCKET_AVATARS = StorageBuckets.AVATARS;     // public
     static final String BUCKET_DOCUMENTS = StorageBuckets.DOCUMENTS; // private
+    static final String BUCKET_BRAND_LOGOS = StorageBuckets.BRAND_LOGOS; // private
 
     static final long MAX_AVATAR_SIZE = 2L * 1024 * 1024;   // 2 MB
     static final long MAX_DOCUMENT_SIZE = 10L * 1024 * 1024; // 10 MB
@@ -65,6 +67,39 @@ public class StorageServiceImpl implements StorageService {
         upload(BUCKET_DOCUMENTS, path, file);
         // documents bucket is private → persist the path; access goes through a signed URL
         return path;
+    }
+
+    @Override
+    public String uploadBase64BrandLogo(String dataUrl, String userId) {
+        if (!StringUtils.hasText(dataUrl) || !dataUrl.startsWith("data:")) {
+            throw new AppException(ErrorCode.FILE_REQUIRED);
+        }
+        try {
+            int commaIdx = dataUrl.indexOf(',');
+            if (commaIdx == -1) throw new AppException(ErrorCode.INVALID_FILE_TYPE);
+
+            String header = dataUrl.substring(5, commaIdx); // e.g. "image/png;base64"
+            String[] parts = header.split(";");
+            String contentType = parts[0];
+            if (!ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
+                throw new AppException(ErrorCode.INVALID_FILE_TYPE);
+            }
+
+            String base64Data = dataUrl.substring(commaIdx + 1);
+            byte[] bytes = Base64.getDecoder().decode(base64Data);
+            if (bytes.length > MAX_AVATAR_SIZE) {
+                throw new AppException(ErrorCode.FILE_TOO_LARGE);
+            }
+
+            String ext = contentType.substring(contentType.lastIndexOf('/') + 1);
+            String path = buildObjectPath(userId, "logo." + ext);
+            uploadBytes(BUCKET_BRAND_LOGOS, path, bytes, contentType);
+            // brandlogos bucket is private → persist the path; access goes through a signed URL
+            return path;
+        } catch (IllegalArgumentException e) {
+            log.error("Lỗi giải mã base64 logo", e);
+            throw new AppException(ErrorCode.FILE_READ_FAILED);
+        }
     }
 
     @Override
@@ -110,14 +145,14 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
-    public String getSignedUrl(String path, int expiresInSeconds) {
+    public String getSignedUrl(String bucket, String path, int expiresInSeconds) {
         if (!StringUtils.hasText(path)) {
             throw new AppException(ErrorCode.FILE_PATH_REQUIRED);
         }
         try {
             SignedUrlResult result = supabaseWebClient.post()
                     .uri(uriBuilder -> uriBuilder
-                            .pathSegment("object", "sign", BUCKET_DOCUMENTS)
+                            .pathSegment("object", "sign", bucket)
                             .pathSegment(path.split("/"))
                             .build())
                     .bodyValue(Map.of("expiresIn", expiresInSeconds))

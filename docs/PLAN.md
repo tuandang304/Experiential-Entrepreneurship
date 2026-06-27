@@ -33,7 +33,7 @@
 - [x] FR-13 Activate/Pause (paused → no new content, no auto-scheduling) `[BE]` — done 2026-06-26 (PATCH /content-strategies/{id}/status)
 
 ## 4. Social Media Connection
-- [x] FR-14 OAuth connect — Facebook `[BE][FE]` — done 2026-06-27 (Meta OAuth dialog, AES-256 token encryption, page token exchange)
+- [x] FR-14 OAuth connect — Facebook `[BE][FE]` — done 2026-06-27 (Meta OAuth dialog, AES-256 token encryption, page token exchange); avatar fetched at connect via `getMe?fields=...,picture` and stored as stable `{graph}/{id}/picture?type=large` URL (null on `is_silhouette`) — done 2026-06-28
 - [x] FR-14 OAuth connect — Instagram `[BE][FE]` — done 2026-06-27 (FB Page → IG Business Account discovery & linking)
 - [x] FR-14 OAuth connect — Threads `[BE][FE]` — done 2026-06-27 (Threads OAuth dialog & long-lived user token exchange)
 - [x] FR-15 List connected accounts (platform, account, status, dates, token status) `[BE][FE]` — done 2026-06-27 (PlatformConnectionController & Settings.tsx UI)

@@ -98,6 +98,28 @@ class MetaApiClientImplTest {
     }
 
     @Test
+    void getMe_facebook_buildsGraphAvatarUrlWhenRealPicture() {
+        server.enqueue(json("{\"id\":\"123\",\"name\":\"John\"," +
+                "\"picture\":{\"data\":{\"url\":\"http://lookaside/x\",\"is_silhouette\":false}}}"));
+
+        MetaApiClient.MetaUser me = client.getMe(Platform.FACEBOOK, "user-token");
+
+        assertEquals("123", me.id());
+        assertEquals("John", me.name());
+        assertTrue(me.pictureUrl().endsWith("/123/picture?type=large"));
+    }
+
+    @Test
+    void getMe_facebook_nullAvatarWhenSilhouette() {
+        server.enqueue(json("{\"id\":\"123\",\"name\":\"John\"," +
+                "\"picture\":{\"data\":{\"url\":\"http://lookaside/x\",\"is_silhouette\":true}}}"));
+
+        MetaApiClient.MetaUser me = client.getMe(Platform.FACEBOOK, "user-token");
+
+        assertNull(me.pictureUrl());
+    }
+
+    @Test
     void generateAppSecretProof_isDeterministicHex() {
         String proof = client.generateAppSecretProof("token", "secret");
         assertEquals(64, proof.length()); // HMAC-SHA256 hex = 64 chars

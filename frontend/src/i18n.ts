@@ -219,7 +219,7 @@ export const STRINGS = {
     csStyle: 'Phong cách nội dung', csStyleHelp: 'Định hình giọng điệu và cách thể hiện nội dung',
     csCta: 'CTA mong muốn', csCtaHelp: 'Hành động bạn muốn người đọc thực hiện',
     csAddTime: 'Thêm khung giờ', csAddAudience: 'Thêm đối tượng', csAddCta: 'Thêm CTA',
-    csPostsPerWeek: 'bài/tuần',
+    csPostsPerWeek: 'bài/tuần', csPostsPer: 'bài /',
     csTypePh: 'Chọn loại nội dung', csGoalPh: 'Chọn mục tiêu', csStylePh: 'Chọn phong cách', csAddPh: 'Nhập và Enter để thêm', csAddCustom: 'Thêm',
     // tóm tắt chiến lược
     csSummary: 'Tóm tắt chiến lược',
@@ -411,7 +411,7 @@ export const STRINGS = {
     csStyle: 'Content style', csStyleHelp: 'Shape the tone and how content is expressed',
     csCta: 'Desired CTA', csCtaHelp: 'The action you want readers to take',
     csAddTime: 'Add time slot', csAddAudience: 'Add audience', csAddCta: 'Add CTA',
-    csPostsPerWeek: 'posts/week',
+    csPostsPerWeek: 'posts/week', csPostsPer: 'posts /',
     csTypePh: 'Choose content types', csGoalPh: 'Choose goals', csStylePh: 'Choose styles', csAddPh: 'Type and press Enter to add', csAddCustom: 'Add',
     csSummary: 'Strategy summary',
     csSumGoals: 'Goals', csSumFreq: 'Frequency', csSumPlatforms: 'Platforms', csSumAudience: 'Audience', csSumStyle: 'Style', csSumCta: 'CTA',

@@ -37,7 +37,9 @@
 | Lombok | (Boot-managed, compile-only) | |
 | MapStruct | 1.5.5.Final | |
 | springdoc-openapi-starter-webmvc-ui | 3.0.3 | Swagger UI |
+| jsoup | 1.18.1 | Parses Meta's Graph-API changelog page in `PlatformVersionServiceImpl` (latest-version check) |
 | H2 / spring-security-test | (test scope) | tests |
+| okhttp3 mockwebserver | 4.12.0 (test) | Mocks Meta HTTP in `MetaApiClientImplTest` |
 
 > **Not an OAuth2 Resource Server.** The pom has `oauth2-client` (for Google login) but **no**
 > `oauth2-resource-server`. Access tokens are verified by a hand-written `JwtAuthenticationFilter`
@@ -163,6 +165,15 @@ backend/
 > `JwtAuthenticationEntryPoint`, `TokenCleanupTask`, `RefreshToken`/`InvalidatedToken` entities or
 > their repositories). Access-token blacklist, refresh-token tracking and OTP state all live in
 > **Redis** — there are no DB token tables.
+
+> **The tree above is auth/account/file-focused.** Other feature slices follow the same package layout and
+> are documented in their own sections rather than re-drawn here — notably **Social Media Connection (Meta)**:
+> `controller/PlatformConnectionController` + `PlatformVersionAdminController`, `service/{MetaApiClient,
+> MetaOAuthService,PlatformConnectionService,PlatformVersionService}` (+ `Impl/`), `entity/{PlatformAccount,
+> PlatformApiVersion,PlatformApiVersionHistory}`, `mapper/{PlatformConnectionMapper,PlatformApiVersionMapper}`,
+> `scheduler/{TokenHealthCheckJob,TokenValidationJob,ApiVersionCheckJob}`, `util/{CryptoUtil,EncryptedStringConverter}`,
+> `config/{MetaProperties,MetaWebClientConfig,AimaProperties,PlatformDataInitializer}`. See §4 "Social Media
+> Connection (Meta OAuth2)" and §5 for the tables.
 
 ---
 
@@ -366,6 +377,57 @@ A `PENDING_DELETE` user can still log in (only `LOCKED` is blocked) so they can 
 - **Old-avatar cleanup:** `UserServiceImpl.updateCurrentUser` captures the previous `avatarUrl`; when it changes to a different Supabase-hosted image, it deletes the old object — **after commit** (rule #24) and only for our `/object/public/avatars/` URLs (external images like Google are skipped). Failures are logged, never fatal.
 - **Documents:** `POST /files/documents` (PDF ≤ 10 MB) → private `documents` bucket, returns a storage path; `GET /files/documents/signed-url` issues a time-limited signed URL. All `/files/**` endpoints require authentication (not in `PUBLIC_ENDPOINTS`).
 
+### Social Media Connection (Meta OAuth2) — Facebook / Instagram / Threads
+> Lets a user link their Meta accounts so AIMA can post on their behalf (FR-14..FR-18). Self-contained feature:
+> `controller/PlatformConnectionController` → `service/PlatformConnectionService` (+`Impl`) → `service/MetaOAuthService`
+> + `service/MetaApiClient` (+`Impl`); `entity/PlatformAccount`; `scheduler/`; `config/MetaProperties` +
+> `config/MetaWebClientConfig` (`metaWebClient` `WebClient` bean) + `config/AimaProperties`.
+
+**Components**
+- `MetaApiClient` / `MetaApiClientImpl` — the **only** wrapper around Meta HTTP (Graph + Threads), sync `.block()` (MVC app): token exchange, `getMe`, `getMyAccounts` (Pages), `getInstagramBusinessAccount`, `revokeToken`, `generateAppSecretProof`. Every log line **masks** tokens/secrets (`mask()`, NFR-06). API version is resolved per call from `PlatformVersionService` — **never hardcoded**.
+- `MetaOAuthService` / `MetaOAuthServiceImpl` (`@Transactional`) — orchestrates the OAuth dance + persists `PlatformAccount`s: `buildAuthorizationUrl`, `handleCallback`, `validate`, `refresh`, `disconnect`.
+- `PlatformConnectionService` / `Impl` — the `ApiResponse<T>`-returning layer behind the thin controller (rule #22); scopes everything to the current user by email.
+- `PlatformConnectionMapper` (MapStruct) → `PlatformConnectionResponse` — **never** carries access/refresh tokens (SEC-03).
+
+**Endpoints** (`/connections`, auth required **except** the callback):
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/connections/{platform}/authorize` | Build the Meta OAuth dialog URL (FE redirects user there) |
+| GET | `/connections/{platform}/callback` | `@SecurityRequirements({})` **public**; Meta redirects here with `code`+`state`; BE exchanges token, upserts connections, then **302-redirects** to the FE (`aima.oauth.frontend-success/error-redirect`) |
+| GET | `/connections` | List the user's connections |
+| GET | `/connections/stats` | Totals: total / active / expired / error |
+| POST | `/connections/{id}/validate` | Ping `/me` → ACTIVE / REVOKED |
+| POST | `/connections/{id}/refresh` | Renew long-lived token (Page tokens just re-validate) |
+| DELETE | `/connections/{id}` | Revoke (root connection only) + soft-delete cascade to child Page/IG |
+
+**OAuth flow (Facebook/Instagram)**
+1. `authorize` → store `oauth_state:{state}` = `"{userId}|{platform}"` in Redis (TTL `aima.oauth.state-ttl-minutes`), return the FB `dialog/oauth` URL.
+2. Callback → validate+consume the Redis `state` (`INVALID_OAUTH_STATE` if missing) → `exchangeCodeForToken` → `getLongLivedUserToken` → `getMe`.
+3. Upsert a **USER**-level `PlatformAccount`; then per FB **Page** (`getMyAccounts`) upsert a `PAGE` connection (child via `parentConnection`), and for each Page with a linked IG Business account upsert an **INSTAGRAM** `BUSINESS_ACCOUNT` connection (child of the Page). Instagram is discovered **through the Page** — there is no separate IG dialog.
+4. **Threads** uses its own `threads.net/oauth/authorize` dialog + `th_exchange_token` long-lived exchange → one `PERSONAL` connection.
+
+**Upsert (reconnect-safe)** — `upsert(...)` looks up `(user, platform, platformAccountId)` where `deleted_at IS NULL` and updates the existing row instead of inserting, so reconnecting never violates the partial unique index `uk_platform_accounts_user_platform_account` (created by `PlatformDataInitializer`, `WHERE deleted_at IS NULL`; JPA can't declare a partial index).
+
+**Token security (SEC-03)** — `access_token`/`refresh_token` columns use `@Convert(EncryptedStringConverter.class)` → **AES-256-GCM** (`util/CryptoUtil`, key from `AIMA_ENCRYPTION_KEY`, 32-byte base64; app **fails at startup** if missing/invalid). Tokens are encrypted at rest, decrypted transparently on read, and **never** appear in a response DTO. `appsecret_proof` = HMAC-SHA256(token, appSecret) is appended to Graph calls when `meta.app-secret-proof-enabled=true` (required in prod).
+
+**Schedulers** (`scheduler/`, `@Scheduled`; all resilient — a per-item failure is logged, never crashes the job):
+- `TokenHealthCheckJob` — daily 02:00: refresh long-lived tokens expiring within 7 days; on failure → `EXPIRED` (FR-18a/b).
+- `TokenValidationJob` — every 6h: ping `/me` on a ~10% random sample of ACTIVE connections; platform rejection → `REVOKED`.
+- `ApiVersionCheckJob` — Mondays 03:00: refresh `latestVersion` from Meta's Graph changelog (jsoup).
+
+**Platform API version (admin-managed, not hardcoded)** — `PlatformVersionService` returns the current `vXX.Y` per platform from the `platform_api_versions` table (seeded FB/IG `v25.0`, Threads `v1.0` by `PlatformDataInitializer`), via a manual 5-min in-process cache (no cache manager) evicted on admin update. Admin endpoints under `/admin/api-versions` (`PlatformVersionAdminController`, `@PreAuthorize("hasRole('ADMIN')")`): list / `{platform}/history` / update (applies immediately) / check-now. Every `MetaApiClient` call resolves its version through this service.
+
+**Enums** — `Platform` (FACEBOOK/INSTAGRAM/THREADS), `PlatformAccountType` (USER/PAGE/BUSINESS_ACCOUNT/PERSONAL), `TokenType` (USER_TOKEN/PAGE_TOKEN/LONG_LIVED_USER_TOKEN; Page tokens don't expire → `tokenExpiredAt = null`), `ConnectionStatus` (ACTIVE/REVOKED/EXPIRED/ERROR/PENDING/ON_HOLD + legacy CONNECTED/DISCONNECTED — **do not rename**, rule #1). **ErrorCodes** 1820–1827 (connection) + 1830–1832 (version).
+
+### Social-account avatars (Meta connections)
+> Distinct from the **user** avatar above (Supabase). This is `PlatformAccount.avatarUrl` for each connected
+> social account, filled at connect time in `MetaOAuthServiceImpl` from the platform profile.
+- **Facebook (user):** `MetaApiClient.getMe` requests `fields=id,name,picture.width(200).height(200)`. We do **not** store the returned `picture.data.url` (a `lookaside.fbsbx.com` URL with an embedded token that **expires** → broken image later). Instead `getMe` builds and stores the **stable** URL `{meta.graph-base-url}/{id}/picture?type=large` (no token, never expires, always the latest avatar). If `picture.data.is_silhouette = true` (Facebook default avatar) → store `null` so the FE falls back to the initial letter.
+- **Instagram (business):** `profile_picture_url` from `instagram_business_account{...}` (`getInstagramBusinessAccount`).
+- **Threads:** `threads_profile_picture_url` from `getMe`.
+- **Facebook Page:** no avatar yet — `getMyAccounts` (`/me/accounts`) doesn't request `picture`; `avatarUrl` stays `null`. Known gap, fill later by adding `picture` to that field list.
+- `avatarUrl` flows straight through `PlatformConnectionMapper` → `PlatformConnectionResponse.avatarUrl` (same-name auto-map). Connection responses **never** include access/refresh tokens (SEC-03).
+
 ---
 
 ## 5. Database & Cache
@@ -384,7 +446,8 @@ Timezone: APP_TIMEZONE (e.g. Asia/Ho_Chi_Minh)
 Host:    REDIS_HOST (default localhost) / Port: REDIS_PORT (default 6379) / Timeout: REDIS_TIMEOUT (default 2000ms)
 ```
 Used for: ACCESS token blacklist (`blacklist:{jti}`), REFRESH token tracking (`rt:{jti}`,
-`user_rt:{userId}`, `logout_time:{email}`), and OTP state for password reset. Run via `docker compose up -d`.
+`user_rt:{userId}`, `logout_time:{email}`), OTP state for password reset, and the social-connection
+OAuth CSRF state (`oauth_state:{state}` → `"{userId}|{platform}"`, short TTL). Run via `docker compose up -d`.
 
 ### `users` table — `User.java` (extends `BaseEntity`)
 | Column | Type | Notes |
@@ -411,6 +474,48 @@ Used for: ACCESS token blacklist (`blacklist:{jti}`), REFRESH token tracking (`r
 | `id` | UUID (PK) | `@UuidGenerator` |
 | `role_name` | VARCHAR | unique, not null |
 | `description` | VARCHAR | nullable |
+
+### `platform_accounts` table — `PlatformAccount.java` (extends `BaseEntity`)
+A connected social account (FB user / FB Page / IG Business / Threads). Self-referencing tree via `parent_connection_id`.
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID (PK) | from `BaseEntity` |
+| `user_id` | UUID (FK→users) | not null; LAZY |
+| `platform_name` | VARCHAR(20) | `Platform` enum (`@Enumerated STRING`) |
+| `account_name` | VARCHAR(150) | not null; display name |
+| `platform_account_id` | VARCHAR(100) | not null; the real FB/IG/Threads account/Page id |
+| `platform_username` | VARCHAR(150) | nullable; handle, e.g. `@aima` |
+| `avatar_url` | VARCHAR(2048) | nullable; see "Social-account avatars" in §4 |
+| `profile_url` | VARCHAR(2048) | nullable |
+| `account_type` | VARCHAR(30) | `PlatformAccountType` (USER/PAGE/BUSINESS_ACCOUNT/PERSONAL) |
+| `token_type` | VARCHAR(30) | `TokenType` (USER_TOKEN/PAGE_TOKEN/LONG_LIVED_USER_TOKEN) |
+| `access_token` | TEXT | **AES-256-GCM encrypted** (`EncryptedStringConverter`), not null (SEC-03) |
+| `refresh_token` | TEXT | **AES-256-GCM encrypted**, nullable |
+| `token_issued_at` / `token_expired_at` | TIMESTAMP | `token_expired_at` null for Page tokens (no expiry); indexed |
+| `scopes` | TEXT | granted scopes as a JSON array string |
+| `api_version_used` | VARCHAR(20) | Graph/Threads version used at connect/refresh, e.g. `v25.0` |
+| `last_validated_at` / `last_sync_at` | TIMESTAMP | nullable |
+| `connection_status` | VARCHAR(20) | `ConnectionStatus` (indexed) |
+| `parent_connection_id` | UUID (self-FK) | null for the root USER connection; set for child Page/IG |
+| `metadata` | JSONB | nullable; platform-specific extras |
+| `created_at` / `updated_at` / `deleted_at` | TIMESTAMP | soft delete via `deleted_at` |
+
+> Partial unique index `uk_platform_accounts_user_platform_account (user_id, platform_name, platform_account_id) WHERE deleted_at IS NULL` is created at startup by `PlatformDataInitializer` (not via JPA).
+
+### `platform_api_versions` table — `PlatformApiVersion.java` (extends `BaseEntity`)
+One row per `Platform`; the admin-managed current Graph/Threads API version (see §4 "Platform API version").
+| Column | Type | Notes |
+|---|---|---|
+| `platform` | VARCHAR(20) | unique (`uk_platform_api_versions_platform`) |
+| `current_version` | VARCHAR(20) | not null; what `MetaApiClient` uses |
+| `latest_version` | VARCHAR(20) | nullable; refreshed by `ApiVersionCheckJob` |
+| `min_supported_version` | VARCHAR(20) | nullable |
+| `current_version_deprecation_date` | TIMESTAMP | nullable; drives `DEPRECATING_SOON`/`DEPRECATED` |
+| `status` | VARCHAR(30) | `VersionStatus` enum |
+| `last_checked_at` | TIMESTAMP | nullable |
+| `updated_by` | UUID (FK→users) | nullable (null for seed/auto rows) |
+
+> History is tracked in a separate `platform_api_versions_history` table (`PlatformApiVersionHistory`, 1:N).
 
 ---
 
@@ -449,7 +554,13 @@ FRONTEND_CALLBACK_URL                 # OAuth2 success/failure redirect, e.g. ht
 FRONTEND_BASE_URL                     # FE origin, e.g. http://localhost:3000 (default in application.yml)
 BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME   # Brevo Transactional Email API (HTTP) for OTP / reset emails; BREVO_SENDER_NAME defaults to "AIMA"
 SUPABASE_URL, SUPABASE_SERVICE_KEY    # Supabase Storage — service_role key is BACKEND ONLY, never expose to FE
+AIMA_ENCRYPTION_KEY                   # 32-byte base64 (openssl rand -base64 32) — AES-256-GCM for social tokens; app FAILS at startup if missing/invalid (SEC-03)
+META_FACEBOOK_APP_ID, META_FACEBOOK_APP_SECRET, META_FACEBOOK_REDIRECT_URI, META_FACEBOOK_SCOPES   # Facebook/Instagram OAuth (FB Login dialog)
+META_THREADS_APP_ID, META_THREADS_APP_SECRET, META_THREADS_REDIRECT_URI, META_THREADS_SCOPES       # Threads OAuth
 # Optional overrides (have defaults in application.yml):
+META_GRAPH_BASE_URL (https://graph.facebook.com), META_THREADS_BASE_URL (https://graph.threads.net)
+META_APP_SECRET_PROOF_ENABLED (false; set true in prod)
+OAUTH_STATE_TTL_MINUTES (10), FE_OAUTH_SUCCESS_URL, FE_OAUTH_ERROR_URL   # social-connection OAuth state TTL + FE redirect targets
 SUPABASE_ANON_KEY                     # kept for reference; not used by the backend
 JWT_ACCESS_TOKEN_EXPIRATION (3600s), JWT_REFRESH_TOKEN_EXPIRATION (604800s)
 REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_TIMEOUT, REDIS_SSL_ENABLED
@@ -519,3 +630,9 @@ AUTH_COOKIE_NAME (refresh_token), AUTH_COOKIE_SECURE (false), AUTH_COOKIE_SAME_S
 23. **Centralize shared constants — never duplicate magic strings/values across files.** Supabase Storage bucket names and URL markers live ONLY in `config/storage/StorageBuckets` (`AVATARS`, `DOCUMENTS`, `AVATAR_PUBLIC_PREFIX`); reference them from `SupabaseStorageServiceImpl`, `FileServiceImpl`, `UserServiceImpl`, etc. Do not re-declare the literal `"avatars"`/`"documents"` (or any equivalent shared constant) inline in multiple classes.
 
 24. **No external/network I/O inside an open DB `@Transactional` boundary.** Calls to Supabase Storage (or any remote service) MUST NOT run while a DB transaction is held open. When a side-effect (e.g. deleting the old avatar object after a profile update) should happen only on success, defer it with `TransactionSynchronizationManager.registerSynchronization(...).afterCommit()` so it runs after commit and is skipped on rollback (see `UserServiceImpl.scheduleOldAvatarDeletion`). Best-effort cleanups still log on failure and never break the main flow.
+
+25. **Social tokens are encrypted at rest and never exposed (SEC-03).** `PlatformAccount.access_token`/`refresh_token` MUST keep `@Convert(EncryptedStringConverter.class)` (AES-256-GCM via `CryptoUtil`, key `AIMA_ENCRYPTION_KEY`). Never add a token field to `PlatformConnectionResponse` or any response DTO, never log a raw token (use `MetaApiClientImpl.mask()`), and never weaken the startup key validation. All Meta HTTP goes through `MetaApiClient` — do not call Graph/Threads from elsewhere.
+
+26. **Meta API version is never hardcoded.** Always resolve the Graph/Threads version via `PlatformVersionService.getCurrentVersion(platform)` (admin-managed in `platform_api_versions`, cache evicted on update). Do not inline a `vXX.Y` literal in client/service code; the only seeded defaults live in `PlatformDataInitializer`.
+
+27. **Reconnect is an upsert, deletes are soft + cascade.** `MetaOAuthServiceImpl.upsert(...)` updates the existing `(user, platform, platformAccountId)` row (where `deleted_at IS NULL`) — never blindly insert (the partial unique index from `PlatformDataInitializer` will reject duplicates). Disconnect revokes only on the **root** (parent-less) connection and soft-deletes the whole Page/IG subtree. Schedulers (`scheduler/`) MUST stay resilient: a per-connection failure is logged and skipped, never propagated.

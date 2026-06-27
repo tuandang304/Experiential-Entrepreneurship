@@ -50,7 +50,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public ApiResponse<SignedUrlResponse> getDocumentSignedUrl(String path, int expiresInSeconds) {
-        String signedUrl = storageService.getSignedUrl(path, expiresInSeconds);
+        String signedUrl = storageService.getSignedUrl(StorageBuckets.DOCUMENTS, path, expiresInSeconds);
 
         return ApiResponse.success("Tạo đường dẫn truy cập thành công",
                 SignedUrlResponse.builder()

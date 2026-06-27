@@ -13,6 +13,7 @@ export type { Platform } from "./brandProfile";
 // không ràng buộc enum; phần dịch Anh/Việt chỉ ở danh sách gợi ý (src/data.ts), state luôn là chuỗi đã chọn.
 
 export type StrategyStatus = "DRAFT" | "ACTIVE" | "PAUSED";
+export type FrequencyUnit = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
 export interface ContentStrategy {
   id: string;
@@ -21,7 +22,8 @@ export interface ContentStrategy {
   status: StrategyStatus;
   goals: string[]; // 01 — mục tiêu content
   contentTypes: string[]; // 02 — loại nội dung ưu tiên
-  postsPerWeek: number; // 03 — tần suất đăng (số bài/tuần, 2..5)
+  frequencyCount: number; // 03 — số bài đăng (vd: 3)
+  frequencyUnit: FrequencyUnit; // 03 — đơn vị (DAY, WEEK, MONTH, YEAR)
   platforms: Platform[]; // 04 — nền tảng đăng
   timeSlots: string[]; // 05 — khung giờ ưu tiên
   audiences: string[]; // 06 — đối tượng mục tiêu

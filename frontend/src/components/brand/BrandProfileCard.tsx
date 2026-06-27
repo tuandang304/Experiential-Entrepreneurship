@@ -3,6 +3,7 @@ import { Card, Icon } from '../ui';
 import BrandHealthBar from './BrandHealthBar';
 import { brandHealth } from './brandHealth';
 import type { BrandProfile } from '../../api/brandProfile';
+import { LogoSquare } from './chips';
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -36,7 +37,7 @@ export default function BrandProfileCard({
   return (
     <Card style={{ padding: 20, border: active ? '2px solid transparent' : '1px solid #efeaf8', backgroundImage: active ? `linear-gradient(#fff,#fff), ${brandGradient}` : undefined, backgroundOrigin: 'border-box', backgroundClip: active ? 'padding-box, border-box' : undefined, display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
-        <div style={{ width: 50, height: 50, flex: 'none', borderRadius: 14, background: brandGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 20 }}>{(profile.brandName || 'A')[0].toUpperCase()}</div>
+        <LogoSquare logoUrl={profile.logoUrl} brandName={profile.brandName} size={50} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 16, color: '#211c38', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.brandName}</span>

@@ -8,6 +8,8 @@ import com.aima.util.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -44,10 +46,10 @@ public class PlatformAccount extends BaseEntity {
     @Column(name = "platform_username", length = 150)
     String platformUsername;
 
-    @Column(name = "avatar_url", length = 500)
+    @Column(name = "avatar_url", length = 2048)
     String avatarUrl;
 
-    @Column(name = "profile_url", length = 500)
+    @Column(name = "profile_url", length = 2048)
     String profileUrl;
 
     @Enumerated(EnumType.STRING)
@@ -99,6 +101,7 @@ public class PlatformAccount extends BaseEntity {
     PlatformAccount parentConnection;
 
     // Dữ liệu bổ sung tuỳ nền tảng (JSON).
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
     String metadata;
 }

@@ -41,8 +41,11 @@ public class ContentStrategyResponse {
     @Schema(description = "Preferred content types.")
     List<String> contentTypes;
 
-    @Schema(description = "Posts per week.", example = "3")
-    Integer postsPerWeek;
+    @Schema(description = "Post frequency count.", example = "3")
+    Integer frequencyCount;
+
+    @Schema(description = "Post frequency unit.", example = "WEEK")
+    String frequencyUnit;
 
     @Schema(description = "Platforms to publish on.")
     Set<Platform> platforms;

@@ -461,8 +461,12 @@ export const TIME_SLOT_OPTIONS: string[] = [
   '13:00-15:00', '15:00-17:00', '17:00-19:00', '19:00-22:00', '22:00-24:00',
 ];
 
-// Tần suất chiến lược = số bài/tuần (khác enum PostingFrequency của hồ sơ thương hiệu).
-export const POSTS_PER_WEEK_OPTIONS: number[] = [2, 3, 4, 5];
+export const FREQUENCY_UNIT_OPTIONS = (lang: Lang) => [
+  { value: 'DAY', label: lang === 'en' ? 'day' : 'ngày' },
+  { value: 'WEEK', label: lang === 'en' ? 'week' : 'tuần' },
+  { value: 'MONTH', label: lang === 'en' ? 'month' : 'tháng' },
+  { value: 'YEAR', label: lang === 'en' ? 'year' : 'năm' },
+];
 
 // "Không nên viết" (Brand Do & Don't) — gợi ý mẫu ở panel "AI đã hiểu về thương hiệu".
 export const brandDontSample = (lang: Lang): string[] => [

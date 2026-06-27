@@ -173,11 +173,30 @@ public class MetaApiClientImpl implements MetaApiClient {
         String version = versionService.getCurrentVersion(platform);
         String url = withProof(UriComponentsBuilder.fromUriString(metaProperties.graphBaseUrl())
                 .pathSegment(version, "me")
-                .queryParam("fields", "id,name")
+                .queryParam("fields", "id,name,picture.width(200).height(200)")
                 .queryParam("access_token", token), token, platform)
                 .toUriString();
         JsonNode body = get(url, platform);
-        return new MetaUser(text(body, "id"), text(body, "name"), null, null);
+        String id = text(body, "id");
+        return new MetaUser(id, text(body, "name"), null, facebookAvatarUrl(id, body));
+    }
+
+    /**
+     * URL avatar Facebook bền vững: {@code {graphBaseUrl}/{id}/picture?type=large} (không token, không hết hạn).
+     * Trả null khi user dùng avatar mặc định (picture.data.is_silhouette = true) để FE fallback chữ cái đầu.
+     */
+    private String facebookAvatarUrl(String id, JsonNode body) {
+        if (id == null) {
+            return null;
+        }
+        JsonNode pictureData = body.path("picture").path("data");
+        if (pictureData.path("is_silhouette").asBoolean(false)) {
+            return null;
+        }
+        return UriComponentsBuilder.fromUriString(metaProperties.graphBaseUrl())
+                .pathSegment(id, "picture")
+                .queryParam("type", "large")
+                .toUriString();
     }
 
     @Override

@@ -45,7 +45,7 @@ export default function BrandProfileForm({ profile, onClose, onSaved }: { profil
     brandVoice: voiceTones.join(', ') || undefined,
     targetAudience: targetAudience.trim(),
     platforms,
-    logoUrl, // mock: base64/data URL. TODO(backend): upload lên storage thật.
+    logoUrl,
     brandKeywords: keywords,
     brandDos: dos,
     brandDonts: donts,

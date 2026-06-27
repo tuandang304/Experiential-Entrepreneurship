@@ -20,6 +20,7 @@ public interface ContentStrategyMapper {
     @Mapping(target = "audiences", source = "targetAudience")
     @Mapping(target = "styles", source = "contentStyle")
     @Mapping(target = "ctas", source = "ctaTypes")
+    @Mapping(target = "frequencyUnit", source = "frequencyUnit", defaultValue = ContentStrategy.DEFAULT_FREQUENCY_UNIT)
     ContentStrategyResponse toContentStrategyResponse(ContentStrategy strategy);
 
     List<ContentStrategyResponse> toContentStrategyResponseList(List<ContentStrategy> strategies);

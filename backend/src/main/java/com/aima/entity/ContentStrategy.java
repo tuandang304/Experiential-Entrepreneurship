@@ -23,6 +23,9 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ContentStrategy extends BaseEntity {
 
+    // Đơn vị tần suất đăng mặc định — dùng chung cho entity/mapper/service, tránh lặp magic string.
+    public static final String DEFAULT_FREQUENCY_UNIT = "WEEK";
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "brand_profile_id", nullable = false)
     @ToString.Exclude
@@ -43,7 +46,10 @@ public class ContentStrategy extends BaseEntity {
     List<String> contentTypes = new ArrayList<>();
 
     @Column(name = "posts_per_week", nullable = false)
-    Integer postsPerWeek;
+    Integer frequencyCount;
+
+    @Column(name = "frequency_unit", length = 10)
+    String frequencyUnit = DEFAULT_FREQUENCY_UNIT;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)

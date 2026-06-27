@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useApp } from '../../context/AppContext';
-import { strategyGoalOptions, contentTypeOptions, contentStyleOptions, ctaSampleOptions, audienceSampleOptions, TIME_SLOT_OPTIONS, POSTS_PER_WEEK_OPTIONS } from '../../data';
-import { createContentStrategy, updateContentStrategy, type ContentStrategy, type ContentStrategyInput, type Platform } from '../../api/contentStrategy';
+import { strategyGoalOptions, contentTypeOptions, contentStyleOptions, ctaSampleOptions, audienceSampleOptions, TIME_SLOT_OPTIONS, FREQUENCY_UNIT_OPTIONS } from '../../data';
+import { createContentStrategy, updateContentStrategy, type ContentStrategy, type ContentStrategyInput, type Platform, type FrequencyUnit } from '../../api/contentStrategy';
 import { validateStrategy, type StrategyFormErrors } from '../../validations/brandValidation';
 import type { Dict } from '../../i18n';
 import StrategySummary from './StrategySummary';
@@ -20,7 +20,8 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
   const [name, setName] = useState(strategy?.name ?? '');
   const [goals, setGoals] = useState<string[]>(strategy?.goals ?? []);
   const [contentTypes, setContentTypes] = useState<string[]>(strategy?.contentTypes ?? []);
-  const [postsPerWeek, setPostsPerWeek] = useState<number>(strategy?.postsPerWeek ?? 3);
+  const [frequencyCount, setFrequencyCount] = useState<number>(strategy?.frequencyCount ?? 3);
+  const [frequencyUnit, setFrequencyUnit] = useState<FrequencyUnit>(strategy?.frequencyUnit ?? 'WEEK');
   const [platforms, setPlatforms] = useState<Platform[]>(strategy?.platforms ?? ['FACEBOOK', 'INSTAGRAM']);
   const [timeSlots, setTimeSlots] = useState<string[]>(strategy?.timeSlots ?? []);
   const [audiences, setAudiences] = useState<string[]>(strategy?.audiences ?? []);
@@ -30,14 +31,14 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
   const [saving, setSaving] = useState<'full' | 'draft' | null>(null);
   const [apiError, setApiError] = useState('');
 
-  const summaryLike = { goals, postsPerWeek, platforms, audiences, styles, ctas };
+  const summaryLike = { goals, frequencyCount, frequencyUnit, platforms, audiences, styles, ctas };
 
   const persist = async (status: ContentStrategy['status'], kind: 'full' | 'draft') => {
     const payload: ContentStrategyInput = {
       brandId,
       name: name.trim(),
       status,
-      goals, contentTypes, postsPerWeek, platforms, timeSlots, audiences, styles, ctas,
+      goals, contentTypes, frequencyCount, frequencyUnit, platforms, timeSlots, audiences, styles, ctas,
     };
     setSaving(kind);
     setApiError('');
@@ -86,10 +87,25 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
         <Box><Field step="01" label={t.csGoal} required help={t.csGoalHelp} error={err('goals')}><ChipMultiSelect options={strategyGoalOptions(lang)} value={goals} onChange={setGoals} creatable /></Field></Box>
         <Box><Field step="02" label={t.csTypes} required help={t.csTypesHelp} error={err('contentTypes')}><ChipMultiSelect options={contentTypeOptions(lang)} value={contentTypes} onChange={setContentTypes} max={5} creatable /></Field></Box>
         <Box><Field step="03" label={t.csFreq} required help={t.csFreqHelp}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {POSTS_PER_WEEK_OPTIONS.map((n) => (
-              <button key={n} onClick={() => setPostsPerWeek(n)} style={{ border: `1.5px solid ${postsPerWeek === n ? 'transparent' : '#ece8f6'}`, background: postsPerWeek === n ? 'var(--brand)' : '#fff', color: postsPerWeek === n ? '#fff' : '#3f3a55', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{n} {t.csPostsPerWeek}</button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={frequencyCount}
+              onChange={(e) => setFrequencyCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+              style={{ ...fieldInput, width: 90, textAlign: 'center', padding: '9px 10px' }}
+            />
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#5b5670' }}>{t.csPostsPer}</span>
+            <select
+              value={frequencyUnit}
+              onChange={(e) => setFrequencyUnit(e.target.value as FrequencyUnit)}
+              style={{ ...fieldInput, width: 'auto', flex: 1, cursor: 'pointer', padding: '9px 12px' }}
+            >
+              {FREQUENCY_UNIT_OPTIONS(lang).map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
         </Field></Box>
         <Box><Field step="04" label={t.csPlatforms} required help={t.csPlatformsHelp} error={err('platforms')}><PlatformSelect value={platforms} onChange={setPlatforms} /></Field></Box>

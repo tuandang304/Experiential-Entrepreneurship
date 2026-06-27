@@ -7,6 +7,7 @@ import { statusMeta } from './StrategyCard';
 import StrategySummary from './StrategySummary';
 import { ReadChips } from './chips';
 import type { ContentStrategy, Platform } from '../../api/contentStrategy';
+import { FREQUENCY_UNIT_OPTIONS } from '../../data';
 
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
@@ -16,8 +17,9 @@ const TAG_BY_ENUM: Record<Platform, string> = { FACEBOOK: 'FB', INSTAGRAM: 'IG',
 
 /** Chi tiết chiến lược (read-only) — 8 mục 01–08 + "Tóm tắt chiến lược". */
 export default function StrategyDetail({ s, onEdit, onDelete }: { s: ContentStrategy; onEdit: () => void; onDelete: () => void }) {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const meta = statusMeta(s.status, t);
+  const unitLabel = FREQUENCY_UNIT_OPTIONS(lang).find((u) => u.value === (s.frequencyUnit ?? 'WEEK'))?.label ?? '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -38,7 +40,7 @@ export default function StrategyDetail({ s, onEdit, onDelete }: { s: ContentStra
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
         <Sec n="01" label={t.csGoal}><ReadChips items={s.goals} /></Sec>
         <Sec n="02" label={t.csTypes}><ReadChips items={s.contentTypes} /></Sec>
-        <Sec n="03" label={t.csFreq}><span style={valTxt}>{s.postsPerWeek} {t.csPostsPerWeek}</span></Sec>
+        <Sec n="03" label={t.csFreq}><span style={valTxt}>{s.frequencyCount ?? 3} {t.csPostsPer} {unitLabel}</span></Sec>
         <Sec n="04" label={t.csPlatforms}>
           <div style={{ display: 'flex', gap: 7 }}>
             {s.platforms.map((p) => { const pl = PLATFORMS.find((x) => x.tag === TAG_BY_ENUM[p]); return pl ? <PlatformTag key={p} tag={pl.tag} bg={pl.bg} size={26} radius={7} /> : null; })}

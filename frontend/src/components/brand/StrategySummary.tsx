@@ -1,12 +1,14 @@
 import { useApp } from '../../context/AppContext';
 import type { ContentStrategy } from '../../api/contentStrategy';
+import { FREQUENCY_UNIT_OPTIONS } from '../../data';
 
 /** "Tóm tắt chiến lược" — 6 ô đếm (Mục tiêu / Tần suất / Nền tảng / Đối tượng / Phong cách / CTA). */
-export default function StrategySummary({ s }: { s: Pick<ContentStrategy, 'goals' | 'postsPerWeek' | 'platforms' | 'audiences' | 'styles' | 'ctas'> }) {
-  const { t } = useApp();
+export default function StrategySummary({ s }: { s: Pick<ContentStrategy, 'goals' | 'frequencyCount' | 'frequencyUnit' | 'platforms' | 'audiences' | 'styles' | 'ctas'> }) {
+  const { t, lang } = useApp();
+  const unitLabel = FREQUENCY_UNIT_OPTIONS(lang).find((u) => u.value === (s.frequencyUnit ?? 'WEEK'))?.label ?? '';
   const tiles: [string, string][] = [
     [t.csSumGoals, `${s.goals.length} ${t.csUnitGoals}`],
-    [t.csSumFreq, `${s.postsPerWeek} ${t.csPostsPerWeek}`],
+    [t.csSumFreq, `${s.frequencyCount ?? 3} ${t.csPostsPer} ${unitLabel}`],
     [t.csSumPlatforms, `${s.platforms.length} ${t.csUnitPlatforms}`],
     [t.csSumAudience, `${s.audiences.length} ${t.csUnitGroups}`],
     [t.csSumStyle, `${s.styles.length} ${t.csUnitStyles}`],

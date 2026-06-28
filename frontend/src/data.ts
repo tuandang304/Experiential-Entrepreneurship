@@ -90,6 +90,13 @@ export function weekChart(lang: Lang) {
   return vals.map((v, i) => ({ h: v + '%', label: labels[i] }));
 }
 
+// 30-day view: 10 three-day buckets, labelled by day-of-month (language-agnostic).
+export function monthChart() {
+  const vals = [40, 55, 47, 62, 58, 73, 66, 84, 77, 95];
+  const labels = ['1', '4', '7', '10', '13', '16', '19', '22', '25', '28'];
+  return vals.map((v, i) => ({ h: v + '%', label: labels[i] }));
+}
+
 export const platformUsage = [
   { name: 'Facebook', tag: 'FB', pct: '78%', bg: PLATFORM_BG.FB },
   { name: 'Instagram', tag: 'IG', pct: '71%', bg: PLATFORM_BG.IG },
@@ -119,7 +126,7 @@ export function posts(lang: Lang) {
         ];
   return rows.map((r) => {
     const st = ST[r[4]];
-    return { title: r[0], platform: r[1], tag: r[2], bg: r[3], status: st[0], stColor: st[1], stBg: st[2], reach: r[5], date: r[6] };
+    return { kind: r[4], title: r[0], platform: r[1], tag: r[2], bg: r[3], status: st[0], stColor: st[1], stBg: st[2], reach: r[5], date: r[6] };
   });
 }
 

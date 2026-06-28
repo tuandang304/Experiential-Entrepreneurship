@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-28T00:00:00.000Z",
+  "title": "Design System: AIMA — AI Marketing Assistant",
+  "extensions": {
+    "colorMeta": {
+      "accent-violet": {
+        "role": "primary",
+        "displayName": "Accent Violet",
+        "canonical": "#7c3aed",
+        "tonalRamp": ["#2a1259", "#3d1d7a", "#5223a6", "#6d28d9", "#7c3aed", "#9b6cf0", "#c0a3f6", "#ece4fd"]
+      },
+      "brand-aurora-mid": {
+        "role": "primary",
+        "displayName": "Aurora Violet (gradient mid-stop)",
+        "canonical": "#897ce3",
+        "tonalRamp": ["#2c2660", "#3d367f", "#5249a6", "#6a5fcb", "#897ce3", "#a79df0", "#c8c1f7", "#ece9fc"]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Lavender Canvas",
+        "canonical": "#f7f6fd",
+        "tonalRamp": ["#1c1a2e", "#2f2c47", "#48445f", "#6b6680", "#928da6", "#bdb9cd", "#e0deec", "#f7f6fd"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Near-Black Violet Ink",
+        "canonical": "#1b1730",
+        "tonalRamp": ["#1b1730", "#2a2444", "#3b3458", "#544d6e", "#6f6987", "#9590a8", "#c2bed1", "#eceaf3"]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Posted Green",
+        "canonical": "#16a34a",
+        "tonalRamp": ["#06351a", "#0a4d26", "#0f7536", "#13923f", "#16a34a", "#48c275", "#8fdcab", "#e8f8ee"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Alert Rose",
+        "canonical": "#e23d6e",
+        "tonalRamp": ["#510a23", "#7a1336", "#a81d4b", "#cc2a5e", "#e23d6e", "#ec7197", "#f4abc1", "#fde7ee"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display / Page Title", "purpose": "Plus Jakarta Sans 700 — topbar page heading and card titles." },
+      "body": { "displayName": "Body", "purpose": "Be Vietnam Pro 400 — all reading and form text; full Vietnamese diacritics." },
+      "section-label": { "displayName": "Section Label", "purpose": "11px/700/0.08em tracked divider — sidebar group label only." }
+    },
+    "shadows": [
+      { "name": "card-rest", "value": "0 18px 38px -34px rgba(80,40,140,0.5)", "purpose": "Default card glow — faint violet halo, flat at rest." },
+      { "name": "card-lift", "value": "0 30px 50px -28px rgba(80,40,140,0.55)", "purpose": "Interactive card hover (.lift-card), paired with translateY(-6px)." },
+      { "name": "brand-button", "value": "0 16px 30px -12px rgba(139,92,246,0.6)", "purpose": "Glow under gradient primary buttons." },
+      { "name": "brand-button-hover", "value": "0 22px 40px -16px rgba(139,92,246,0.7)", "purpose": ".btn-grad hover glow." },
+      { "name": "nav-active", "value": "0 12px 24px -14px rgba(139,92,246,0.8)", "purpose": "Grounds the single gradient-filled active nav item." }
+    ],
+    "motion": [
+      { "name": "ease-pop", "value": "cubic-bezier(0.2, 0.7, 0.2, 1)", "purpose": "View/card entrance and lift easing (ease-out)." },
+      { "name": "spring-nav", "value": "spring(mass 0.1, stiffness 200, damping 15)", "purpose": "framer-motion spring for sidebar item hover/tap." },
+      { "name": "btn-transition", "value": "transform 0.25s ease, box-shadow 0.3s ease", "purpose": "Default button hover transition." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "760px" },
+      { "name": "tablet", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Aurora-gradient call-to-action; primary actions and form submits.",
+      "html": "<button class=\"ds-btn-primary\">Tạo nội dung</button>",
+      "css": ".ds-btn-primary { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.05em; color: #fff; background: linear-gradient(120deg,#46d6ec 0%,#897ce3 46%,#f083c0 100%); border: none; border-radius: 13px; padding: 16px 24px; cursor: pointer; box-shadow: 0 16px 30px -12px rgba(139,92,246,0.6); transition: transform 0.25s ease, box-shadow 0.3s ease, filter 0.3s ease; } .ds-btn-primary:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 22px 40px -16px rgba(139,92,246,0.7); filter: saturate(1.08) brightness(1.03); } .ds-btn-primary:active { transform: translateY(-1px) scale(0.99); } .ds-btn-primary:focus-visible { outline: 3px solid rgba(139,92,246,0.55); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action — white fill, 1.5px border, violet text.",
+      "html": "<button class=\"ds-btn-outline\">Hủy</button>",
+      "css": ".ds-btn-outline { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 700; font-size: 15px; color: #6d28d9; background: #fff; border: 1.5px solid #e8e4f1; border-radius: 13px; padding: 15px 16px; cursor: pointer; transition: transform 0.25s ease, background 0.3s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.3s ease; } .ds-btn-outline:hover { transform: translateY(-3px); background: #faf7ff; border-color: #b79df0; color: #6d28d9; box-shadow: 0 16px 30px -18px rgba(124,58,237,0.5); } .ds-btn-outline:active { transform: translateY(-1px); } .ds-btn-outline:focus-visible { outline: 3px solid rgba(139,92,246,0.45); outline-offset: 2px; }"
+    },
+    {
+      "name": "Soft Utility Button",
+      "kind": "button",
+      "refersTo": "button-soft",
+      "description": "Quiet topbar/sidebar utility button (search, language, home).",
+      "html": "<button class=\"ds-btn-soft\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#8b5cf6\" stroke-width=\"1.7\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18\" stroke-linecap=\"round\"/></svg>VI</button>",
+      "css": ".ds-btn-soft { display: inline-flex; align-items: center; gap: 6px; font-family: 'Be Vietnam Pro', sans-serif; font-weight: 600; font-size: 13px; color: #4b4660; background: #f4f2fb; border: 1px solid #ece8f6; border-radius: 10px; padding: 9px 12px; cursor: pointer; transition: transform 0.2s ease, background 0.25s ease, box-shadow 0.25s ease; } .ds-btn-soft:hover { transform: translateY(-2px); background: #f1ecfc; box-shadow: 0 10px 20px -14px rgba(124,58,237,0.5); } .ds-btn-soft:active { transform: translateY(0) scale(0.97); } .ds-btn-soft:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Primary layout container — white, 20px radius, soft violet glow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Hiệu suất tuần này</div><div class=\"ds-card-body\">Bài đăng của bạn đạt 12.4K lượt tiếp cận trên Facebook và Instagram.</div></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid #efeaf8; border-radius: 20px; padding: 24px; box-shadow: 0 18px 38px -34px rgba(80,40,140,0.5); transition: transform 0.3s cubic-bezier(0.2,0.7,0.2,1), box-shadow 0.3s ease, border-color 0.3s ease; } .ds-card:hover { transform: translateY(-6px); border-color: #e3d8f7; box-shadow: 0 30px 50px -28px rgba(80,40,140,0.55); } .ds-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 15px; color: #211c38; margin-bottom: 8px; } .ds-card-body { font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; line-height: 1.55; color: #5b5670; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labeled icon + input row; faint violet fill, border-shift focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Email</span><span class=\"ds-input-wrap\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#a39bbf\" stroke-width=\"1.8\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"3\"/><path d=\"m3 7 9 6 9-6\"/></svg><input class=\"ds-input\" type=\"email\" placeholder=\"ban@aima.app\"></span></label>",
+      "css": ".ds-field { display: block; } .ds-field-label { display: block; font-family: 'Be Vietnam Pro', sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; color: #574f6e; margin-bottom: 8px; } .ds-input-wrap { display: flex; align-items: center; gap: 10px; border: 1.5px solid #e7e2f2; border-radius: 13px; padding: 0 15px; background: #fbfaff; transition: border-color 0.2s ease, box-shadow 0.2s ease; } .ds-input-wrap:focus-within { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.18); } .ds-input { flex: 1; border: none; outline: none; background: transparent; font-family: 'Be Vietnam Pro', sans-serif; font-size: 15px; padding: 14px 0; color: #241f3a; } .ds-input::placeholder { color: #8a85a0; }"
+    },
+    {
+      "name": "Active Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Sidebar item — gradient fill + glow when active; soft wash on hover when not.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item is-active\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg><span>Bảng điều khiển</span></button><button class=\"ds-nav-item\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#9b94b5\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg><span>Tạo bài</span></button></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 3px; width: 232px; } .ds-nav-item { display: flex; align-items: center; gap: 12px; width: 100%; border: none; border-radius: 12px; padding: 11px 13px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 14px; font-weight: 600; text-align: left; color: #5b5670; background: transparent; cursor: pointer; transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; } .ds-nav-item:hover { transform: translateY(-2px) translateX(3px) scale(1.03); background: #f6f3fc; box-shadow: 0 8px 16px -8px rgba(124,92,255,0.25); } .ds-nav-item.is-active { color: #fff; background: linear-gradient(120deg,#46d6ec 0%,#897ce3 46%,#f083c0 100%); box-shadow: 0 12px 24px -14px rgba(139,92,246,0.8); } .ds-nav-item:focus-visible { outline: 2px solid #8b5cf6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Platform Chip",
+      "kind": "chip",
+      "refersTo": "platform-chip",
+      "description": "Brand glyph (white) on the platform's brand color — FB / IG / TH only.",
+      "html": "<div style=\"display:flex;gap:10px\"><span class=\"ds-chip ds-chip-fb\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"#fff\"><path d=\"M14 9h3V5.5h-3c-2.2 0-3.8 1.7-3.8 3.9V11H8v3.4h2.2V21h3.4v-6.6H16L16.5 11h-2.9V9.4c0-.3.2-.4.4-.4z\"/></svg></span><span class=\"ds-chip ds-chip-ig\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.9\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"5\"/><circle cx=\"12\" cy=\"12\" r=\"3.4\"/><circle cx=\"17.2\" cy=\"6.8\" r=\"1\" fill=\"#fff\" stroke=\"none\"/></svg></span><span class=\"ds-chip ds-chip-th\"></span></div>",
+      "css": ".ds-chip { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: #fff; } .ds-chip-fb { background: #1877f2; } .ds-chip-ig { background: linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7); } .ds-chip-th { background: #000; }"
+    },
+    {
+      "name": "Bouncing Loader",
+      "kind": "custom",
+      "refersTo": "loader",
+      "description": "Signature brand-tinted bouncing-ball loader for auth/data waits.",
+      "html": "<div class=\"ds-loader\"></div>",
+      "css": ".ds-loader { position: relative; width: 120px; height: 90px; margin: 0 auto; } .ds-loader:before { content: ''; position: absolute; bottom: 30px; left: 50px; height: 30px; width: 30px; border-radius: 50%; background: linear-gradient(120deg,#46d6ec,#897ce3,#f083c0); animation: ds-bounce 0.5s ease-in-out infinite alternate; } .ds-loader:after { content: ''; position: absolute; right: 0; top: 0; height: 7px; width: 45px; border-radius: 4px; box-shadow: 0 5px 0 #e0ddee, -35px 50px 0 #e0ddee, -70px 95px 0 #e0ddee; animation: ds-step 1s ease-in-out infinite; } @keyframes ds-bounce { 0% { transform: scale(1,0.7); } 40% { transform: scale(0.8,1.2); } 60% { transform: scale(1,1); } 100% { bottom: 140px; } } @keyframes ds-step { 0% { box-shadow: 0 10px 0 rgba(0,0,0,0), 0 10px 0 #e0ddee, -35px 50px 0 #e0ddee, -70px 90px 0 #e0ddee; } 100% { box-shadow: 0 10px 0 #e0ddee, -35px 50px 0 #e0ddee, -70px 90px 0 #e0ddee, -70px 90px 0 rgba(0,0,0,0); } } @media (prefers-reduced-motion: reduce) { .ds-loader:before, .ds-loader:after { animation: none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Aurora Workbench",
+    "overview": "AIMA is a serious tool wearing a bright, optimistic face. The brand lives in a single signature gesture — the aurora gradient (cyan → violet → pink) — which appears on primary actions, the active nav item, avatars, and key brand moments. Everything else is a disciplined, low-noise work canvas: a lavender-tinted near-white ground, white cards, quiet violet-gray text. The color earns attention precisely because it is rare; the canvas stays calm so content, calendars, and analytics read clearly. Built for solo creators and small-business owners who are not marketing experts, it leans friendly and rounded — generous radii, soft purple glows, springy hover — without tipping into toy-like. It should make a one-person marketing team feel supported and in control, never overwhelmed.",
+    "keyCharacteristics": [
+      "One signature gradient (aurora, with sunset / ocean alternates), used as accent, never wallpaper.",
+      "Lavender-white canvas (#f7f6fd) + pure-white cards; depth from soft purple glow, not hard shadow.",
+      "Friendly geometry: 13–20px radii, full pills for tags/badges, springy micro-interactions.",
+      "Dual sans on a contrast axis: Plus Jakarta Sans (display) over Be Vietnam Pro (body).",
+      "Bilingual (vi / en) and WCAG 2.1 AA — every animation has a reduced-motion branch."
+    ],
+    "rules": [
+      { "name": "The Rare Aurora Rule", "body": "The aurora gradient is an accent, not a surface. It carries primary actions, the single active nav item, and brand glyphs — never a full page or card background. Its rarity is what makes it read as 'the brand.'", "section": "colors" },
+      { "name": "The Legible Muted Rule", "body": "#5b5670/#6b6680 are the floor for anything users actually read; #8a85a0 and lighter are reserved for large text, single-word labels, and decorative captions. Never set body or placeholder text in the faintest grays — hold WCAG 2.1 AA (4.5:1).", "section": "colors" },
+      { "name": "The Owned-Platform Rule", "body": "Platform brand colors are fixed constants from theme.ts (PLATFORM_BG). Never hand-pick a 'close enough' platform color or re-tint to match a theme.", "section": "colors" },
+      { "name": "The One-Eyebrow Rule", "body": "Tiny uppercase tracked labels appear in exactly one role: the sidebar section divider. Do not scatter all-caps kickers above content sections.", "section": "typography" },
+      { "name": "The Flat-at-Rest Rule", "body": "If a resting surface needs a hard shadow to separate from the canvas, the contrast or border is wrong. Shadows respond to state (hover, active, brand emphasis); they don't establish a permanent stacking theatre.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do drive brand color from var(--brand) and platform color from PLATFORM_BG — never hardcode a gradient string or platform hex inline.",
+      "Do keep the aurora gradient to accents; the calm #f7f6fd canvas is the default.",
+      "Do keep surfaces flat at rest and let depth come from the soft purple glow on hover/active.",
+      "Do set readable text in #1b1730/#211c38 and secondary text no lighter than #5b5670 to hold WCAG 2.1 AA.",
+      "Do pair Plus Jakarta Sans (display) with Be Vietnam Pro (body), and add new display strings in both vi and en.",
+      "Do give every animation a prefers-reduced-motion branch and keep a visible :focus-visible ring.",
+      "Do reuse the primitives — Card/cardStyle, Icon/GradIcon, Loader, PlatformTag and the .btn-grad/.btn-outline/.btn-soft/.lift-card classes — before authoring new style."
+    ],
+    "donts": [
+      "Don't drift toward the cold enterprise-SaaS dashboard (navy/gray, hard shadows, jargon-dense panels).",
+      "Don't build everything-on-screen marketing-automation density (HubSpot/Marketo).",
+      "Don't collapse into the generic AI-startup template — decorative glassmorphism everywhere, the gradient as wallpaper, interchangeable purple-glow cards.",
+      "Don't go childish or gimmicky — no bouncy/elastic easing, no cartoon illustration, no oversized novelty.",
+      "Don't over-round: cards top out at 20px, form controls at 13–14px; full pills are for tags/badges only.",
+      "Don't pair a 1px border with a wide soft drop shadow as decoration, or use hard 0 2px 4px Material shadows.",
+      "Don't add tracked all-caps eyebrows above content sections — the only tracked micro-label is the sidebar section divider.",
+      "Don't introduce platforms or platform colors outside Facebook → Instagram → Threads."
+    ]
+  }
+}

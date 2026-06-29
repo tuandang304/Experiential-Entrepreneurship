@@ -61,6 +61,7 @@ export const cardStyle: CSSProperties = {
   borderRadius: 20,
   padding: 24,
   boxShadow: '0 18px 38px -34px rgba(80,40,140,.5)',
+  minWidth: 0,
 };
 
 export function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {

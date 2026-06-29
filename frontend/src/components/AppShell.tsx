@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Globe, Search, Home } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Globe, Search, Home, Menu, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../auth/AuthContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
@@ -34,7 +34,7 @@ export function LangButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function Topbar() {
+function Topbar({ mobileMenuOpen, setMobileMenuOpen }: { mobileMenuOpen?: boolean, setMobileMenuOpen?: (v: boolean) => void }) {
   const { t, brandGradient, profile, go } = useApp();
   const { user } = useAuth();
   const { isMobile } = useBreakpoint();
@@ -55,10 +55,25 @@ function Topbar() {
         padding: isMobile ? '0 14px' : '0 28px',
         position: 'sticky',
         top: 0,
-        zIndex: 20,
+        zIndex: 40,
       }}
     >
-      <PageHeading />
+      {isMobile && (
+        <button
+          onClick={() => setMobileMenuOpen?.(!mobileMenuOpen)}
+          style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+        >
+          {mobileMenuOpen ? <X size={24} color="#4b4660" /> : <Menu size={24} color="#4b4660" />}
+        </button>
+      )}
+
+      {isMobile && (
+        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => go('landing')}>
+          <img src="/aima-h.png" alt="AIMA" style={{ height: 24, width: 'auto' }} />
+        </div>
+      )}
+
+      {!isMobile && <PageHeading />}
       {!isMobile && (
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 12, padding: '9px 14px', width: 'min(340px,100%)' }}>
@@ -68,22 +83,24 @@ function Topbar() {
         </div>
       )}
       {isMobile && <div style={{ flex: 1 }} />}
-      <button
-        onClick={() => go('landing')}
-        title={t.nHome}
-        aria-label={t.nHome}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 10, padding: isMobile ? '9px' : '9px 12px', fontSize: 13, fontWeight: 600, color: '#4b4660', cursor: 'pointer' }}
-      >
-        <Home size={16} color="#8b5cf6" strokeWidth={1.8} />
-        {!isMobile && t.nHome}
-      </button>
-      <LangButton compact />
-      <button style={{ position: 'relative', width: 42, height: 42, borderRadius: 11, background: '#f4f2fb', border: '1px solid #ece8f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+      {!isMobile && (
+        <button
+          onClick={() => go('landing')}
+          title={t.nHome}
+          aria-label={t.nHome}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 10, padding: '9px 12px', fontSize: 13, fontWeight: 600, color: '#4b4660', cursor: 'pointer' }}
+        >
+          <Home size={16} color="#8b5cf6" strokeWidth={1.8} />
+          {t.nHome}
+        </button>
+      )}
+      {!isMobile && <LangButton compact />}
+      <button style={{ position: 'relative', width: isMobile ? 38 : 42, height: isMobile ? 38 : 42, borderRadius: 11, background: '#f4f2fb', border: '1px solid #ece8f6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
         <Icon icon={ICON.bell} size={19} stroke="#5b5670" />
         <span style={{ position: 'absolute', top: 9, right: 10, width: 8, height: 8, borderRadius: '50%', background: '#ec4899', border: '2px solid #f4f2fb' }} />
       </button>
       <div onClick={() => go('profile')} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', paddingLeft: 6, borderLeft: '1px solid #eee9f6' }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', background: brandGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15, overflow: 'hidden' }}>
+        <div style={{ width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, borderRadius: '50%', background: brandGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15, overflow: 'hidden' }}>
           {avatarUrl ? <img src={avatarUrl} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
         </div>
         {!isMobile && (
@@ -129,12 +146,17 @@ function PageHeading() {
 
 export default function AppShell({ children, variant = 'app' }: { children: ReactNode; variant?: 'app' | 'admin' }) {
   const { isMobile } = useBreakpoint();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: isMobile ? 'column' : 'row', background: '#f7f6fd' }}>
-      <Sidebar mode={variant} />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: isMobile ? 'column' : 'row', background: '#f7f6fd', position: 'relative' }}>
+      <Sidebar mode={variant} mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <Topbar />
-        <main style={{ flex: 1, padding: isMobile ? '18px 14px' : 28, overflow: 'auto' }}>{children}</main>
+        <Topbar mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+        <main style={{ flex: 1, padding: isMobile ? '18px 14px' : 28, overflow: 'auto' }}>
+          {isMobile && <div style={{ marginBottom: 16 }}><PageHeading /></div>}
+          {children}
+        </main>
       </div>
     </div>
   );

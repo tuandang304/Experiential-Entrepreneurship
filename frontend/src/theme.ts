@@ -24,6 +24,13 @@ export const PLATFORM_BG: Record<string, string> = {
   TH: '#000000',
 };
 
+// Dải accent trên đỉnh card nền tảng (top accent bar) — gradient theo brand từng nền tảng.
+export const PLATFORM_ACCENT: Record<string, string> = {
+  FB: 'linear-gradient(90deg,#1877f2,#3b9eff)',
+  IG: 'linear-gradient(90deg,#f9ce34,#ee2a7b,#6228d7)',
+  TH: 'linear-gradient(90deg,#000000,#404040)',
+};
+
 export const PLATFORMS: Platform[] = [
   { name: 'Facebook', tag: 'FB', bg: PLATFORM_BG.FB },
   { name: 'Instagram', tag: 'IG', bg: PLATFORM_BG.IG },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Sparkles, Plus, LayoutList, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { Sparkles, LayoutList, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useUiStore } from '../../store/useUiStore';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -168,7 +168,7 @@ export default function StrategyManager() {
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {filtered.map((s) => (
-              <StrategyCard key={s.id} s={s} selected={(mode.kind === 'view' || mode.kind === 'edit') && mode.id === s.id} onSelect={() => selectStrategy(s.id)} onToggleStatus={(next) => toggleStatus(s, next)} />
+              <StrategyCard key={s.id} s={s} selected={(mode.kind === 'view' || mode.kind === 'edit') && mode.id === s.id} onSelect={() => selectStrategy(s.id)} onToggleStatus={(next) => toggleStatus(s, next)} onEdit={() => openEdit(s.id)} onDelete={() => setDeleting(s)} />
             ))}
           </div>
           <div style={{ fontSize: 12, color: '#8a85a0', textAlign: 'center', paddingTop: 4 }}>{t.csShowing} 1-{filtered.length}/{filtered.length} {t.csStrategiesWord}</div>
@@ -189,14 +189,12 @@ export default function StrategyManager() {
     </div>
   );
 
-  // Rail thu gọn (~56px): mũi tên mở rộng, nút +, rồi icon các chiến lược (hover xem tên).
+  // Rail thu gọn (~56px): mũi tên mở rộng + icon chữ cái các chiến lược (hover xem tên).
+  // Nút "+" đã bỏ — đã có nút "Tạo chiến lược mới" ở header trang (góc phải trên).
   const rail = (
     <div style={{ width: 56, minWidth: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #efeaf8', borderRadius: 16, padding: '10px 0' }}>
       <button onClick={() => setCollapsed(false)} aria-label={t.csExpandList} title={t.csExpandList} style={{ width: 40, height: 40, borderRadius: 12, border: '1px solid #efeaf8', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
         <Icon icon={PanelLeftOpen} size={18} stroke="#7c3aed" />
-      </button>
-      <button onClick={openCreate} aria-label={t.csCreate} title={t.csCreate} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: brandGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-        <Icon icon={Plus} size={18} stroke="#fff" />
       </button>
       <div style={{ width: 28, height: 1, background: '#efeaf8' }} />
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', overflow: 'visible' }}>

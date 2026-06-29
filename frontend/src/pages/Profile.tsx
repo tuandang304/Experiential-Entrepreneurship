@@ -156,10 +156,10 @@ export default function Profile() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: stacked ? '1fr' : '1fr 1.4fr', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: stacked ? 'flex' : 'grid', gridTemplateColumns: stacked ? undefined : '1fr 1.4fr', flexDirection: stacked ? 'column' : undefined, gap: 20, alignItems: stacked ? 'stretch' : 'start' }}>
         {/* LEFT column: identity + change password + delete account */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Card style={{ padding: 26, textAlign: 'center' }}>
+        <div style={{ display: stacked ? 'contents' : 'flex', flexDirection: 'column', gap: 20 }}>
+          <Card style={{ padding: 26, textAlign: 'center', order: stacked ? 1 : undefined }}>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={onAvatarChange} style={{ display: 'none' }} />
             <div ref={avatarMenuRef} style={{ position: 'relative', width: 90, height: 90, margin: '0 auto 14px' }}>
               <button
@@ -219,7 +219,7 @@ export default function Profile() {
           </Card>
 
           {/* Change password */}
-          <Card style={{ padding: 22 }}>
+          <Card style={{ padding: 22, order: stacked ? 4 : undefined }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: '#f3edff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Lock size={20} strokeWidth={1.8} />
@@ -234,7 +234,7 @@ export default function Profile() {
 
           {/* Delete account — ẩn khi đã ở trạng thái chờ xóa (đã có banner khôi phục) */}
           {!pendingDelete && (
-            <Card style={{ padding: 22, border: '1px solid #f3c9d6' }}>
+            <Card style={{ padding: 22, border: '1px solid #f3c9d6', order: stacked ? 5 : undefined }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: '#fdeef2', color: '#e23d6e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Trash2 size={20} strokeWidth={1.8} />
@@ -250,8 +250,8 @@ export default function Profile() {
         </div>
 
         {/* RIGHT column: edit + activity */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Card style={{ padding: 26 }}>
+        <div style={{ display: stacked ? 'contents' : 'flex', flexDirection: 'column', gap: 20 }}>
+          <Card style={{ padding: 26, order: stacked ? 2 : undefined }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38', marginBottom: 18 }}>{t.prEdit}</div>
             {error && <div style={{ fontSize: 12.5, color: '#e23d6e', background: '#fdeef2', border: '1px solid #f3c9d6', borderRadius: 10, padding: '10px 13px', marginBottom: 14 }}>{error}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
@@ -275,7 +275,7 @@ export default function Profile() {
             <button onClick={save} disabled={saving} style={{ marginTop: 18, border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 700, fontSize: 14, color: '#fff', background: brandGradient, boxShadow: '0 14px 28px -12px rgba(139,92,246,.6)', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.75 : 1 }}>{saving ? t.processing : saved ? t.saved : t.save}</button>
           </Card>
 
-          <Card style={{ padding: 26 }}>
+          <Card style={{ padding: 26, order: stacked ? 3 : undefined }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38', marginBottom: 18 }}>{t.prActivity}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {acts.map((a, i) => (

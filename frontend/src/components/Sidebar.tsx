@@ -19,7 +19,7 @@ interface Item {
   badge?: string;
 }
 
-export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
+export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpen }: { mode?: 'app' | 'admin', mobileMenuOpen?: boolean, setMobileMenuOpen?: (v: boolean) => void }) {
   const { t, route, go, brandGradient, logout } = useApp();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -96,37 +96,43 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
 
   const springConfig = { mass: 0.1, stiffness: 200, damping: 15 };
 
-  const renderItem = (n: Item) => {
-    const active = route === n.key;
-    return (
-      <motion.button
-        key={n.key}
-        onClick={() => go(n.key)}
-        title={collapsed ? n.label : undefined}
-        style={itemBase(active)}
-        whileHover={{
-          y: isMobile ? 0 : -2,
-          x: isMobile ? 0 : (collapsed ? 0 : 3),
-          scale: isMobile ? 1 : 1.03,
-          boxShadow: active
-            ? '0 12px 24px -10px rgba(139,92,246,.95)'
-            : '0 8px 16px -8px rgba(124,92,255,.25)',
-          background: active ? brandGradient : '#f6f3fc',
-        }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ type: 'spring', ...springConfig }}
-      >
-        <Icon icon={n.icon} stroke={active ? '#fff' : '#9b94b5'} />
-        {!collapsed && <span style={{ flex: 1, textAlign: 'left' }}>{n.label}</span>}
-        {!collapsed && n.badge && <span style={{ background: brandGradient, color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{n.badge}</span>}
-      </motion.button>
-    );
-  };
+    const renderItem = (n: Item) => {
+      const active = route === n.key;
+      return (
+        <motion.button
+          key={n.key}
+          onClick={() => {
+            go(n.key);
+            if (isMobile && setMobileMenuOpen) setMobileMenuOpen(false);
+          }}
+          title={collapsed ? n.label : undefined}
+          style={itemBase(active)}
+          whileHover={{
+            y: isMobile ? 0 : -2,
+            x: isMobile ? 0 : (collapsed ? 0 : 3),
+            scale: isMobile ? 1 : 1.03,
+            boxShadow: active
+              ? '0 12px 24px -10px rgba(139,92,246,.95)'
+              : '0 8px 16px -8px rgba(124,92,255,.25)',
+            background: active ? brandGradient : '#f6f3fc',
+          }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', ...springConfig }}
+        >
+          <Icon icon={n.icon} stroke={active ? '#fff' : '#9b94b5'} />
+          {(!collapsed || isMobile) && <span style={{ flex: 1, textAlign: 'left' }}>{n.label}</span>}
+          {(!collapsed || isMobile) && n.badge && <span style={{ background: brandGradient, color: '#fff', fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '2px 8px' }}>{n.badge}</span>}
+        </motion.button>
+      );
+    };
 
   // Nút chuyển sang khu vực Quản trị (chỉ ở app mode + ADMIN).
   const adminPortalBtn = (
     <motion.button
-      onClick={() => go('admin')}
+      onClick={() => {
+        go('admin');
+        if (isMobile && setMobileMenuOpen) setMobileMenuOpen(false);
+      }}
       title={collapsed ? t.navAdmin : undefined}
       style={{ ...itemBase(false), background: '#f4ecff', color: '#6d28d9', border: '1px solid #e7d9fb' }}
       whileHover={{
@@ -140,15 +146,18 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
       transition={{ type: 'spring', ...springConfig }}
     >
       <Icon icon={ICON.admin} stroke="#7c3aed" />
-      {!collapsed && <span style={{ flex: 1, textAlign: 'left' }}>{t.navAdmin}</span>}
-      {!collapsed && <Icon icon={ChevronRight} size={16} stroke="#7c3aed" />}
+      {(!collapsed || isMobile) && <span style={{ flex: 1, textAlign: 'left' }}>{t.navAdmin}</span>}
+      {(!collapsed || isMobile) && <Icon icon={ChevronRight} size={16} stroke="#7c3aed" />}
     </motion.button>
   );
 
   // Nút quay lại ứng dụng (chỉ ở admin mode).
   const backBtn = (
     <motion.button
-      onClick={() => go('dashboard')}
+      onClick={() => {
+        go('dashboard');
+        if (isMobile && setMobileMenuOpen) setMobileMenuOpen(false);
+      }}
       title={collapsed ? t.backToApp : undefined}
       style={{ ...itemBase(false), background: '#f4f2fb', border: '1px solid #ece8f6' }}
       whileHover={{
@@ -162,13 +171,16 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
       transition={{ type: 'spring', ...springConfig }}
     >
       <Icon icon={ChevronLeft} stroke="#7c5cff" />
-      {!collapsed && <span style={{ flex: 1, textAlign: 'left' }}>{t.backToApp}</span>}
+      {(!collapsed || isMobile) && <span style={{ flex: 1, textAlign: 'left' }}>{t.backToApp}</span>}
     </motion.button>
   );
 
   const logoutBtn = (
     <motion.button
-      onClick={logout}
+      onClick={() => {
+        logout();
+        if (isMobile && setMobileMenuOpen) setMobileMenuOpen(false);
+      }}
       title={collapsed ? t.signOut : undefined}
       style={{ ...itemBase(false), color: '#d6336c' }}
       whileHover={{
@@ -182,7 +194,7 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
       transition={{ type: 'spring', ...springConfig }}
     >
       <Icon icon={ICON.logout} stroke="#e25c84" />
-      {!collapsed && <span style={{ flex: 1, textAlign: 'left' }}>{t.signOut}</span>}
+      {(!collapsed || isMobile) && <span style={{ flex: 1, textAlign: 'left' }}>{t.signOut}</span>}
     </motion.button>
   );
 
@@ -235,16 +247,35 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
     </div>
   );
 
-  // ----- Thân (mobile): một hàng cuộn ngang -----
-  const mobileRow: ReactNode = (
-    <nav style={{ display: 'flex', flexDirection: 'row', gap: 6, alignItems: 'center', flex: 'none' }}>
+  // ----- Thân (mobile): xổ xuống dọc -----
+  const mobileDropdown: ReactNode = (
+    <nav style={{
+      position: 'fixed',
+      top: 62,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: '#fff',
+      zIndex: 50,
+      padding: '16px 20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      overflowY: 'auto'
+    }}>
       {isAdminArea && backBtn}
       {navItems.map(renderItem)}
       {!isAdminArea && isAdmin && adminPortalBtn}
+      <div style={{ height: 1, background: '#eee9f6', margin: '8px 0' }} />
       {bottomItems.map(renderItem)}
       {logoutBtn}
     </nav>
   );
+
+  if (isMobile) {
+    if (!mobileMenuOpen) return null;
+    return mobileDropdown;
+  }
 
   return (
     <aside
@@ -333,7 +364,7 @@ export default function Sidebar({ mode = 'app' }: { mode?: 'app' | 'admin' }) {
         </button>
       )}
 
-      {isMobile ? mobileRow : desktopBody}
+      {!isMobile && desktopBody}
     </aside>
   );
 }

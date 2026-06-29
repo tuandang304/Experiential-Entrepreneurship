@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { strategyGoalOptions, contentTypeOptions, contentStyleOptions, ctaSampleOptions, audienceSampleOptions, TIME_SLOT_OPTIONS, FREQUENCY_UNIT_OPTIONS } from '../../data';
 import { createContentStrategy, updateContentStrategy, type ContentStrategy, type ContentStrategyInput, type Platform, type FrequencyUnit } from '../../api/contentStrategy';
 import { validateStrategy, type StrategyFormErrors } from '../../validations/brandValidation';
@@ -17,6 +18,9 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
   onDelete?: () => void;
 }) {
   const { t, lang } = useApp();
+  const { isMobile, isTablet } = useBreakpoint();
+  // #3.2: 3 hàng cố định trên desktop; mobile/tablet thu về 1 cột tự nhiên cho dễ nhập.
+  const gridCols = (n: number) => (isMobile || isTablet ? '1fr' : `repeat(${n}, minmax(0, 1fr))`);
   const [name, setName] = useState(strategy?.name ?? '');
   const [goals, setGoals] = useState<string[]>(strategy?.goals ?? []);
   const [contentTypes, setContentTypes] = useState<string[]>(strategy?.contentTypes ?? []);
@@ -84,9 +88,22 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.csNamePh} style={fieldInput} />
       </Field>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+      {/* Bố cục 3 hàng cố định (#3.2). minmax(0,1fr) cho phép card co lại; mobile/tablet fallback 1 cột (gridCols). */}
+      {/* Hàng 1 — 2 card (1/2 mỗi card): Mục tiêu content · Phong cách nội dung. */}
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols(2), gap: 16 }}>
         <Box><Field label={t.csGoal} required help={t.csGoalHelp} error={err('goals')}><ChipMultiSelect options={strategyGoalOptions(lang)} value={goals} onChange={setGoals} creatable /></Field></Box>
+        <Box><Field label={t.csStyle} required help={t.csStyleHelp}><ChipMultiSelect options={contentStyleOptions(lang)} value={styles} onChange={setStyles} creatable /></Field></Box>
+      </div>
+
+      {/* Hàng 2 — 3 card (1/3 mỗi card): Loại nội dung ưu tiên · Đối tượng mục tiêu · Khung giờ ưu tiên. */}
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols(3), gap: 16 }}>
         <Box><Field label={t.csTypes} required help={t.csTypesHelp} error={err('contentTypes')}><ChipMultiSelect options={contentTypeOptions(lang)} value={contentTypes} onChange={setContentTypes} max={5} creatable /></Field></Box>
+        <Box><Field label={t.csAudience} required help={t.csAudienceHelp}><TagInput value={audiences} onChange={setAudiences} addLabel={t.csAddAudience} suggestions={audienceSampleOptions(lang)} /></Field></Box>
+        <Box><Field label={t.csTimes} required help={t.csTimesHelp}><TagInput value={timeSlots} onChange={setTimeSlots} addLabel={t.csAddTime} suggestions={TIME_SLOT_OPTIONS} /></Field></Box>
+      </div>
+
+      {/* Hàng 3 — 3 card (1/3 mỗi card): Tần suất đăng · Nền tảng đăng · CTA mong muốn. */}
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols(3), gap: 16 }}>
         <Box><Field label={t.csFreq} required help={t.csFreqHelp}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
@@ -110,9 +127,6 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
           </div>
         </Field></Box>
         <Box><Field label={t.csPlatforms} required help={t.csPlatformsHelp} error={err('platforms')}><PlatformSelect value={platforms} onChange={setPlatforms} /></Field></Box>
-        <Box><Field label={t.csTimes} required help={t.csTimesHelp}><TagInput value={timeSlots} onChange={setTimeSlots} addLabel={t.csAddTime} suggestions={TIME_SLOT_OPTIONS} /></Field></Box>
-        <Box><Field label={t.csAudience} required help={t.csAudienceHelp}><TagInput value={audiences} onChange={setAudiences} addLabel={t.csAddAudience} suggestions={audienceSampleOptions(lang)} /></Field></Box>
-        <Box><Field label={t.csStyle} required help={t.csStyleHelp}><ChipMultiSelect options={contentStyleOptions(lang)} value={styles} onChange={setStyles} creatable /></Field></Box>
         <Box><Field label={t.csCta} required help={t.csCtaHelp}><TagInput value={ctas} onChange={setCtas} addLabel={t.csAddCta} suggestions={ctaSampleOptions(lang)} /></Field></Box>
       </div>
 

@@ -55,8 +55,22 @@ export function ChipMultiSelect({ options, value, onChange, max, creatable }: { 
     onChange([...value, v]);
   };
   const custom = creatable ? value.filter((v) => !options.includes(v)) : []; // giá trị tự nhập (ngoài gợi ý)
+  // #3.1: ô nhập liệu lên trên cùng, các chip gợi ý xếp xuống dưới.
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+      {creatable && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(draft); } }}
+            placeholder={t.csAddPh}
+            disabled={atMax}
+            style={{ ...fieldInput, flex: 1, opacity: atMax ? 0.6 : 1 }}
+          />
+          <button onClick={() => add(draft)} disabled={atMax} style={{ flex: 'none', border: '1.5px dashed #d6cdf0', background: '#faf8ff', borderRadius: 11, padding: '0 14px', fontSize: 13, fontWeight: 700, color: '#7c5cff', cursor: atMax ? 'not-allowed' : 'pointer', opacity: atMax ? 0.6 : 1 }}>+ {t.csAddCustom}</button>
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {options.map((opt) => {
           const on = value.includes(opt);
@@ -71,19 +85,6 @@ export function ChipMultiSelect({ options, value, onChange, max, creatable }: { 
           </span>
         ))}
       </div>
-      {creatable && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(draft); } }}
-            placeholder={t.csAddPh}
-            disabled={atMax}
-            style={{ ...fieldInput, flex: 1, opacity: atMax ? 0.6 : 1 }}
-          />
-          <button onClick={() => add(draft)} disabled={atMax} style={{ flex: 'none', border: '1.5px dashed #d6cdf0', background: '#faf8ff', borderRadius: 11, padding: '0 14px', fontSize: 13, fontWeight: 700, color: '#7c5cff', cursor: atMax ? 'not-allowed' : 'pointer', opacity: atMax ? 0.6 : 1 }}>+ {t.csAddCustom}</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -100,16 +101,9 @@ export function TagInput({ value, onChange, addLabel, placeholder, suggestions }
   };
   const remove = (v: string) => onChange(value.filter((x) => x !== v));
   const avail = (suggestions ?? []).filter((s) => !value.includes(s));
+  // #3.1: ô nhập liệu lên trên cùng → tag đã chọn → các chip gợi ý xếp xuống dưới.
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {value.map((v) => (
-          <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: brandGradient, color: '#fff', borderRadius: 10, padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>
-            {v}
-            <button onClick={() => remove(v)} aria-label="Remove" style={{ border: 'none', background: 'rgba(255,255,255,.25)', color: '#fff', borderRadius: 6, width: 16, height: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
-          </span>
-        ))}
-      </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
           value={draft}
@@ -120,6 +114,16 @@ export function TagInput({ value, onChange, addLabel, placeholder, suggestions }
         />
         <button onClick={() => add(draft)} style={{ flex: 'none', border: '1.5px dashed #d6cdf0', background: '#faf8ff', borderRadius: 11, padding: '0 14px', fontSize: 13, fontWeight: 700, color: '#7c5cff', cursor: 'pointer' }}>+ {addLabel}</button>
       </div>
+      {value.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          {value.map((v) => (
+            <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: brandGradient, color: '#fff', borderRadius: 10, padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>
+              {v}
+              <button onClick={() => remove(v)} aria-label="Remove" style={{ border: 'none', background: 'rgba(255,255,255,.25)', color: '#fff', borderRadius: 6, width: 16, height: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, lineHeight: 1 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
       {avail.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
           {avail.map((s) => (

@@ -141,7 +141,7 @@ export default function Dashboard() {
           <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 28, margin: '6px 0 8px' }}>{t.dashHeadline}</div>
           <div style={{ fontSize: 14, opacity: 0.9, maxWidth: 480, lineHeight: 1.5 }}>{t.dashHeadSub}</div>
         </div>
-        <button onClick={() => go('create')} className="btn-grad" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: 'none', borderRadius: 13, padding: '14px 22px', fontWeight: 700, fontSize: 14, color: '#6d28d9', background: '#fff', whiteSpace: 'nowrap', cursor: 'pointer', boxShadow: '0 10px 22px -10px rgba(0,0,0,.3)' }}>
+        <button onClick={() => go('create')} className="btn-grad" style={{ width: isMobile ? '100%' : 'auto', justifyContent: 'center', display: 'inline-flex', alignItems: 'center', gap: 8, border: 'none', borderRadius: 13, padding: '14px 22px', fontWeight: 700, fontSize: 14, color: '#6d28d9', background: '#fff', whiteSpace: 'nowrap', cursor: 'pointer', boxShadow: '0 10px 22px -10px rgba(0,0,0,.3)' }}>
           <Icon icon={Sparkles} size={16} stroke="#6d28d9" />
           {t.createNew}
         </button>
@@ -213,9 +213,9 @@ export default function Dashboard() {
               <span style={{ fontSize: 12.5, fontWeight: 700, color: primary.trendColor, background: primary.trendBg, padding: '3px 9px', borderRadius: 999 }}>{primary.trend}</span>
             </div>
           </div>
-          <div style={{ flex: isMobile ? 'none' : '2', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)' }}>
+          <div style={{ flex: isMobile ? 'none' : '2', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)' }}>
             {secondary.map((s, i) => (
-              <div key={i} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 7, borderRight: i < 2 ? '1px solid #efeaf8' : 'none' }}>
+              <div key={i} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 7, borderRight: isMobile ? 'none' : (i < 2 ? '1px solid #efeaf8' : 'none'), borderBottom: isMobile && i < 2 ? '1px solid #efeaf8' : 'none' }}>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: '#5b5670' }}>{s.label}</span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap' }}>
                   <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 22, color: '#211c38', lineHeight: 1 }}>{s.value}</div>
@@ -393,9 +393,9 @@ function DashboardSkeleton({ isMobile, isTablet }: { isMobile: boolean; isTablet
           </div>
         ))}
       </div>
-      <div style={{ ...skCard, display: 'flex', gap: 22, height: 96, alignItems: 'center' }}>
+      <div style={{ ...skCard, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 22, height: isMobile ? 'auto' : 96, alignItems: isMobile ? 'stretch' : 'center' }}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} style={{ flex: 1 }}>
+          <div key={i} style={{ flex: 1, paddingBottom: isMobile && i < 3 ? 16 : 0, borderBottom: isMobile && i < 3 ? '1px solid #efeaf8' : 'none' }}>
             <div className="sk" style={{ width: '70%', height: 12 }} />
             <div className="sk" style={{ width: '45%', height: 22, marginTop: 10 }} />
           </div>

@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Link2, RefreshCw, ShieldCheck } from 'lucide-react';
+import { RefreshCw, ShieldCheck, ShieldUser, Link, PlugZap, Activity, ShieldAlert, Users, type LucideIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useUiStore } from '../store/useUiStore';
 import { Card, PlatformTag, Loader } from '../components/ui';
 import { notifLabels, themeOptions } from '../data';
-import { PLATFORMS, PLATFORM_BG } from '../theme';
+import { PLATFORMS, PLATFORM_BG, PLATFORM_ACCENT } from '../theme';
+import { STATUS_COLORS, STATUS_NEUTRAL, STATUS_PENDING } from '../statusTokens';
 import {
   listConnections,
   getConnectionStats,
@@ -26,15 +27,17 @@ import {
 type SettingsTab = 'appearance' | 'notifications' | 'connections';
 
 // ——— Status badge color map ———
+// Dùng chung design token (statusTokens.ts) với phần "Chú thích trạng thái" bên dưới
+// để badge trong bảng và chấm chú thích luôn đồng bộ màu.
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  ACTIVE: { bg: '#dcfce7', color: '#16a34a' },
-  CONNECTED: { bg: '#dcfce7', color: '#16a34a' },
-  EXPIRED: { bg: '#ffedd5', color: '#c2410c' },
-  DISCONNECTED: { bg: '#f3f4f6', color: '#6b7280' },
-  ERROR: { bg: '#fee2e2', color: '#dc2626' },
-  REVOKED: { bg: '#fee2e2', color: '#dc2626' },
-  PENDING: { bg: '#fef3c7', color: '#d97706' },
-  ON_HOLD: { bg: '#fef3c7', color: '#d97706' },
+  ACTIVE: STATUS_COLORS.active,
+  CONNECTED: STATUS_COLORS.active,
+  EXPIRED: STATUS_COLORS.expired,
+  ON_HOLD: STATUS_PENDING,
+  ERROR: STATUS_COLORS.error,
+  REVOKED: STATUS_COLORS.error,
+  PENDING: STATUS_PENDING,
+  DISCONNECTED: STATUS_NEUTRAL,
 };
 
 // ——— Filter option values ———
@@ -354,6 +357,15 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
     }
   };
 
+  // ——— Số tài khoản đã liên kết theo từng nền tảng (từ data thật, không hardcode) ———
+  // "Đã liên kết" = mọi kết nối chưa ở trạng thái DISCONNECTED.
+  const linkedCounts = connections.reduce<Record<string, number>>((acc, c) => {
+    if (c.connectionStatus === 'DISCONNECTED') return acc;
+    const tag = PLATFORM_TO_TAG[c.platform];
+    acc[tag] = (acc[tag] ?? 0) + 1;
+    return acc;
+  }, {});
+
   // ——— Filtering & Pagination ———
   const filtered = statusFilter === 'ALL'
     ? connections
@@ -462,46 +474,48 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
 
         {/* Left card: Kết nối tài khoản mới */}
-        <Card style={{ flex: 1, padding: '18px 20px' }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#211c38' }}>{t.seConnectTitle}</div>
-          <div style={{ fontSize: 12, color: '#8a85a0', marginBottom: 14, marginTop: 2 }}>{t.seConnectSub}</div>
-          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
-            {PLATFORMS.map((pl) => {
-              const platformEnum = TAG_TO_PLATFORM[pl.tag];
-              const isConnecting = connectingPlatform === pl.tag;
-              return (
-                <div key={pl.tag} style={{
-                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                  border: '1px solid #efeaf8', borderRadius: 10, padding: '12px 12px 14px',
-                  background: '#fdfcff',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <PlatformTag tag={pl.tag} bg={pl.bg} size={42} radius={99} />
-                    <span style={{ fontWeight: 700, fontSize: 14.5, color: '#2b2543' }}>{pl.name}</span>
-                    <span style={{ color: '#22d3ee', fontSize: 10, verticalAlign: 'super' }}>*</span>
-                  </div>
-                  <button
-                    onClick={() => handleConnect(platformEnum)}
-                    disabled={isConnecting}
-                    style={{
-                      border: '1.5px solid #ddd6f3', background: '#fff', borderRadius: 8,
-                      padding: '6px 17px', fontSize: 13, fontWeight: 700, color: '#7c3aed',
-                      cursor: isConnecting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                      opacity: isConnecting ? 0.6 : 1,
-                    }}
-                  >
-                    {isConnecting ? (
-                      <span>{t.processing}</span>
-                    ) : (
-                      <>
-                        <Link2 size={11} color="#7c3aed" strokeWidth={2.2} />
-                        {t.seConnect}
-                      </>
-                    )}
-                  </button>
-                </div>
-              );
-            })}
+        <Card style={{ flex: 1, padding: '20px 22px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38' }}>{t.seConnectTitle}</div>
+              <div style={{ fontSize: 12.5, color: '#8a85a0', marginTop: 3 }}>{t.seConnectSub}</div>
+            </div>
+            {/* Icon button góc phải trên — kiểm tra tất cả kết nối. */}
+            <button
+              onClick={handleCheckAll}
+              disabled={loading || connections.length === 0}
+              title={t.seCheckAllConn}
+              aria-label={t.seCheckAllConn}
+              style={{
+                flex: 'none', width: 34, height: 34, borderRadius: 10, border: 'none',
+                background: STATUS_COLORS.info.bg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: loading || connections.length === 0 ? 'not-allowed' : 'pointer', opacity: loading || connections.length === 0 ? 0.6 : 1,
+                transition: 'filter .15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.95)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
+            >
+              <PlugZap size={17} color={STATUS_COLORS.info.color} strokeWidth={2.2} />
+            </button>
+          </div>
+          {/* 3 card nền tảng: desktop 3/hàng, tablet hẹp 2/hàng, mobile 1/hàng. */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            {PLATFORMS.map((pl) => (
+              <PlatformConnectCard
+                key={pl.tag}
+                tag={pl.tag}
+                name={pl.name}
+                bg={pl.bg}
+                accent={PLATFORM_ACCENT[pl.tag]}
+                desc={pl.tag === 'FB' ? t.seFbDesc : pl.tag === 'IG' ? t.seIgDesc : t.seThDesc}
+                linkedCount={linkedCounts[pl.tag] ?? 0}
+                linkedLabel={t.seLinkedCount}
+                connectLabel={t.seConnect}
+                processingLabel={t.processing}
+                connecting={connectingPlatform === pl.tag}
+                onConnect={() => handleConnect(TAG_TO_PLATFORM[pl.tag])}
+              />
+            ))}
           </div>
         </Card>
 
@@ -509,10 +523,10 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
         <Card style={{ minWidth: isMobile ? 'auto' : 280, padding: '18px 20px' }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#211c38', marginBottom: 14 }}>{t.seOverview}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <StatMini label={t.seTotalAccounts} value={stats.total} color="#7c3aed" bg="#f1e9ff" />
-            <StatMini label={t.seActiveAccounts} value={stats.active} color="#16a34a" bg="#e8f8ee" />
-            <StatMini label={t.seExpiredAccounts} value={stats.expired} color="#c2410c" bg="#ffedd5" />
-            <StatMini label={t.seErrorAccounts} value={stats.error} color="#dc2626" bg="#fee2e2" />
+            <StatMini icon={Users} label={t.seTotalAccounts} value={stats.total} color={STATUS_COLORS.info.color} bg={STATUS_COLORS.info.bg} />
+            <StatMini icon={Activity} label={t.seActiveAccounts} value={stats.active} color={STATUS_COLORS.active.color} bg={STATUS_COLORS.active.bg} />
+            <StatMini icon={ShieldAlert} label={t.seExpiredAccounts} value={stats.expired} color={STATUS_COLORS.expired.color} bg={STATUS_COLORS.expired.bg} />
+            <StatMini icon={ShieldAlert} label={t.seErrorAccounts} value={stats.error} color={STATUS_COLORS.error.color} bg={STATUS_COLORS.error.bg} />
           </div>
         </Card>
       </div>
@@ -751,14 +765,49 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
         )}
       </Card>
 
-      {/* ——— Status info section ——— */}
+      {/* ——— Status legend section ——— */}
       <Card style={{ padding: 26 }}>
         <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38', marginBottom: 16 }}>{t.seInfoTitle}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: 14 }}>
-          <InfoItem emoji="🟢" label={t.seStatusActive} desc={t.seInfoActive} />
-          <InfoItem emoji="🟠" label={t.seStatusExpired} desc={t.seInfoExpired} />
-          <InfoItem emoji="⚫" label={t.seStatusError} desc={t.seInfoError} />
-          <InfoItem emoji="🛡️" label={t.seInfoCheckLabel} desc={t.seInfoCheck} />
+        {/* Stack dọc ở mobile/tablet: divider dọc tự đổi thành divider ngang. align flex-start để nhãn các khối ngang hàng nhau. */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'stretch', gap: isMobile ? 24 : 0 }}>
+          {/* Khối TRÁI — 3 trạng thái thật (~60%), phân bố đều bằng grid 3 cột bằng nhau, ngăn cách bằng divider dọc mờ. */}
+          <div
+            style={{
+              flex: isMobile ? undefined : 3,
+              display: isMobile ? 'flex' : 'grid',
+              flexDirection: isMobile ? 'column' : undefined,
+              gridTemplateColumns: isMobile ? undefined : 'repeat(3, 1fr)',
+              alignItems: isMobile ? 'flex-start' : 'stretch',
+              gap: isMobile ? 24 : 0,
+            }}
+          >
+            <StatusLegendItem token="active" label={t.seStatusActive} desc={t.seInfoActive} />
+            <StatusLegendItem token="expired" label={t.seStatusExpired} desc={t.seInfoExpired} />
+            <StatusLegendItem token="error" label={t.seStatusError} desc={t.seInfoError} />
+            {isMobile && <Divider isMobile={isMobile} />}
+          </div>
+
+          {/* Divider giữa khối trái và khối phải. */}
+          <Divider isMobile={isMobile} />
+
+          {/* Khối PHẢI (~40%) — "Kiểm tra trước khi đăng": cụm (text + shield) căn giữa khối, có gap rộng, đệm hai mép. */}
+          {/* align flex-start để nhãn "Kiểm tra trước khi đăng" ngang hàng với 3 nhãn trạng thái. */}
+          <div style={{ flex: isMobile ? undefined : 2, display: 'flex', justifyContent: 'center', padding: isMobile ? 0 : '0 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: 28 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <ShieldUser size={18} color={STATUS_COLORS.info.color} strokeWidth={2.2} style={{ flex: 'none' }} />
+                  <span style={{ fontWeight: 700, fontSize: 14, color: '#211c38' }}>{t.seInfoCheckLabel}</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#8a85a0', lineHeight: 1.5 }}>{t.seInfoCheck}</div>
+              </div>
+              <img
+                src="/shield.png"
+                alt={t.seShieldAlt}
+                style={{ height: 108, width: 'auto', maxWidth: 186, objectFit: 'contain', flex: 'none', margin: '4px 8px 4px 0', marginTop: '-20px' }}
+              />
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -811,23 +860,91 @@ function ConnectionsTab({ t, lang, isMobile, brandGradient, searchParams, setSea
 
 // ——— Small helpers ———
 
-function StatMini({ label, value, color, bg }: { label: string; value: number; color: string; bg: string }) {
+// Ô số liệu "Tổng quan kết nối": icon trạng thái + số + nhãn. Màu icon/số dùng chung token với badge bảng.
+function StatMini({ icon: IconCmp, label, value, color, bg }: { icon: LucideIcon; label: string; value: number; color: string; bg: string }) {
   return (
-    <div style={{ background: bg, borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#3f3a55', marginTop: 2 }}>{label}</div>
+    <div style={{ background: bg, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <IconCmp size={20} color={color} strokeWidth={2.2} style={{ flex: 'none' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+        <span style={{ fontSize: 20, fontWeight: 800, color }}>{value}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#3f3a55', marginTop: 2 }}>{label}</span>
+      </div>
     </div>
   );
 }
 
-function InfoItem({ emoji, label, desc }: { emoji: string; label: string; desc: string }) {
+// Card 1 nền tảng: dải accent brand trên đỉnh + logo + badge số liên kết + tên + mô tả + nút "+ Kết nối".
+function PlatformConnectCard({ tag, name, bg, accent, desc, linkedCount, linkedLabel, connectLabel, processingLabel, connecting, onConnect }: {
+  tag: string; name: string; bg: string; accent: string; desc: string;
+  linkedCount: number; linkedLabel: string; connectLabel: string; processingLabel: string;
+  connecting: boolean; onConnect: () => void;
+}) {
+  const [hover, setHover] = useState(false);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ fontSize: 14 }}>
-        <span style={{ marginRight: 6 }}>{emoji}</span>
-        <span style={{ fontWeight: 700, color: '#211c38' }}>{label}</span>
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 12,
+        border: '1px solid #efeaf8', borderRadius: 16, padding: '18px 16px 16px', background: '#fff',
+        boxShadow: hover ? '0 12px 28px -12px rgba(40,20,90,.22)' : '0 2px 8px rgba(40,20,90,.05)',
+        transition: 'box-shadow .18s',
+      }}
+    >
+      {/* Dải accent brand trên đỉnh (full width, bo theo radius card). */}
+      <span aria-hidden style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: accent }} />
+
+      {/* Hàng logo + badge số liên kết. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <PlatformTag tag={tag} bg={bg} size={46} radius={12} />
+        <span style={{ background: STATUS_NEUTRAL.bg, color: STATUS_NEUTRAL.color, borderRadius: 999, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap' }}>
+          {linkedCount} {linkedLabel}
+        </span>
+      </div>
+
+      {/* Tên + mô tả phụ. */}
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38' }}>{name}</div>
+        <div style={{ fontSize: 12, color: '#8a85a0', marginTop: 2 }}>{desc}</div>
+      </div>
+
+      {/* Nút "+ Kết nối" full width — outline primary, hover thành filled nhạt. */}
+      <button
+        onClick={onConnect}
+        disabled={connecting}
+        style={{
+          width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          border: `1.5px solid ${STATUS_COLORS.info.color}`, borderRadius: 11, padding: '9px 14px',
+          fontSize: 13.5, fontWeight: 700, color: STATUS_COLORS.info.color,
+          background: hover && !connecting ? STATUS_COLORS.info.bg : '#fff',
+          cursor: connecting ? 'wait' : 'pointer', opacity: connecting ? 0.6 : 1, transition: 'background .15s',
+        }}
+      >
+        {connecting ? <span>{processingLabel}</span> : <><Link size={15} strokeWidth={2.4} />{connectLabel}</>}
+      </button>
+    </div>
+  );
+}
+
+// Một mục chú thích trạng thái: chấm tròn (màu lấy từ design token) + label + mô tả.
+// Chấm dùng STATUS_COLORS.color → đồng bộ với badge trạng thái trong bảng.
+function StatusLegendItem({ token, label, desc }: { token: 'active' | 'expired' | 'error'; label: string; desc: string }) {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, padding: '0 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 12, height: 12, borderRadius: '50%', background: STATUS_COLORS[token].color, flex: 'none' }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#211c38' }}>{label}</span>
       </div>
       <div style={{ fontSize: 12, color: '#8a85a0', lineHeight: 1.5 }}>{desc}</div>
     </div>
   );
+}
+
+// Divider mờ: dọc trên desktop, ngang khi stack ở mobile/tablet.
+// Màu lấy từ token primary (STATUS_COLORS.info) phủ opacity thấp → đồng bộ theme, không hardcode màu xám.
+const DIVIDER_BG = `${STATUS_COLORS.info.color}1f`; // #7c3aed @ ~12% alpha
+function Divider({ isMobile }: { isMobile: boolean }) {
+  return isMobile
+    ? <div style={{ height: 1, background: DIVIDER_BG, alignSelf: 'stretch' }} />
+    : <div style={{ width: 1, background: DIVIDER_BG, alignSelf: 'stretch' }} />;
 }

@@ -211,7 +211,7 @@ export const STRINGS = {
     csCreatedAt: 'Tạo lúc', csUpdatedAt: 'Cập nhật',
     csPreview: 'Xem trước', csEditBtn: 'Chỉnh sửa', csDeleteBtn: 'Xóa chiến lược', csSave: 'Lưu thay đổi', csCancel: 'Hủy',
     csActivate: 'Kích hoạt', csPause: 'Tạm dừng', csToggleErr: 'Không đổi được trạng thái. Thử lại.',
-    csName: 'Tên chiến lược', csNamePh: 'VD: Tăng nhận diện thương hiệu', csForBrand: 'Thuộc thương hiệu',
+    csName: 'Tên chiến lược', csNamePh: 'VD: Tăng nhận diện thương hiệu', csForBrand: 'Thuộc thương hiệu', csBrandLabel: 'Thương hiệu',
     csDelTitle: 'Xóa chiến lược?', csDelMsg: 'Hành động này sẽ xóa chiến lược content và không thể hoàn tác.',
     // 8 mục thuộc tính + helper
     csGoal: 'Mục tiêu content', csGoalHelp: 'Chọn một hoặc nhiều mục tiêu',
@@ -408,7 +408,7 @@ export const STRINGS = {
     csCreatedAt: 'Created', csUpdatedAt: 'Updated',
     csPreview: 'Preview', csEditBtn: 'Edit', csDeleteBtn: 'Delete strategy', csSave: 'Save changes', csCancel: 'Cancel',
     csActivate: 'Activate', csPause: 'Pause', csToggleErr: "Couldn't change status. Try again.",
-    csName: 'Strategy name', csNamePh: 'e.g. Boost brand awareness', csForBrand: 'For brand',
+    csName: 'Strategy name', csNamePh: 'e.g. Boost brand awareness', csForBrand: 'For brand', csBrandLabel: 'Brand',
     csDelTitle: 'Delete strategy?', csDelMsg: 'This will delete the content strategy and cannot be undone.',
     csGoal: 'Content goal', csGoalHelp: 'Choose one or more goals',
     csTypes: 'Preferred content types', csTypesHelp: 'Choose up to 5 content types',

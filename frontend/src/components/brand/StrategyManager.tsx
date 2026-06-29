@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Sparkles, Plus, LayoutList, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useUiStore } from '../../store/useUiStore';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Loader, Icon, Card } from '../ui';
 import { SearchInput, FilterSelect } from '../admin/AdminListPage';
@@ -69,6 +70,19 @@ export default function StrategyManager() {
   const openCreate = () => { setMode({ kind: 'create' }); if (isMobile) setMobileOpen(false); else setCollapsed(true); };
   const openEdit = (id: string) => { setMode({ kind: 'edit', id }); if (!isMobile) setCollapsed(true); };
 
+  // Nút "Tạo chiến lược mới" nằm ở header trang (Brand) → nhận tín hiệu qua store để mở form tạo mới.
+  // So sánh với nonce trước đó để KHÔNG tự mở khi mới mount (nonce toàn cục có thể > 0 từ lần trước).
+  const strategyCreateNonce = useUiStore((s) => s.strategyCreateNonce);
+  const lastCreateNonce = useRef(strategyCreateNonce);
+  useEffect(() => {
+    if (strategyCreateNonce !== lastCreateNonce.current) {
+      lastCreateNonce.current = strategyCreateNonce;
+      openCreate();
+    }
+    // openCreate đọc giá trị mới mỗi lần render khi nonce đổi; chỉ phụ thuộc nonce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strategyCreateNonce]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((s) => (status === 'all' || s.status === status) && (!q || s.name.toLowerCase().includes(q)));
@@ -77,6 +91,12 @@ export default function StrategyManager() {
   // Trả về Promise để StrategyCard tự quản lý trạng thái đang xử lý / lỗi (FR-13).
   const toggleStatus = (s: ContentStrategy, next: StrategyStatus) =>
     setStrategyStatus(s.id, next).then((updated) => setItems((prev) => prev.map((x) => (x.id === s.id ? updated : x))));
+
+  // Sau khi tạo/sửa: dùng đối tượng backend trả về để cập nhật danh sách ngay (badge sidebar đồng bộ, không reload).
+  const onSaved = (s: ContentStrategy, created: boolean) => {
+    setItems((prev) => (created ? [s, ...prev] : prev.map((x) => (x.id === s.id ? s : x))));
+    setMode({ kind: 'view', id: s.id });
+  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -119,13 +139,10 @@ export default function StrategyManager() {
 
   const selected = mode.kind === 'view' || mode.kind === 'edit' ? items.find((s) => s.id === mode.id) ?? null : null;
 
-  // Header danh sách: chip thương hiệu + nút tạo mới + 1 slot phải (thu gọn / đóng drawer).
+  // Header danh sách: chip thương hiệu + 1 slot phải (thu gọn / đóng drawer) — nút tạo mới đã chuyển lên header trang.
   const listHeader = (trailing?: ReactNode) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      {activeBrand && <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed', background: '#f4ecff', borderRadius: 999, padding: '5px 12px' }}>{activeBrand.brandName}</span>}
-      <button onClick={openCreate} className="btn-grad" style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#fff', background: brandGradient, cursor: 'pointer' }}>
-        <Icon icon={Plus} size={15} stroke="#fff" />{t.csCreate}
-      </button>
+      {activeBrand && <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed', background: '#f4ecff', borderRadius: 999, padding: '5px 12px' }}>{t.csBrandLabel}: {activeBrand.brandName}</span>}
       {trailing}
     </div>
   );
@@ -164,7 +181,7 @@ export default function StrategyManager() {
   const expandedSidebar = (
     <div style={{ width: 340, minWidth: 340, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {listHeader(
-        <button onClick={() => setCollapsed(true)} aria-label={t.csCollapseList} title={t.csCollapseList} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid #efeaf8', background: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }}>
+        <button onClick={() => setCollapsed(true)} aria-label={t.csCollapseList} title={t.csCollapseList} style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: 10, border: '1px solid #efeaf8', background: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }}>
           <Icon icon={PanelLeftClose} size={17} stroke="#7c3aed" />
         </button>,
       )}
@@ -193,9 +210,14 @@ export default function StrategyManager() {
               aria-label={s.name || '—'}
               title={s.name || '—'}
               className="strategy-card"
-              style={{ position: 'relative', width: 40, height: 40, borderRadius: 12, cursor: 'pointer', border: isSel ? '2px solid transparent' : '1px solid #efeaf8', backgroundImage: isSel ? `linear-gradient(#f0e6fc,#f0e6fc), ${brandGradient}` : undefined, backgroundOrigin: 'border-box', backgroundClip: isSel ? 'padding-box, border-box' : undefined, background: isSel ? undefined : '#faf8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 15, color: '#5b4b86', boxShadow: isSel ? '0 16px 32px -16px rgba(139,92,246,.85)' : undefined, transform: isSel ? 'translateY(-1px)' : undefined, overflow: 'visible' }}
+              style={{ position: 'relative', width: 40, height: 40, borderRadius: 12, cursor: 'pointer', border: isSel ? '1.5px solid #a855f7' : '1px solid #efeaf8', background: isSel ? 'rgba(168, 85, 247, 0.06)' : '#faf8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 15, color: '#5b4b86', boxShadow: isSel ? '0 2px 8px rgba(168, 85, 247, 0.12)' : undefined }}
             >
-              {(s.name || '—').charAt(0).toUpperCase()}
+              {isSel && (
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 10, overflow: 'hidden', pointerEvents: 'none' }}>
+                  <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: brandGradient }} />
+                </div>
+              )}
+              <span style={{ position: 'relative', zIndex: 1 }}>{(s.name || '—').charAt(0).toUpperCase()}</span>
               <span style={{ position: 'absolute', top: -2, right: -2, width: 9, height: 9, borderRadius: '50%', background: dotColor(s.status), border: '2px solid #fff' }} />
             </button>
           );
@@ -205,13 +227,16 @@ export default function StrategyManager() {
   );
 
   const detail = (
-    <Card style={{ flex: 1, minWidth: 0, padding: 22, alignSelf: 'flex-start' }}>
+    // max-width + canh giữa: khi thu gọn sidebar, vùng nội dung không giãn full-width gây mất cân đối (#4.2).
+    <Card style={{ width: '100%', maxWidth: 1400, minWidth: 0, padding: 22, alignSelf: 'flex-start' }}>
       {load === 'error' ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: '#8a85a0' }}>{t.listError}</div>
       ) : mode.kind === 'create' ? (
-        <StrategyEditor strategy={null} brandId={brandId} brandName={activeBrand?.brandName ?? ''} onCancel={() => setMode({ kind: 'empty' })} onSaved={(s) => { refresh(brandId); setMode({ kind: 'view', id: s.id }); }} />
+        // key="editor-create" → form luôn remount sạch khi bấm "+" (reset toàn bộ state, không dính chiến lược vừa sửa).
+        <StrategyEditor key="editor-create" strategy={null} brandId={brandId} brandName={activeBrand?.brandName ?? ''} onCancel={() => setMode({ kind: 'empty' })} onSaved={onSaved} />
       ) : mode.kind === 'edit' && selected ? (
-        <StrategyEditor strategy={selected} brandId={brandId} brandName={activeBrand?.brandName ?? ''} onCancel={() => setMode({ kind: 'view', id: selected.id })} onSaved={(s) => { refresh(brandId); setMode({ kind: 'view', id: s.id }); }} onDelete={() => setDeleting(selected)} />
+        // key theo id → đổi sang sửa chiến lược khác cũng remount, không leak state giữa các chiến lược.
+        <StrategyEditor key={`editor-${selected.id}`} strategy={selected} brandId={brandId} brandName={activeBrand?.brandName ?? ''} onCancel={() => setMode({ kind: 'view', id: selected.id })} onSaved={onSaved} onDelete={() => setDeleting(selected)} />
       ) : mode.kind === 'view' && selected ? (
         <StrategyDetail s={selected} onEdit={() => openEdit(selected.id)} onDelete={() => setDeleting(selected)} />
       ) : (
@@ -263,7 +288,8 @@ export default function StrategyManager() {
       <div className="transition-all duration-300 ease-in-out" style={{ width: collapsed ? 56 : 340, flex: 'none', overflow: collapsed ? 'visible' : 'hidden' }}>
         {collapsed ? rail : expandedSidebar}
       </div>
-      {detail}
+      {/* flex:1 + canh giữa để Card (max-width 1400) không lệch trái khi sidebar thu gọn. */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center' }}>{detail}</div>
       {deleting && <ConfirmDialog title={t.csDelTitle} message={t.csDelMsg} confirmLabel={t.csDeleteBtn} busy={busy} onConfirm={confirmDelete} onClose={() => setDeleting(null)} />}
     </div>
   );

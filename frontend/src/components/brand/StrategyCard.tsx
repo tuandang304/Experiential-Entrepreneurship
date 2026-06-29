@@ -9,10 +9,12 @@ const fmtDate = (iso: string) => {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN');
 };
 
+// Badge map theo status backend trả về (không hardcode theo điều kiện UI):
+// ACTIVE → xanh lá (emerald) đang chạy; DRAFT & PAUSED → amber (Agent AI chưa chạy).
 export function statusMeta(s: StrategyStatus, t: ReturnType<typeof useApp>['t']): { tone: Tone; label: string } {
   if (s === 'ACTIVE') return { tone: 'success', label: t.csStActive };
   if (s === 'PAUSED') return { tone: 'warning', label: t.csStPaused };
-  return { tone: 'neutral', label: t.csStDraft };
+  return { tone: 'warning', label: t.csStDraft };
 }
 
 export default function StrategyCard({ s, selected, onSelect, onToggleStatus }: { s: ContentStrategy; selected: boolean; onSelect: () => void; onToggleStatus: (next: StrategyStatus) => void | Promise<unknown> }) {
@@ -39,8 +41,23 @@ export default function StrategyCard({ s, selected, onSelect, onToggleStatus }: 
     <div
       onClick={onSelect}
       className="strategy-card"
-      style={{ cursor: 'pointer', border: selected ? '2px solid transparent' : '1px solid #efeaf8', backgroundImage: selected ? `linear-gradient(#fdfbff,#fdfbff), ${brandGradient}` : undefined, backgroundOrigin: 'border-box', backgroundClip: selected ? 'padding-box, border-box' : undefined, background: selected ? undefined : '#fff', borderRadius: 14, padding: 15, display: 'flex', flexDirection: 'column', gap: 9, boxShadow: selected ? '0 16px 32px -16px rgba(139,92,246,.75)' : undefined, transform: selected ? 'translateY(-1px)' : undefined }}
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        // Active: viền đều 4 cạnh + nền tím nhạt + shadow bao đều (#3). Không active: viền slate-200 luôn rõ trên nền trắng (#4.1).
+        border: selected ? '1.5px solid #a855f7' : '1px solid #e2e8f0',
+        background: selected ? 'rgba(168, 85, 247, 0.06)' : '#fff',
+        borderRadius: 14,
+        padding: 15,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 9,
+        boxShadow: selected ? '0 2px 8px rgba(168, 85, 247, 0.12)' : undefined,
+      }}
     >
+      {/* Accent bar dọc trái (gradient brand cyan→purple) để nhận biết card đang chọn (#3). */}
+      {selected && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: brandGradient }} />}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <button
           type="button"

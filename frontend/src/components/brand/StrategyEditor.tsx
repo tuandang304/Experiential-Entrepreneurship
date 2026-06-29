@@ -52,12 +52,13 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
     }
   };
 
-  // Lưu chính — validate đầy đủ FR-13; giữ status hiện tại, tạo mới mặc định Nháp.
+  // "Lưu thay đổi" — validate đầy đủ FR-13 rồi KÍCH HOẠT (ACTIVE): Agent AI sẽ tạo nội dung & lên lịch.
+  // Áp dụng cho cả tạo mới lẫn chỉnh sửa; status do backend trả về quyết định UI sau khi lưu.
   const submit = () => {
     const errs = validateStrategy({ name, goals, contentTypes, platforms });
     setErrors(errs);
     if (Object.keys(errs).length) return;
-    persist(strategy?.status ?? 'DRAFT', 'full');
+    persist('ACTIVE', 'full');
   };
 
   // Lưu nháp — chỉ cần tên để nhận diện; luôn lưu ở trạng thái Nháp.
@@ -83,7 +84,7 @@ export default function StrategyEditor({ strategy, brandId, brandName, onCancel,
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.csNamePh} style={fieldInput} />
       </Field>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
         <Box><Field label={t.csGoal} required help={t.csGoalHelp} error={err('goals')}><ChipMultiSelect options={strategyGoalOptions(lang)} value={goals} onChange={setGoals} creatable /></Field></Box>
         <Box><Field label={t.csTypes} required help={t.csTypesHelp} error={err('contentTypes')}><ChipMultiSelect options={contentTypeOptions(lang)} value={contentTypes} onChange={setContentTypes} max={5} creatable /></Field></Box>
         <Box><Field label={t.csFreq} required help={t.csFreqHelp}>

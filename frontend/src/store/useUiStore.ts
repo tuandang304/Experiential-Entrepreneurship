@@ -21,6 +21,10 @@ interface UiState {
   // đúng khu vực gốc (vd đang ở Quản trị/Bảng điều khiển) thay vì nhảy về.
   profileOrigin: Route | null;
   setProfileOrigin: (r: Route | null) => void;
+  // Tín hiệu "tạo chiến lược mới": nút nằm ở header trang (Brand) còn logic mở form
+  // ở StrategyManager — tăng nonce để StrategyManager mở form tạo mới (không lift toàn bộ state).
+  strategyCreateNonce: number;
+  requestStrategyCreate: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -37,4 +41,6 @@ export const useUiStore = create<UiState>((set) => ({
   toggleAutoCollapse: () => set((s) => ({ autoCollapse: !s.autoCollapse })),
   profileOrigin: null,
   setProfileOrigin: (r) => set((s) => (s.profileOrigin === r ? s : { profileOrigin: r })),
+  strategyCreateNonce: 0,
+  requestStrategyCreate: () => set((s) => ({ strategyCreateNonce: s.strategyCreateNonce + 1 })),
 }));

@@ -33,7 +33,7 @@ export default function StrategyDetail({ s, onEdit, onDelete }: { s: ContentStra
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
         <Sec label={t.csGoal}><ReadChips items={s.goals} /></Sec>
         <Sec label={t.csTypes}><ReadChips items={s.contentTypes} /></Sec>
         <Sec label={t.csFreq}><span style={valTxt}>{s.frequencyCount ?? 3} {t.csPostsPer} {unitLabel}</span></Sec>

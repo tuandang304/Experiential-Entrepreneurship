@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useUiStore } from '../store/useUiStore';
 import { Icon } from '../components/ui';
@@ -16,6 +16,7 @@ export default function Brand() {
   const { t, brandGradient } = useApp();
   const [tab, setTab] = useState<Tab>('brand');
   const setSidebarCollapsed = useUiStore((s) => s.setSidebarCollapsed);
+  const requestStrategyCreate = useUiStore((s) => s.requestStrategyCreate);
 
   // Tự thu gọn sidebar khi ở trang Hồ sơ thương hiệu để có không gian rộng hơn cho
   // form full-page; trả lại trạng thái trước đó khi rời trang (dùng đúng cơ chế collapse
@@ -49,10 +50,14 @@ export default function Brand() {
           {tabBtn('strategy', t.bpTabStrategy)}
         </div>
         {tab === 'strategy' && (
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <a href="#" onClick={(e) => e.preventDefault()} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: '#7c3aed', background: '#f4ecff', border: '1px solid #e7d9fb', borderRadius: 10, padding: '9px 14px', cursor: 'pointer' }}>
               <Icon icon={HelpCircle} size={16} stroke="#7c3aed" />{t.csGuide}
             </a>
+            {/* Nút tạo chiến lược chuyển lên header (cạnh Hướng dẫn); logic mở form vẫn ở StrategyManager qua store. */}
+            <button onClick={requestStrategyCreate} className="btn-grad" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 700, color: '#fff', background: brandGradient, cursor: 'pointer' }}>
+              <Icon icon={Plus} size={15} stroke="#fff" />{t.csCreate}
+            </button>
           </div>
         )}
       </div>

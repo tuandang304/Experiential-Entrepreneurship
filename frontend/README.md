@@ -9,7 +9,20 @@ Vite, style bằng Tailwind + CSS thuần, gọi backend qua Axios.
 
 ## Stack
 
-TypeScript · React 18 · React Router DOM 6 · Zustand · Axios · Vite · Tailwind CSS · lucide-react · anime.js
+| Công nghệ               | Phiên bản | Vai trò / Mô tả                              |
+| ----------------------- | --------- | -------------------------------------------- |
+| **TypeScript**          | ^5.5.3    | Ngôn ngữ lập trình                           |
+| **React**               | ^18.3.1   | Thư viện UI (SPA)                            |
+| **React Router DOM**    | ^6.24.0   | Định tuyến trang                             |
+| **Zustand**             | ^5.0.14   | Quản lý state toàn cục                        |
+| **Axios**               | ^1.7.2    | Gọi HTTP tới backend (instance dùng chung)   |
+| **Vite**                | ^8.0.16   | Build tool & dev server                      |
+| **Tailwind CSS**        | ^3.4.4    | Framework CSS tiện ích để style              |
+| **lucide-react**        | ^1.21.0   | Bộ icon                                      |
+| **anime.js** (animejs)  | ^4.4.1    | Thư viện animation                           |
+
+> `package.json` còn có vài dependency không liệt kê ở đây (`framer-motion`, `gsap`, `three`,
+> `@react-three/fiber`, `lenis`) — phần Stack chỉ nêu các thư viện cốt lõi.
 
 ## Chạy dự án
 

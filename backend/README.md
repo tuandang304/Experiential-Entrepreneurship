@@ -8,8 +8,22 @@ REST API cho **AIMA – AI Marketing Assistant**. Java 21 + Spring Boot, xác th
 
 ## Stack
 
-Java 21 · Spring Boot 4 · Spring Security + JWT (Nimbus JOSE) · OAuth2 Client (Google) · Spring Data JPA / Hibernate ·
-PostgreSQL · Redis · Brevo Transactional Email (HTTP API) · MapStruct · Lombok · springdoc-openapi (Swagger)
+| Công nghệ | Phiên bản | Vai trò / Mô tả |
+|---|---|---|
+| **Java** | 21 | Ngôn ngữ lập trình (yêu cầu JDK 21) |
+| **Spring Boot** | 4.0.6 | Framework chính xây dựng REST API (parent quản lý version các starter) |
+| **Spring Security + JWT (Nimbus JOSE)** | Boot-managed | Xác thực & phân quyền; ký/verify token JWT (HS512) |
+| **OAuth2 Client (Google)** | Boot-managed | Đăng nhập bằng Google |
+| **Spring Data JPA / Hibernate** | Boot-managed | ORM, truy cập dữ liệu |
+| **PostgreSQL (JDBC driver)** | Boot-managed (runtime) | Cơ sở dữ liệu quan hệ chính |
+| **Redis (Spring Data Redis)** | Boot-managed | Blacklist access token, tracking refresh token, OTP state, OAuth state |
+| **Brevo Transactional Email** | HTTP API (RestClient) | Gửi email OTP / reset mật khẩu qua HTTP (không dùng SMTP) |
+| **MapStruct** | 1.5.5.Final | Map entity ↔ DTO |
+| **Lombok** | Boot-managed | Giảm boilerplate (constructor, getter/setter…) |
+| **springdoc-openapi (Swagger)** | 3.0.3 | Tài liệu API & Swagger UI |
+
+> `jjwt` 0.12.6 có khai báo trong `pom.xml` nhưng **vestigial** — token thực tế ký/verify bằng **Nimbus JOSE**.
+> "Boot-managed" = phiên bản do `spring-boot-starter-parent 4.0.6` quản lý, không ghim cứng trong `pom.xml`.
 
 ## Yêu cầu
 

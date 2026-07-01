@@ -211,8 +211,8 @@ export default function StrategyManager() {
               style={{ position: 'relative', width: 40, height: 40, borderRadius: 12, cursor: 'pointer', border: isSel ? '1.5px solid #a855f7' : '1px solid #efeaf8', background: isSel ? 'rgba(168, 85, 247, 0.06)' : '#faf8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 15, color: '#5b4b86', boxShadow: isSel ? '0 2px 8px rgba(168, 85, 247, 0.12)' : undefined }}
             >
               {isSel && (
-                <div style={{ position: 'absolute', inset: 0, borderRadius: 10, overflow: 'hidden', pointerEvents: 'none' }}>
-                  <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: brandGradient }} />
+                <div style={{ position: 'absolute', inset: -1.5, borderRadius: 12, overflow: 'hidden', pointerEvents: 'none' }}>
+                  <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4.5, background: brandGradient }} />
                 </div>
               )}
               <span style={{ position: 'relative', zIndex: 1 }}>{(s.name || '—').charAt(0).toUpperCase()}</span>
@@ -283,7 +283,7 @@ export default function StrategyManager() {
   // ===== Desktop: sidebar animate width (340 ↔ 56), content phải tự co giãn theo. =====
   return (
     <div style={{ display: 'flex', flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
-      <div className="transition-all duration-300 ease-in-out" style={{ width: collapsed ? 56 : 340, flex: 'none', overflow: collapsed ? 'visible' : 'hidden' }}>
+      <div className="transition-all duration-300 ease-in-out" style={{ width: collapsed ? 56 : 340, flex: 'none', overflow: 'visible' }}>
         {collapsed ? rail : expandedSidebar}
       </div>
       {/* flex:1 + canh giữa để Card (max-width 1400) không lệch trái khi sidebar thu gọn. */}

@@ -3,6 +3,8 @@ package com.aima.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.Executor;
 
@@ -22,5 +24,12 @@ public class AsyncConfig {
         executor.setThreadNamePrefix("content-gen-");
         executor.initialize();
         return executor;
+    }
+
+    // Dùng cho các transaction ngắn quanh phần ghi DB của tác vụ nền, để cuộc gọi AI chạy NGOÀI
+    // transaction (rule #24) — xem ContentGenerationWorkerImpl.
+    @Bean
+    public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+        return new TransactionTemplate(transactionManager);
     }
 }

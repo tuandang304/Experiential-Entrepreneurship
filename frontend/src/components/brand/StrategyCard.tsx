@@ -69,6 +69,7 @@ export default function StrategyCard({ s, selected, onSelect, onToggleStatus, on
       className="strategy-card"
       style={{
         position: 'relative',
+        zIndex: open ? 50 : undefined,
         overflow: 'visible',
         cursor: 'pointer',
         // Active: viền đều 4 cạnh + nền tím nhạt + shadow bao đều (#3). Không active: viền slate-200 luôn rõ trên nền trắng (#4.1).
@@ -83,7 +84,11 @@ export default function StrategyCard({ s, selected, onSelect, onToggleStatus, on
       }}
     >
       {/* Accent bar dọc trái (gradient brand cyan→purple) để nhận biết card đang chọn (#3). */}
-      {selected && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: brandGradient, borderTopLeftRadius: 14, borderBottomLeftRadius: 14 }} />}
+      {selected && (
+        <div style={{ position: 'absolute', inset: -1.5, borderRadius: 14, overflow: 'hidden', pointerEvents: 'none' }}>
+          <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4.5, background: brandGradient }} />
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <button
           type="button"

@@ -1,4 +1,4 @@
-package com.aima.config;
+package com.aima.config.redis;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.data.redis.autoconfigure.LettuceClientConfigurationBuilderCustomizer;

@@ -6,7 +6,6 @@ import com.aima.dto.response.ContentGenerationJobResponse;
 import com.aima.entity.ContentGenerationJob;
 import com.aima.entity.ContentStrategy;
 import com.aima.entity.User;
-import com.aima.enums.GenerationJobStatus;
 import com.aima.enums.StrategyStatus;
 import com.aima.exception.AppException;
 import com.aima.exception.ErrorCode;
@@ -15,6 +14,7 @@ import com.aima.repository.ContentGenerationJobRepository;
 import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.ContentGenerationService;
+import com.aima.service.ContentGenerationWorkerService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,7 +37,7 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
     ContentStrategyRepository contentStrategyRepository;
     UserRepository userRepository;
     ContentGenerationJobMapper contentGenerationJobMapper;
-    ContentGenerationWorker contentGenerationWorker;
+    ContentGenerationWorkerService contentGenerationWorkerService;
 
     // BR-01, BR-03, FR-13: chỉ chiến lược ACTIVE mới được tạo nội dung.
     @Override
@@ -46,16 +46,13 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
         ContentStrategy strategy = contentStrategyRepository
                 .findByIdAndBrandProfile_User_IdAndDeletedAtIsNull(request.getStrategyId(), user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.CONTENT_STRATEGY_NOT_FOUND));
+
         if (strategy.getStatus() != StrategyStatus.ACTIVE) {
             throw new AppException(ErrorCode.STRATEGY_NOT_ACTIVE);
         }
 
-        ContentGenerationJob job = new ContentGenerationJob();
+        ContentGenerationJob job = contentGenerationJobMapper.toContentGenerationJob(request);
         job.setContentStrategy(strategy);
-        job.setPlatform(request.getPlatform());
-        job.setTopic(request.getTopic());
-        job.setRegenerateFrom(request.getRegenerateFrom());
-        job.setStatus(GenerationJobStatus.PENDING);
         ContentGenerationJob saved = contentGenerationJobRepository.save(job);
 
         // Chỉ dispatch worker nền SAU KHI transaction commit — nếu không, thread @Async có thể
@@ -66,11 +63,11 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    contentGenerationWorker.process(jobId);
+                    contentGenerationWorkerService.process(jobId);
                 }
             });
         } else {
-            contentGenerationWorker.process(jobId);
+            contentGenerationWorkerService.process(jobId);
         }
 
         return ApiResponse.success("Đã bắt đầu tạo nội dung",

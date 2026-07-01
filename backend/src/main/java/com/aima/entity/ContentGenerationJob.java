@@ -6,10 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-/**
- * Async content-generation job dispatched to the AI service (NFR-04): the request
- * returns this job's id immediately, and a background worker fills in the result.
- */
 @Getter
 @Setter
 @NoArgsConstructor

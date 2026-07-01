@@ -167,13 +167,21 @@ backend/
 > **Redis** — there are no DB token tables.
 
 > **The tree above is auth/account/file-focused.** Other feature slices follow the same package layout and
-> are documented in their own sections rather than re-drawn here — notably **Social Media Connection (Meta)**:
-> `controller/PlatformConnectionController` + `PlatformVersionAdminController`, `service/{MetaApiClient,
-> MetaOAuthService,PlatformConnectionService,PlatformVersionService}` (+ `Impl/`), `entity/{PlatformAccount,
-> PlatformApiVersion,PlatformApiVersionHistory}`, `mapper/{PlatformConnectionMapper,PlatformApiVersionMapper}`,
-> `scheduler/{TokenHealthCheckJob,TokenValidationJob,ApiVersionCheckJob}`, `util/{CryptoUtil,EncryptedStringConverter}`,
-> `config/{MetaProperties,MetaWebClientConfig,AimaProperties,PlatformDataInitializer}`. See §4 "Social Media
-> Connection (Meta OAuth2)" and §5 for the tables.
+> are documented in their own sections rather than re-drawn here — notably:
+> - **Social Media Connection (Meta)**: `controller/PlatformConnectionController` + `PlatformVersionAdminController`,
+>   `service/{MetaApiClient, MetaOAuthService,PlatformConnectionService,PlatformVersionService}` (+ `Impl/`),
+>   `entity/{PlatformAccount, PlatformApiVersion,PlatformApiVersionHistory}`,
+>   `mapper/{PlatformConnectionMapper,PlatformApiVersionMapper}`,
+>   `scheduler/{TokenHealthCheckJob,TokenValidationJob,ApiVersionCheckJob}`, `util/{CryptoUtil,EncryptedStringConverter}`,
+>   `config/{MetaProperties,MetaWebClientConfig,AimaProperties,PlatformDataInitializer}`. See §4 "Social Media
+>   Connection (Meta OAuth2)" and §5 for the tables.
+> - **Content Strategy**: `controller/ContentStrategyController`, `service/ContentStrategyService` (+`Impl`),
+>   `mapper/ContentStrategyMapper`, `entity/ContentStrategy` (BR-02: one brand → many strategies).
+> - **Content Generation (AI, async)**: `controller/ContentGenerationController`,
+>   `service/{ContentGenerationService, ContentGenerationWorker, AiServiceClient}` (+ `Impl/`),
+>   `mapper/{ContentGenerationJobMapper, ContentItemMapper, AiContentMapper}`,
+>   `entity/{ContentGenerationJob, ContentItem}`, `dto/ai/*` (payloads mirroring `ai/src/schemas.py`),
+>   `config/{AsyncConfig, AiServiceProperties, AiServiceWebClientConfig}`. See §4 "Content Generation".
 
 ---
 
@@ -428,6 +436,42 @@ A `PENDING_DELETE` user can still log in (only `LOCKED` is blocked) so they can 
 - **Facebook Page:** no avatar yet — `getMyAccounts` (`/me/accounts`) doesn't request `picture`; `avatarUrl` stays `null`. Known gap, fill later by adding `picture` to that field list.
 - `avatarUrl` flows straight through `PlatformConnectionMapper` → `PlatformConnectionResponse.avatarUrl` (same-name auto-map). Connection responses **never** include access/refresh tokens (SEC-03).
 
+### Content Generation (AI service) — FR-24..FR-30, NFR-04 async
+> User khởi động một job tạo nội dung cho một strategy **ACTIVE**; BE trả job ngay và gọi AI service
+> (Python/FastAPI) ở nền (NFR-04). Self-contained slice: `controller/ContentGenerationController` →
+> `service/ContentGenerationService` (+`Impl`) → `service/ContentGenerationWorker` (+`Impl`, `@Async`) →
+> `service/AiServiceClient` (+`Impl`, WebClient); `entity/{ContentGenerationJob, ContentItem}`;
+> `mapper/{ContentGenerationJobMapper, ContentItemMapper, AiContentMapper}`;
+> `config/{AsyncConfig, AiServiceProperties, AiServiceWebClientConfig}`; `dto/ai/*` mirror `ai/src/schemas.py`.
+
+**Endpoints** (`/content-items`, auth required):
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/content-items/generate` | Khởi động job (strategy phải **ACTIVE**, BR-03); trả job `PENDING` ngay |
+| GET | `/content-items/jobs/{jobId}` | Poll trạng thái job — FE gọi tới khi `SUCCESS`/`FAILED` |
+
+**Job status** — `GenerationJobStatus`: `PENDING → RUNNING → SUCCESS | FAILED` (`ContentGenerationJob.status`).
+
+**Async worker pattern (NFR-04 + rule #24)** — the reference implementation for background AI/posting tasks:
+- `ContentGenerationServiceImpl.startGeneration` tạo job (`PENDING`) qua mapper rồi **dispatch worker sau khi transaction commit** (`TransactionSynchronization.afterCommit`) — tránh `@Async` đọc job trước khi row được ghi (cùng mẫu `UserServiceImpl.scheduleOldAvatarDeletion`).
+- `ContentGenerationWorker` là **bean riêng** (interface `service/` + `ContentGenerationWorkerImpl` `service/Impl/`, `@Async("contentGenerationExecutor")`) để proxy `@Async` hoạt động (tránh self-invocation).
+- Worker chia thành **transaction ngắn** qua `TransactionTemplate` — **KHÔNG** để cuộc gọi AI chạy trong transaction DB (rule #24):
+  1. `markRunningAndBuildPayload` — set `RUNNING` + dựng payload từ dữ liệu lazy, **commit ngay** (client poll thấy `RUNNING`).
+  2. Gọi `AiServiceClient.generateContent(payload)` **NGOÀI** transaction — không giữ DB connection khi chờ HTTP.
+  3. `saveSuccess` (lưu `ContentItem` + gắn vào job, `SUCCESS`) / catch → `saveFailure` (`FAILED` + `errorMessage`).
+- **Trade-off cần biết:** vì `RUNNING` được commit ngay, app crash giữa chừng để job kẹt ở `RUNNING` (không rollback về `PENDING`) — chưa có scheduler recover job treo.
+- `AsyncConfig`: bean `contentGenerationExecutor` (core 2 / max 5 / queue 50) **và** bean `TransactionTemplate` dùng chung cho các transaction ngắn của tác vụ nền.
+- `AiServiceClient`/`Impl` là **wrapper duy nhất** gọi AI service: `WebClient` `aiServiceWebClient` (base `ai-service.base-url`, timeout `ai-service.timeout-seconds`) → `POST /generate`; mọi lỗi → `AppException(ErrorCode.AI_SERVICE_ERROR)`.
+
+**Mapping (rule #18 — không hand-build entity/DTO):**
+- `ContentGenerationJobMapper.toContentGenerationJob(request)` — create job (contentStrategy do service set; `status` giữ default `PENDING`).
+- `ContentItemMapper.toContentItem(result)` — AI result → `ContentItem`: gộp `VideoScript` thành text, `hashtags` → chuỗi CSV, `status = GENERATED`; `brandProfile` do worker set sau khi map.
+- `AiContentMapper` — `BrandProfile`/`ContentStrategy` → payload gửi AI (enum→tên, list→CSV, ghép tần suất). Một mapper cho *concern* AI-integration (không phải một mapper mỗi DTO).
+
+**MVP scope** — AI chỉ sinh **media prompt** (text mô tả), **không** tạo ảnh/video (FR-29).
+
+**ErrorCodes** 1900–1904: `STRATEGY_ID_REQUIRED`, `GENERATION_PLATFORM_REQUIRED`, `STRATEGY_NOT_ACTIVE`, `CONTENT_GENERATION_JOB_NOT_FOUND`, `AI_SERVICE_ERROR`.
+
 ---
 
 ## 5. Database & Cache
@@ -557,6 +601,7 @@ SUPABASE_URL, SUPABASE_SERVICE_KEY    # Supabase Storage — service_role key is
 AIMA_ENCRYPTION_KEY                   # 32-byte base64 (openssl rand -base64 32) — AES-256-GCM for social tokens; app FAILS at startup if missing/invalid (SEC-03)
 META_FACEBOOK_APP_ID, META_FACEBOOK_APP_SECRET, META_FACEBOOK_REDIRECT_URI, META_FACEBOOK_SCOPES   # Facebook/Instagram OAuth (FB Login dialog)
 META_THREADS_APP_ID, META_THREADS_APP_SECRET, META_THREADS_REDIRECT_URI, META_THREADS_SCOPES       # Threads OAuth
+AI_SERVICE_BASE_URL (http://localhost:8000), AI_SERVICE_TIMEOUT_SECONDS (60)   # AI content-generation service (Python/FastAPI); WebClient base + POST /generate timeout
 # Optional overrides (have defaults in application.yml):
 META_GRAPH_BASE_URL (https://graph.facebook.com), META_THREADS_BASE_URL (https://graph.threads.net)
 META_APP_SECRET_PROOF_ENABLED (false; set true in prod)
@@ -636,3 +681,5 @@ AUTH_COOKIE_NAME (refresh_token), AUTH_COOKIE_SECURE (false), AUTH_COOKIE_SAME_S
 26. **Meta API version is never hardcoded.** Always resolve the Graph/Threads version via `PlatformVersionService.getCurrentVersion(platform)` (admin-managed in `platform_api_versions`, cache evicted on update). Do not inline a `vXX.Y` literal in client/service code; the only seeded defaults live in `PlatformDataInitializer`.
 
 27. **Reconnect is an upsert, deletes are soft + cascade.** `MetaOAuthServiceImpl.upsert(...)` updates the existing `(user, platform, platformAccountId)` row (where `deleted_at IS NULL`) — never blindly insert (the partial unique index from `PlatformDataInitializer` will reject duplicates). Disconnect revokes only on the **root** (parent-less) connection and soft-deletes the whole Page/IG subtree. Schedulers (`scheduler/`) MUST stay resilient: a per-connection failure is logged and skipped, never propagated.
+
+28. **Background AI/posting tasks: dedicated `@Async` worker + short transactions, external call OUTSIDE the transaction.** Follow the `ContentGeneration` reference (§4): (a) the service creates the job row and dispatches the worker in `TransactionSynchronization.afterCommit` (never before commit); (b) the worker is a **separate bean** (interface in `service/` + `*Impl` in `service/Impl/`, `@Async` on a named executor) so the `@Async` proxy applies — no self-invocation; (c) the remote call (AI service, Meta, any HTTP) runs **outside** any DB `@Transactional`/`TransactionTemplate` block (rule #24), and each DB write (mark RUNNING, save result, mark FAILED) is its own short transaction via `TransactionTemplate` — commit the RUNNING state immediately so pollers can observe it; (d) all entity↔DTO/payload conversion goes through MapStruct (rule #18); (e) map every failure to an `AppException`/`ErrorCode`, never let the worker thread die silently (rule #19). Reuse `AsyncConfig`'s `TransactionTemplate` bean — do not open a transaction that wraps a network call.

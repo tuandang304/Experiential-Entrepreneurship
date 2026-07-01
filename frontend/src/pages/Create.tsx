@@ -1,21 +1,78 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { Card, PlatformTag } from '../components/ui';
+import { Card, Loader, PlatformTag } from '../components/ui';
 import { ideas, toneLabels, scriptLines, genCaption, genHashtags, channels } from '../data';
+import { listContentStrategies, isStrategyRunnable, type ContentStrategy } from '../api/contentStrategy';
+import { startContentGeneration, getContentGenerationJob, type ContentGenerationJob } from '../api/contentGeneration';
+import type { ApiError } from '../api/apiClient';
 
 export default function Create() {
-  const { t, lang, go, brandGradient } = useApp();
+  const { t, lang, go, brandGradient, activeBrandId } = useApp();
   const { isMobile, isTablet } = useBreakpoint();
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState(0);
   const [platform, setPlatform] = useState(0);
+  const [strategies, setStrategies] = useState<ContentStrategy[]>([]);
+  const [strategyId, setStrategyId] = useState('');
+  const [job, setJob] = useState<ContentGenerationJob | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ideaList = ideas(lang);
   const tones = toneLabels(lang);
   const chans = channels(lang);
   const script = scriptLines(lang);
   const stacked = isMobile || isTablet;
   const activeChannel = chans[platform] ?? chans[0];
+  const busy = job?.status === 'PENDING' || job?.status === 'RUNNING';
+
+  // Chỉ chiến lược ACTIVE mới được dùng để tạo nội dung (FR-13, BR-03).
+  useEffect(() => {
+    if (!activeBrandId) {
+      setStrategies([]);
+      setStrategyId('');
+      return;
+    }
+    listContentStrategies(activeBrandId)
+      .then((rows) => {
+        const runnable = rows.filter(isStrategyRunnable);
+        setStrategies(runnable);
+        setStrategyId(runnable[0]?.id ?? '');
+      })
+      .catch(() => setStrategies([]));
+  }, [activeBrandId]);
+
+  // NFR-04: job chạy nền ở backend — FE poll trạng thái, không chặn UI.
+  useEffect(() => {
+    if (!job || job.status === 'SUCCESS' || job.status === 'FAILED') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    pollRef.current = setInterval(() => {
+      getContentGenerationJob(job.id)
+        .then(setJob)
+        .catch((e) => setErrorMsg((e as ApiError).message));
+    }, 2000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [job]);
+
+  const runGeneration = async (regenerateFrom?: string) => {
+    if (!strategyId || busy) return;
+    setErrorMsg(null);
+    try {
+      const newJob = await startContentGeneration({
+        strategyId,
+        platform: activeChannel.platform,
+        topic: topic || undefined,
+        regenerateFrom,
+      });
+      setJob(newJob);
+    } catch (e) {
+      setErrorMsg((e as ApiError).message);
+    }
+  };
 
   const chip = (active: boolean) => ({
     display: 'flex',
@@ -37,6 +94,22 @@ export default function Create() {
         <Card>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38' }}>{t.crStudio}</div>
           <div style={{ fontSize: 12.5, color: '#8a85a0', marginBottom: 18 }}>{t.pageSubCreate}</div>
+
+          <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#574f6e', marginBottom: 8 }}>{t.crStrategy}</label>
+          {strategies.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: '#a59fbb', background: '#faf8fe', borderRadius: 10, padding: '10px 12px', marginBottom: 16 }}>{t.crNoActiveStrategy}</div>
+          ) : (
+            <select
+              value={strategyId}
+              onChange={(e) => setStrategyId(e.target.value)}
+              style={{ width: '100%', border: '1.5px solid #e7e2f2', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#241f3a', background: '#fbfaff', outline: 'none', marginBottom: 16 }}
+            >
+              {strategies.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          )}
+
           <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#574f6e', marginBottom: 8 }}>{t.crTopic}</label>
           <textarea value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t.crTopicPh} style={{ width: '100%', border: '1.5px solid #e7e2f2', borderRadius: 12, padding: '12px 14px', fontSize: 14, color: '#241f3a', background: '#fbfaff', outline: 'none', resize: 'none', minHeight: 84 }} />
 
@@ -57,7 +130,17 @@ export default function Create() {
             ))}
           </div>
 
-          <button style={{ width: '100%', marginTop: 22, border: 'none', borderRadius: 12, padding: 14, fontWeight: 700, fontSize: 14, color: '#fff', background: brandGradient, boxShadow: '0 14px 28px -12px rgba(139,92,246,.6)', cursor: 'pointer' }}>{t.crGenerate}</button>
+          {errorMsg && (
+            <div style={{ marginTop: 16, fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{t.crGenerateError}: {errorMsg}</div>
+          )}
+
+          <button
+            disabled={!strategyId || busy}
+            onClick={() => runGeneration()}
+            style={{ width: '100%', marginTop: 22, border: 'none', borderRadius: 12, padding: 14, fontWeight: 700, fontSize: 14, color: '#fff', background: brandGradient, boxShadow: '0 14px 28px -12px rgba(139,92,246,.6)', cursor: !strategyId || busy ? 'not-allowed' : 'pointer', opacity: !strategyId || busy ? 0.6 : 1 }}
+          >
+            {t.crGenerate}
+          </button>
         </Card>
 
         <Card>
@@ -91,30 +174,46 @@ export default function Create() {
               <div style={{ fontSize: 11.5, color: '#a59fbb' }}>AI generated</div>
             </div>
           </div>
-          <button style={{ border: '1px solid #ece8f6', background: '#fff', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 600, color: '#7c3aed', cursor: 'pointer' }}>↻ {t.regenerate}</button>
+          <button
+            disabled={job?.status !== 'SUCCESS'}
+            onClick={() => runGeneration(job?.contentItem?.caption)}
+            style={{ border: '1px solid #ece8f6', background: '#fff', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 600, color: '#7c3aed', cursor: job?.status !== 'SUCCESS' ? 'not-allowed' : 'pointer', opacity: job?.status !== 'SUCCESS' ? 0.5 : 1 }}
+          >
+            ↻ {t.regenerate}
+          </button>
         </div>
 
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 9 }}>{t.crScript}</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-          {script.map((ln, i) => (
-            <div key={i} style={{ background: '#faf8fe', borderLeft: '3px solid #8b5cf6', borderRadius: '0 10px 10px 0', padding: '11px 14px', fontSize: 13.5, lineHeight: 1.5, color: '#3f3a55' }}>{ln}</div>
-          ))}
-        </div>
+        {busy ? (
+          <Loader label={t.crGenerating} />
+        ) : job?.status === 'FAILED' ? (
+          <div style={{ fontSize: 13.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 12, padding: '14px 16px' }}>
+            {t.crGenerateError}{job.errorMessage ? `: ${job.errorMessage}` : ''}
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 9 }}>{t.crScript}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+              {(job?.contentItem?.script.split('\n') ?? script).map((ln, i) => (
+                <div key={i} style={{ background: '#faf8fe', borderLeft: '3px solid #8b5cf6', borderRadius: '0 10px 10px 0', padding: '11px 14px', fontSize: 13.5, lineHeight: 1.5, color: '#3f3a55' }}>{ln}</div>
+              ))}
+            </div>
 
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 9 }}>{t.crCaption}</div>
-        <div style={{ background: '#faf8fe', borderRadius: 12, padding: '13px 15px', fontSize: 13.5, lineHeight: 1.55, color: '#3f3a55', marginBottom: 18 }}>{genCaption(lang)}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 9 }}>{t.crCaption}</div>
+            <div style={{ background: '#faf8fe', borderRadius: 12, padding: '13px 15px', fontSize: 13.5, lineHeight: 1.55, color: '#3f3a55', marginBottom: 18 }}>{job?.contentItem?.caption ?? genCaption(lang)}</div>
 
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 9 }}>{t.crHashtag}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
-          {genHashtags.map((h, i) => (
-            <span key={i} style={{ background: '#f3edff', color: '#7c3aed', borderRadius: 8, padding: '5px 11px', fontSize: 12.5, fontWeight: 600 }}>{h}</span>
-          ))}
-        </div>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 9 }}>{t.crHashtag}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
+              {(job?.contentItem?.hashtags ?? genHashtags).map((h, i) => (
+                <span key={i} style={{ background: '#f3edff', color: '#7c3aed', borderRadius: 8, padding: '5px 11px', fontSize: 12.5, fontWeight: 600 }}>{h}</span>
+              ))}
+            </div>
 
-        <div style={{ border: '1.5px dashed #d9cef5', borderRadius: 14, padding: 22, textAlign: 'center', background: 'repeating-linear-gradient(135deg,#faf8fe,#faf8fe 10px,#f4eefc 10px,#f4eefc 20px)' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7c3aed' }}>🎬 {t.crMedia}</div>
-          <div style={{ fontSize: 12, color: '#8a85a0', marginTop: 5 }}>{t.crMediaHint}</div>
-        </div>
+            <div style={{ border: '1.5px dashed #d9cef5', borderRadius: 14, padding: 22, textAlign: 'center', background: 'repeating-linear-gradient(135deg,#faf8fe,#faf8fe 10px,#f4eefc 10px,#f4eefc 20px)' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7c3aed' }}>🎬 {t.crMedia}</div>
+              <div style={{ fontSize: 12, color: '#8a85a0', marginTop: 5 }}>{job?.contentItem?.mediaPrompt ?? t.crMediaHint}</div>
+            </div>
+          </>
+        )}
 
         <button onClick={() => go('calendar')} style={{ width: '100%', marginTop: 18, border: 'none', borderRadius: 12, padding: 14, fontWeight: 700, fontSize: 14, color: '#fff', background: brandGradient, boxShadow: '0 14px 28px -12px rgba(139,92,246,.6)', cursor: 'pointer' }}>{t.calNew}</button>
       </Card>

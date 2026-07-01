@@ -125,7 +125,14 @@ public enum ErrorCode {
     // PLATFORM API VERSION (ADMIN) ERRORS
     VERSION_REQUIRED(1830, "Version không được để trống", HttpStatus.BAD_REQUEST),
     INVALID_VERSION_FORMAT(1831, "Version sai định dạng (ví dụ: v25.0)", HttpStatus.BAD_REQUEST),
-    VERSION_NOT_FOUND(1832, "Không tìm thấy cấu hình version cho nền tảng này", HttpStatus.NOT_FOUND),;
+    VERSION_NOT_FOUND(1832, "Không tìm thấy cấu hình version cho nền tảng này", HttpStatus.NOT_FOUND),
+
+    // CONTENT GENERATION ERRORS
+    STRATEGY_ID_REQUIRED(1900, "Thiếu mã chiến lược nội dung", HttpStatus.BAD_REQUEST),
+    GENERATION_PLATFORM_REQUIRED(1901, "Vui lòng chọn nền tảng để tạo nội dung", HttpStatus.BAD_REQUEST),
+    STRATEGY_NOT_ACTIVE(1902, "Chiến lược chưa được kích hoạt (ACTIVE) nên không thể tạo nội dung", HttpStatus.BAD_REQUEST),
+    CONTENT_GENERATION_JOB_NOT_FOUND(1903, "Không tìm thấy tác vụ tạo nội dung", HttpStatus.NOT_FOUND),
+    AI_SERVICE_ERROR(1904, "Lỗi khi gọi dịch vụ AI. Vui lòng thử lại sau.", HttpStatus.BAD_GATEWAY),;
 
     private int code;
     private String message;

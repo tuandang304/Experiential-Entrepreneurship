@@ -70,6 +70,9 @@ export const STRINGS = {
     crTopic: 'Chủ đề / Prompt', crPlatform: 'Nền tảng', crTone: 'Giọng điệu', crGenerate: '✨ Tạo nội dung với AI',
     crTopicPh: 'VD: 5 mẹo giúp content creator tiết kiệm thời gian...',
     crScript: 'Kịch bản', crCaption: 'Caption', crHashtag: 'Hashtag', crMedia: 'Gợi ý hình ảnh', crMediaHint: 'AIMA sẽ tạo media phù hợp với từng nền tảng',
+    crStrategy: 'Chiến lược nội dung', crSelectStrategy: 'Chọn chiến lược đang hoạt động',
+    crNoActiveStrategy: 'Chưa có chiến lược nào đang hoạt động (ACTIVE). Vào trang Thương hiệu để kích hoạt một chiến lược.',
+    crGenerating: 'AI đang tạo nội dung cho bạn...', crGenerateError: 'Tạo nội dung thất bại',
     // calendar
     calMonth: 'Tháng 6, 2026', calUpcoming: 'Sắp đăng', calAuto: 'Tự động đăng', calNew: '+ Lên lịch bài mới',
     // analytics
@@ -295,6 +298,9 @@ export const STRINGS = {
     crTopic: 'Topic / Prompt', crPlatform: 'Platform', crTone: 'Tone', crGenerate: '✨ Generate with AI',
     crTopicPh: 'e.g. 5 tips that save content creators time...',
     crScript: 'Script', crCaption: 'Caption', crHashtag: 'Hashtags', crMedia: 'Media suggestion', crMediaHint: 'AIMA will generate media tailored per platform',
+    crStrategy: 'Content strategy', crSelectStrategy: 'Select an active strategy',
+    crNoActiveStrategy: 'No ACTIVE strategy yet. Go to the Brand page to activate one.',
+    crGenerating: 'AI is generating your content...', crGenerateError: 'Content generation failed',
     calMonth: 'June 2026', calUpcoming: 'Upcoming', calAuto: 'Auto-publish', calNew: '+ Schedule new post',
     anReach: 'Monthly reach', anTop: 'Top performing content', anAudience: 'Audience breakdown', anExport: 'Export report',
     trIndustry: 'Industry', trHot: 'Trending topics', trTags: 'Hot hashtags', trVol: 'mentions',

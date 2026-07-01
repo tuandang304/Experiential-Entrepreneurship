@@ -128,6 +128,8 @@ class GenerateRequest(BaseModel):
     platform: str = Field(..., description="Target platform for the draft")
     trend: Optional[Trend] = None
     idea: Optional[ContentIdea] = None
+    # Free-text topic from the user (Create.tsx has no structured idea/trend input yet).
+    topic: Optional[str] = None
     # FR-32: when regenerating, prior text the user wants improved/varied.
     regenerate_from: Optional[str] = None
 

@@ -44,6 +44,9 @@ TREND (optional):
 CONTENT IDEA (optional):
 {idea}
 
+TOPIC (optional, user-provided):
+{topic}
+
 PREVIOUS VERSION TO IMPROVE ON (optional, regenerate):
 {regenerate_from}
 
@@ -64,6 +67,7 @@ def generate_content(req: GenerateRequest) -> ContentItem:
             "strategy": req.strategy.model_dump_json(indent=2),
             "trend": req.trend.model_dump_json(indent=2) if req.trend else "—",
             "idea": req.idea.model_dump_json(indent=2) if req.idea else "—",
+            "topic": req.topic or "—",
             "regenerate_from": req.regenerate_from or "—",
         }
     )

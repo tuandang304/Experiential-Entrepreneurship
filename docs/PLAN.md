@@ -55,8 +55,8 @@
 - [x] FR-26 Caption / FR-27 Hashtags / FR-28 CTA `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-29 Media prompt (text only — no media generation in MVP) `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-30 Brand voice check `[AI]` — done 2026-06-13 (AI svc)
-- [ ] FR-31 Save drafts (`Draft`/`Generated`) `[BE]`
-- [ ] FR-32 Regenerate / FR-33 Manual edit / FR-34 Review before posting `[BE][FE]`
+- [x] FR-31 Save drafts (`Draft`/`Generated`) `[BE]` — done 2026-07-01 (`ContentGenerationWorker` persists a `ContentItem` with status `GENERATED` after each AI call)
+- [ ] FR-32 Regenerate / FR-33 Manual edit / FR-34 Review before posting `[BE][FE]` — FR-32 regenerate done end-to-end 2026-07-01 (Create.tsx → `POST /content-items/generate` with `regenerateFrom` → AI `/generate`); FR-33/FR-34 pending
 
 ## 7. Policy Violation Handling (no custom filter — SEC-06)
 - [ ] FR-35 Handle platform 400/403 policy errors: `Failed`, no retry, store original code + message, notify `[BE]`
@@ -124,7 +124,7 @@
 
 ## 17. Content Library
 - [ ] FR-87 View/filter/search all ContentItems `[BE][FE]`
-- [ ] FR-88 Reuse (regenerate creates a new item) `[BE][AI]` — AI supports it (`regenerate_from` on `POST /generate`) 2026-06-13; BE new-item creation pending
+- [x] FR-88 Reuse (regenerate creates a new item) `[BE][AI]` — AI supports it (`regenerate_from` on `POST /generate`) 2026-06-13; BE new-item creation done 2026-07-01 (`ContentGenerationWorker` always creates a fresh `ContentItem` per job, including regenerate)
 - [ ] FR-89 Delete rules (`Draft`/`Generated` only; cascades to ContentVersions) `[BE]`
 
 ## UI Pages (UI_API.md)
@@ -133,7 +133,7 @@
 - [x] UI-03 Brand Profile page `[FE]` — done 2026-06-25 (list-first: card list + search/industry filter + "đang dùng" active select + slide-over create/edit + read-only "AI đã hiểu" panel + AI Brand Health; uses real /brand-profiles API)
 - [x] UI-04 Content Strategy page `[FE]` — done 2026-06-25 (list-left + detail 01–08 + summary + DRAFT/ACTIVE/PAUSED toggle, gộp vào /brand 2 tab); nối BE thật `api/contentStrategy.ts` 2026-06-26
 - [ ] UI-05 Trend Research page `[FE]`
-- [ ] UI-06 Content Workspace `[FE]`
+- [x] UI-06 Content Workspace `[FE]` — done 2026-07-01 (Create.tsx wired to real generation: strategy picker + `api/contentGeneration.ts` + job polling, replacing mock data)
 - [ ] UI-07 Calendar / Schedule `[FE]`
 - [ ] UI-08 Analytics page `[FE]`
 - [ ] UI-09 Social Account page `[FE]`
@@ -146,7 +146,7 @@
 - [x] Input validation + clear error responses (API-04, API-05) `[BE]` — done 2026-06-12
 - [x] Password hashing (SEC-01) + JWT protection (SEC-02) `[BE]` — done 2026-06-12
 - [ ] AES-256 token encryption, never exposed to frontend (SEC-03) `[BE]`
-- [ ] Async background jobs for all AI/posting tasks (NFR-04) `[BE][AI]`
+- [ ] Async background jobs for all AI/posting tasks (NFR-04) `[BE][AI]` — content generation done 2026-07-01 (`ContentGenerationJob` + `@Async` worker + FE polling); research/formatting/analysis/posting still pending
 - [ ] Scheduler (posting calendar trigger + 2:00 AM research run) `[BE]`
 - [ ] Platform adapter/interface layer for future platforms (NFR-09) `[BE]`
 - [ ] Webhook endpoints for post-publication violation notifications `[BE]`

@@ -8,7 +8,7 @@ spring:
     name: ${APP_NAME}
 
   config:
-    import: optional:file:backend/.env[.properties]
+    import: optional:file:.env[.properties]
 
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require&prepareThreshold=0
@@ -113,6 +113,11 @@ meta:
   threads-base-url: ${META_THREADS_BASE_URL:https://graph.threads.net}
   # Bật appsecret_proof cho mọi request Meta (bắt buộc ở production).
   app-secret-proof-enabled: ${META_APP_SECRET_PROOF_ENABLED:false}
+
+# Cấu hình gọi AI service (Python/FastAPI) để tạo nội dung (FR-24..FR-30).
+ai-service:
+  base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
+  timeout-seconds: ${AI_SERVICE_TIMEOUT_SECONDS:60}
 
 aima:
   encryption:

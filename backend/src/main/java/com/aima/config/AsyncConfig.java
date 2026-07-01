@@ -1,0 +1,26 @@
+package com.aima.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.Executor;
+
+/**
+ * Executor riêng cho các tác vụ AI chạy nền (NFR-04) — tách khỏi executor mặc định của Spring
+ * để không tranh chấp tài nguyên với các @Async khác (nếu có sau này).
+ */
+@Configuration
+public class AsyncConfig {
+
+    @Bean(name = "contentGenerationExecutor")
+    public Executor contentGenerationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(5);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("content-gen-");
+        executor.initialize();
+        return executor;
+    }
+}

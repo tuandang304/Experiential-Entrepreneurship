@@ -44,6 +44,9 @@ public class ContentItem extends BaseEntity {
     @Column(name = "cta", length = 255)
     String cta;
 
+    @Column(name = "media_prompt", columnDefinition = "text")
+    String mediaPrompt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     ContentLifecycle status = ContentLifecycle.DRAFT;

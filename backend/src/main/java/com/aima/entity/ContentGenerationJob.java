@@ -1,0 +1,49 @@
+package com.aima.entity;
+
+import com.aima.enums.GenerationJobStatus;
+import com.aima.enums.Platform;
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+/**
+ * Async content-generation job dispatched to the AI service (NFR-04): the request
+ * returns this job's id immediately, and a background worker fills in the result.
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "content_generation_jobs")
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class ContentGenerationJob extends BaseEntity {
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "content_strategy_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    ContentStrategy contentStrategy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "platform", nullable = false, length = 20)
+    Platform platform;
+
+    @Column(name = "topic", columnDefinition = "text")
+    String topic;
+
+    @Column(name = "regenerate_from", columnDefinition = "text")
+    String regenerateFrom;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    GenerationJobStatus status = GenerationJobStatus.PENDING;
+
+    @Column(name = "error_message", columnDefinition = "text")
+    String errorMessage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "result_content_item_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    ContentItem resultContentItem;
+}

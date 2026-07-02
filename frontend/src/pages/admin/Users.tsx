@@ -15,7 +15,6 @@ import AdminListPage, { SearchInput, FilterSelect, DataTable, type ListState } f
 import PasswordStrengthBar from '../../components/PasswordStrengthBar';
 import { validEmail } from '../../validations/authValidation';
 import { phoneOk } from '../../validations/profileValidation';
-import { passwordValid } from '../../validations/password';
 import {
   getAdminUsers, setUserLocked, setUsersLocked, createAdminUser, updateAdminUser, deleteAdminUser,
   userStatusMeta, userPlanMeta, timeAgo, daysSinceLogin, PLAN_LIMITS,
@@ -760,4 +759,3 @@ const modalPrimaryBtn = (busy: boolean) => ({ flex: 1, border: 'none', backgroun
 const btnGhost = { display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid #ece8f6', background: '#fff', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#5b5670', cursor: 'pointer' } as const;
 const btnRed = { border: 'none', background: '#fde8e8', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#dc2626', cursor: 'pointer' } as const;
 const btnGreen = { border: 'none', background: '#e8f8ee', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#16a34a', cursor: 'pointer' } as const;
-const btnDisabled = { opacity: 0.45, cursor: 'not-allowed' } as const;

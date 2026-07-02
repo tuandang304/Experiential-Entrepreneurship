@@ -17,6 +17,7 @@ export const formatVND = (n: number) => n.toLocaleString('vi-VN') + '₫';
 // ===== Quản lý người dùng (FR-80) — GET /admin/users =====
 export type UserRole = 'USER' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'LOCKED' | 'PENDING_DELETE';
+export type UserPlan = 'free' | 'plus' | 'pro';
 export interface AdminUserRow {
   id: string;
   name: string;
@@ -25,26 +26,47 @@ export interface AdminUserRow {
   status: UserStatus;
   createdAt: string;
   initials: string;
+  plan: UserPlan;
+  channelsUsed: number;
+  channelsLimit: number;
+  tokenUsagePercent: number;
+  /** 'YYYY-MM-DD HH:mm' — null = chưa đăng nhập lần nào. */
+  lastLoginAt: string | null;
 }
 
-const USERS_RAW: [string, string, string, UserRole, UserStatus, string][] = [
-  ['u01', 'Lan Phương', 'lan.phuong@gmail.com', 'USER', 'ACTIVE', '2026-01-12'],
-  ['u02', 'Minh Tuấn', 'tuan.minh@aima.io', 'ADMIN', 'ACTIVE', '2025-11-03'],
-  ['u03', 'Thu Hà', 'ha.thu@brandco.vn', 'USER', 'LOCKED', '2026-02-28'],
-  ['u04', 'David Chen', 'david.chen@startup.co', 'USER', 'ACTIVE', '2026-03-15'],
-  ['u05', 'Ngọc Anh', 'anh.ngoc@gmail.com', 'USER', 'PENDING_DELETE', '2026-06-18'],
-  ['u06', 'Hoàng Long', 'long.hoang@smes.vn', 'USER', 'ACTIVE', '2026-04-02'],
-  ['u07', 'Mai Chi', 'chi.mai@creator.vn', 'USER', 'ACTIVE', '2026-05-21'],
-  ['u08', 'Bảo Nam', 'nam.bao@gmail.com', 'USER', 'LOCKED', '2026-01-30'],
-  ['u09', 'Sophie Tran', 'sophie@agency.co', 'ADMIN', 'ACTIVE', '2025-12-09'],
-  ['u10', 'Quang Huy', 'huy.quang@shop.vn', 'USER', 'ACTIVE', '2026-06-01'],
-  ['u11', 'Diệu Linh', 'linh.dieu@gmail.com', 'USER', 'ACTIVE', '2026-03-26'],
-  ['u12', 'Trung Kiên', 'kien.trung@biz.vn', 'USER', 'PENDING_DELETE', '2026-05-08'],
+/** Giới hạn kênh kết nối theo gói (mock, khớp quyền lợi gói). */
+export const PLAN_LIMITS: Record<UserPlan, number> = { free: 1, plus: 2, pro: 4 };
+
+const USERS_RAW: [string, string, string, UserRole, UserStatus, string, UserPlan, number, number, string | null][] = [
+  // [id, tên, email, vai trò, trạng thái, ngày tạo, gói, kênh đang dùng, % token, đăng nhập gần nhất]
+  ['u01', 'Lan Phương', 'lan.phuong@gmail.com', 'USER', 'ACTIVE', '2026-01-12', 'pro', 3, 62, '2026-07-02 09:15'],
+  ['u02', 'Minh Tuấn', 'tuan.minh@aima.io', 'ADMIN', 'ACTIVE', '2025-11-03', 'pro', 4, 45, '2026-07-02 07:40'],
+  ['u03', 'Thu Hà', 'ha.thu@brandco.vn', 'USER', 'LOCKED', '2026-02-28', 'free', 1, 96, '2026-05-19 14:02'],
+  ['u04', 'David Chen', 'david.chen@startup.co', 'USER', 'ACTIVE', '2026-03-15', 'plus', 2, 88, '2026-07-01 22:10'],
+  ['u05', 'Ngọc Anh', 'anh.ngoc@gmail.com', 'USER', 'PENDING_DELETE', '2026-06-18', 'free', 0, 5, '2026-05-25 08:00'],
+  ['u06', 'Hoàng Long', 'long.hoang@smes.vn', 'USER', 'ACTIVE', '2026-04-02', 'plus', 1, 73, '2026-06-30 18:45'],
+  ['u07', 'Mai Chi', 'chi.mai@creator.vn', 'USER', 'ACTIVE', '2026-05-21', 'pro', 2, 91, '2026-07-02 06:05'],
+  ['u08', 'Bảo Nam', 'nam.bao@gmail.com', 'USER', 'LOCKED', '2026-01-30', 'free', 1, 34, '2026-04-27 10:30'],
+  ['u09', 'Sophie Tran', 'sophie@agency.co', 'ADMIN', 'ACTIVE', '2025-12-09', 'pro', 3, 28, '2026-07-01 16:20'],
+  ['u10', 'Quang Huy', 'huy.quang@shop.vn', 'USER', 'ACTIVE', '2026-06-01', 'plus', 2, 79, '2026-06-29 21:00'],
+  ['u11', 'Diệu Linh', 'linh.dieu@gmail.com', 'USER', 'ACTIVE', '2026-03-26', 'free', 1, 55, '2026-06-28 12:40'],
+  ['u12', 'Trung Kiên', 'kien.trung@biz.vn', 'USER', 'PENDING_DELETE', '2026-05-08', 'free', 0, 12, '2026-05-30 09:25'],
+  ['u13', 'Khánh Vy', 'vy.khanh@studio.vn', 'USER', 'ACTIVE', '2026-07-01', 'plus', 1, 8, '2026-07-02 08:55'],
+  ['u14', 'Tuấn Anh', 'anh.tuan@freelance.vn', 'USER', 'ACTIVE', '2026-07-02', 'free', 0, 0, null],
 ];
 
+// Trạng thái mock giữ trong module để lock/xoá/tạo phản ánh qua các lần getAdminUsers
+// trong cùng phiên (mô phỏng DB) — reload trang sẽ seed lại.
+let USERS: AdminUserRow[] | null = null;
+const seedUsers = (): AdminUserRow[] =>
+  USERS_RAW.map((u) => ({
+    id: u[0], name: u[1], email: u[2], role: u[3], status: u[4], createdAt: u[5], initials: initials(u[1]),
+    plan: u[6], channelsUsed: u[7], channelsLimit: PLAN_LIMITS[u[6]], tokenUsagePercent: u[8], lastLoginAt: u[9],
+  }));
+const users = (): AdminUserRow[] => (USERS ??= seedUsers());
+
 export async function getAdminUsers(): Promise<AdminUserRow[]> {
-  const rows = USERS_RAW.map((u) => ({ id: u[0], name: u[1], email: u[2], role: u[3], status: u[4], createdAt: u[5], initials: initials(u[1]) }));
-  return delay(rows);
+  return delay(users().map((u) => ({ ...u })));
 }
 
 export const userStatusMeta = (lang: Lang, s: UserStatus): { tone: Tone; label: string } =>
@@ -52,9 +74,62 @@ export const userStatusMeta = (lang: Lang, s: UserStatus): { tone: Tone; label: 
   : s === 'LOCKED' ? { tone: 'danger', label: P(lang, 'Đã khoá', 'Locked') }
   : { tone: 'warning', label: P(lang, 'Chờ xoá', 'Pending deletion') };
 
+export const userPlanMeta = (p: UserPlan): { tone: Tone; label: string } =>
+  p === 'free' ? { tone: 'neutral', label: 'Free' } : p === 'plus' ? { tone: 'info', label: 'Plus' } : { tone: 'purple', label: 'Pro' };
+
+/** Thời gian tương đối cho "Lần đăng nhập gần nhất". */
+export function timeAgo(lang: Lang, iso: string | null): string {
+  if (!iso) return P(lang, 'Chưa đăng nhập', 'Never');
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso.replace(' ', 'T')).getTime()) / 60000));
+  if (mins < 1) return P(lang, 'Vừa xong', 'Just now');
+  if (mins < 60) return P(lang, `${mins} phút trước`, `${mins}m ago`);
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return P(lang, `${hours} giờ trước`, `${hours}h ago`);
+  const days = Math.round(hours / 24);
+  if (days < 30) return P(lang, `${days} ngày trước`, `${days}d ago`);
+  const months = Math.round(days / 30);
+  return P(lang, `${months} tháng trước`, `${months}mo ago`);
+}
+
+/** Số ngày kể từ lần đăng nhập cuối (Infinity nếu chưa từng đăng nhập). */
+export const daysSinceLogin = (iso: string | null): number =>
+  iso ? Math.floor((Date.now() - new Date(iso.replace(' ', 'T')).getTime()) / 86_400_000) : Infinity;
+
 // PATCH /admin/users/{id}/lock | /unlock
+// Guard phía "server" mock: tài khoản ADMIN không thể bị khoá (SEC — bảo vệ quản trị).
 export async function setUserLocked(id: string, locked: boolean): Promise<{ id: string; status: UserStatus }> {
+  const u = users().find((x) => x.id === id);
+  if (u?.role === 'ADMIN') return Promise.reject(new Error('ADMIN_PROTECTED'));
+  if (u) u.status = locked ? 'LOCKED' : 'ACTIVE';
   return delay({ id, status: locked ? 'LOCKED' : 'ACTIVE' });
+}
+
+// PATCH /admin/users/lock-bulk { ids, locked } — tự loại trừ ADMIN, trả về số bị bỏ qua.
+export async function setUsersLocked(ids: string[], locked: boolean): Promise<{ updated: string[]; skippedAdmins: number }> {
+  const targets = users().filter((u) => ids.includes(u.id));
+  const eligible = targets.filter((u) => u.role !== 'ADMIN');
+  eligible.forEach((u) => { u.status = locked ? 'LOCKED' : 'ACTIVE'; });
+  return delay({ updated: eligible.map((u) => u.id), skippedAdmins: targets.length - eligible.length });
+}
+
+// DELETE /admin/users/{id} — guard: ADMIN không thể bị xoá.
+export async function deleteAdminUser(id: string): Promise<{ id: string }> {
+  const u = users().find((x) => x.id === id);
+  if (u?.role === 'ADMIN') return Promise.reject(new Error('ADMIN_PROTECTED'));
+  USERS = users().filter((x) => x.id !== id);
+  return delay({ id });
+}
+
+// POST /admin/users — tạo user thủ công (mock: thêm vào đầu danh sách).
+export async function createAdminUser(input: { name: string; email: string; role: UserRole; plan: UserPlan }): Promise<AdminUserRow> {
+  const row: AdminUserRow = {
+    id: 'u' + Date.now().toString(36),
+    name: input.name, email: input.email, role: input.role, status: 'ACTIVE',
+    createdAt: new Date().toISOString().slice(0, 10), initials: initials(input.name),
+    plan: input.plan, channelsUsed: 0, channelsLimit: PLAN_LIMITS[input.plan], tokenUsagePercent: 0, lastLoginAt: null,
+  };
+  users().unshift(row);
+  return delay({ ...row });
 }
 
 // ===== Bài đăng lỗi & bị từ chối (FR-82 + FR-83) — GET /admin/posts/problems =====

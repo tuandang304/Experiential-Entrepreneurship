@@ -110,8 +110,9 @@ export function DetailRow({ label, value }: { label: string; value: ReactNode })
   );
 }
 
-/** Bảng dùng chung: header xám nhạt + hàng có viền trên, cuộn ngang trên mobile. */
-export function DataTable({ head, children, minWidth = 640 }: { head: string[]; children: ReactNode; minWidth?: number }) {
+/** Bảng dùng chung: header xám nhạt + hàng có viền trên, cuộn ngang trên mobile.
+ *  `head` nhận ReactNode để trang có thể nhúng checkbox chọn tất cả / nút sort. */
+export function DataTable({ head, children, minWidth = 640 }: { head: ReactNode[]; children: ReactNode; minWidth?: number }) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth }}>

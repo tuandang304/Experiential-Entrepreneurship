@@ -1,7 +1,12 @@
+import type { ReactNode } from 'react';
 import Modal from '../Modal';
 import { useApp } from '../../context/AppContext';
 
-/** Dialog xác nhận hành động phá huỷ (xóa hồ sơ / xóa chiến lược). Tái dùng Modal. */
+/**
+ * Dialog xác nhận hành động nhạy cảm (xóa hồ sơ / xóa chiến lược / khoá-xoá user...).
+ * Tái dùng Modal. `variant` đổi màu nút xác nhận; `children` chèn nội dung phụ
+ * (vd danh sách user bị ảnh hưởng) giữa message và hàng nút.
+ */
 export default function ConfirmDialog({
   title,
   message,
@@ -9,6 +14,8 @@ export default function ConfirmDialog({
   onConfirm,
   onClose,
   busy = false,
+  variant = 'danger',
+  children,
 }: {
   title: string;
   message: string;
@@ -16,10 +23,14 @@ export default function ConfirmDialog({
   onConfirm: () => void;
   onClose: () => void;
   busy?: boolean;
+  variant?: 'danger' | 'warning';
+  children?: ReactNode;
 }) {
   const { t } = useApp();
+  const confirmBg = variant === 'warning' ? '#d97706' : '#d6336c';
   return (
     <Modal title={title} subtitle={message} onClose={onClose}>
+      {children}
       <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
         <button
           onClick={onClose}
@@ -31,7 +42,7 @@ export default function ConfirmDialog({
         <button
           onClick={onConfirm}
           disabled={busy}
-          style={{ flex: 1, border: 'none', background: '#d6336c', borderRadius: 11, padding: '11px 0', fontSize: 14, fontWeight: 700, color: '#fff', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}
+          style={{ flex: 1, border: 'none', background: confirmBg, borderRadius: 11, padding: '11px 0', fontSize: 14, fontWeight: 700, color: '#fff', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}
         >
           {confirmLabel}
         </button>

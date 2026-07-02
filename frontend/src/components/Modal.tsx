@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
 /**
  * Centered modal overlay used by the profile security / delete-account flows.
- * Backdrop click and Esc close it. Width adapts to mobile via max-width.
+ * Backdrop click and Esc close it. Width adapts to mobile via max-width; the
+ * panel scrolls internally (max-height) so long forms never overflow the viewport.
+ * Focus is trapped inside the panel and restored to the trigger on close.
  */
 export default function Modal({
   title,
@@ -20,15 +24,44 @@ export default function Modal({
   children: ReactNode;
   maxWidth?: number;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const prevFocused = document.activeElement as HTMLElement | null;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      // Focus trap: giữ Tab luẩn quẩn trong panel.
+      if (e.key === 'Tab' && panelRef.current) {
+        const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey && active === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
     window.addEventListener('keydown', onKey);
     // Khoá cuộn nền khi modal mở.
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Đưa focus vào phần tử đầu tiên trong panel.
+    const focusTimer = setTimeout(() => {
+      panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    }, 0);
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
+      clearTimeout(focusTimer);
+      prevFocused?.focus?.();
     };
   }, [onClose]);
 
@@ -44,11 +77,16 @@ export default function Modal({
       }}
     >
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
         className="view-pop"
         style={{
           width: '100%', maxWidth, background: '#fff', borderRadius: 20,
           boxShadow: '0 40px 80px -30px rgba(60,30,110,.55)', padding: 26, position: 'relative',
+          maxHeight: 'calc(100vh - 36px)', overflowY: 'auto',
         }}
       >
         <button

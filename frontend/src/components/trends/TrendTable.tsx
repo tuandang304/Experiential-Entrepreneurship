@@ -61,7 +61,8 @@ export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; o
   const { t } = useApp();
   const { width } = useBreakpoint();
   const asCards = width < 1024;
-  const pageSize = asCards ? 5 : 8;
+  // PC ≥1280: 10 · Laptop 1024–1279: 8 · Tablet 760–1023: 6 (card) · Mobile <760: 5 (card)
+  const pageSize = width >= 1280 ? 10 : width >= 1024 ? 8 : width >= 760 ? 6 : 5;
 
   const [page, setPage] = useState(1);
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));

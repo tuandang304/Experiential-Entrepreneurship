@@ -16,7 +16,8 @@ export const formatVND = (n: number) => n.toLocaleString('vi-VN') + '₫';
 
 // ===== Quản lý người dùng (FR-80) — GET /admin/users =====
 export type UserRole = 'USER' | 'ADMIN';
-export type UserStatus = 'ACTIVE' | 'LOCKED' | 'PENDING_DELETE';
+// PENDING_ACTIVATION: tài khoản vừa tạo, chờ user kích hoạt qua email mời (chưa đăng nhập lần nào).
+export type UserStatus = 'ACTIVE' | 'LOCKED' | 'PENDING_ACTIVATION' | 'PENDING_DELETE';
 export type UserPlan = 'free' | 'plus' | 'pro';
 export interface AdminUserRow {
   id: string;
@@ -32,27 +33,29 @@ export interface AdminUserRow {
   tokenUsagePercent: number;
   /** 'YYYY-MM-DD HH:mm' — null = chưa đăng nhập lần nào. */
   lastLoginAt: string | null;
+  /** SĐT (tuỳ chọn) — undefined nếu người dùng chưa cung cấp. */
+  phone?: string;
 }
 
 /** Giới hạn kênh kết nối theo gói (mock, khớp quyền lợi gói). */
 export const PLAN_LIMITS: Record<UserPlan, number> = { free: 1, plus: 2, pro: 4 };
 
-const USERS_RAW: [string, string, string, UserRole, UserStatus, string, UserPlan, number, number, string | null][] = [
-  // [id, tên, email, vai trò, trạng thái, ngày tạo, gói, kênh đang dùng, % token, đăng nhập gần nhất]
-  ['u01', 'Lan Phương', 'lan.phuong@gmail.com', 'USER', 'ACTIVE', '2026-01-12', 'pro', 3, 62, '2026-07-02 09:15'],
-  ['u02', 'Minh Tuấn', 'tuan.minh@aima.io', 'ADMIN', 'ACTIVE', '2025-11-03', 'pro', 4, 45, '2026-07-02 07:40'],
-  ['u03', 'Thu Hà', 'ha.thu@brandco.vn', 'USER', 'LOCKED', '2026-02-28', 'free', 1, 96, '2026-05-19 14:02'],
-  ['u04', 'David Chen', 'david.chen@startup.co', 'USER', 'ACTIVE', '2026-03-15', 'plus', 2, 88, '2026-07-01 22:10'],
-  ['u05', 'Ngọc Anh', 'anh.ngoc@gmail.com', 'USER', 'PENDING_DELETE', '2026-06-18', 'free', 0, 5, '2026-05-25 08:00'],
-  ['u06', 'Hoàng Long', 'long.hoang@smes.vn', 'USER', 'ACTIVE', '2026-04-02', 'plus', 1, 73, '2026-06-30 18:45'],
-  ['u07', 'Mai Chi', 'chi.mai@creator.vn', 'USER', 'ACTIVE', '2026-05-21', 'pro', 2, 91, '2026-07-02 06:05'],
-  ['u08', 'Bảo Nam', 'nam.bao@gmail.com', 'USER', 'LOCKED', '2026-01-30', 'free', 1, 34, '2026-04-27 10:30'],
-  ['u09', 'Sophie Tran', 'sophie@agency.co', 'ADMIN', 'ACTIVE', '2025-12-09', 'pro', 3, 28, '2026-07-01 16:20'],
-  ['u10', 'Quang Huy', 'huy.quang@shop.vn', 'USER', 'ACTIVE', '2026-06-01', 'plus', 2, 79, '2026-06-29 21:00'],
-  ['u11', 'Diệu Linh', 'linh.dieu@gmail.com', 'USER', 'ACTIVE', '2026-03-26', 'free', 1, 55, '2026-06-28 12:40'],
-  ['u12', 'Trung Kiên', 'kien.trung@biz.vn', 'USER', 'PENDING_DELETE', '2026-05-08', 'free', 0, 12, '2026-05-30 09:25'],
-  ['u13', 'Khánh Vy', 'vy.khanh@studio.vn', 'USER', 'ACTIVE', '2026-07-01', 'plus', 1, 8, '2026-07-02 08:55'],
-  ['u14', 'Tuấn Anh', 'anh.tuan@freelance.vn', 'USER', 'ACTIVE', '2026-07-02', 'free', 0, 0, null],
+const USERS_RAW: [string, string, string, UserRole, UserStatus, string, UserPlan, number, number, string | null, string | null][] = [
+  // [id, tên, email, vai trò, trạng thái, ngày tạo, gói, kênh đang dùng, % token, đăng nhập gần nhất, SĐT]
+  ['u01', 'Lan Phương', 'lan.phuong@gmail.com', 'USER', 'ACTIVE', '2026-01-12', 'pro', 3, 62, '2026-07-02 09:15', '0901234567'],
+  ['u02', 'Minh Tuấn', 'tuan.minh@aima.io', 'ADMIN', 'ACTIVE', '2025-11-03', 'pro', 4, 45, '2026-07-02 07:40', '0902345001'],
+  ['u03', 'Thu Hà', 'ha.thu@brandco.vn', 'USER', 'LOCKED', '2026-02-28', 'free', 1, 96, '2026-05-19 14:02', '0903120945'],
+  ['u04', 'David Chen', 'david.chen@startup.co', 'USER', 'ACTIVE', '2026-03-15', 'plus', 2, 88, '2026-07-01 22:10', null],
+  ['u05', 'Ngọc Anh', 'anh.ngoc@gmail.com', 'USER', 'PENDING_DELETE', '2026-06-18', 'free', 0, 5, '2026-05-25 08:00', '0905667788'],
+  ['u06', 'Hoàng Long', 'long.hoang@smes.vn', 'USER', 'ACTIVE', '2026-04-02', 'plus', 1, 73, '2026-06-30 18:45', '0906778899'],
+  ['u07', 'Mai Chi', 'chi.mai@creator.vn', 'USER', 'ACTIVE', '2026-05-21', 'pro', 2, 91, '2026-07-02 06:05', '0907889900'],
+  ['u08', 'Bảo Nam', 'nam.bao@gmail.com', 'USER', 'LOCKED', '2026-01-30', 'free', 1, 34, '2026-04-27 10:30', '0908990011'],
+  ['u09', 'Sophie Tran', 'sophie@agency.co', 'ADMIN', 'ACTIVE', '2025-12-09', 'pro', 3, 28, '2026-07-01 16:20', null],
+  ['u10', 'Quang Huy', 'huy.quang@shop.vn', 'USER', 'ACTIVE', '2026-06-01', 'plus', 2, 79, '2026-06-29 21:00', '0910112233'],
+  ['u11', 'Diệu Linh', 'linh.dieu@gmail.com', 'USER', 'ACTIVE', '2026-03-26', 'free', 1, 55, '2026-06-28 12:40', '0911223344'],
+  ['u12', 'Trung Kiên', 'kien.trung@biz.vn', 'USER', 'PENDING_DELETE', '2026-05-08', 'free', 0, 12, '2026-05-30 09:25', '0912334455'],
+  ['u13', 'Khánh Vy', 'vy.khanh@studio.vn', 'USER', 'PENDING_ACTIVATION', '2026-07-01', 'plus', 0, 0, null, '0913445566'],
+  ['u14', 'Tuấn Anh', 'anh.tuan@freelance.vn', 'USER', 'ACTIVE', '2026-07-02', 'free', 0, 0, null, null],
 ];
 
 // Trạng thái mock giữ trong module để lock/xoá/tạo phản ánh qua các lần getAdminUsers
@@ -62,6 +65,7 @@ const seedUsers = (): AdminUserRow[] =>
   USERS_RAW.map((u) => ({
     id: u[0], name: u[1], email: u[2], role: u[3], status: u[4], createdAt: u[5], initials: initials(u[1]),
     plan: u[6], channelsUsed: u[7], channelsLimit: PLAN_LIMITS[u[6]], tokenUsagePercent: u[8], lastLoginAt: u[9],
+    phone: u[10] ?? undefined,
   }));
 const users = (): AdminUserRow[] => (USERS ??= seedUsers());
 
@@ -72,6 +76,7 @@ export async function getAdminUsers(): Promise<AdminUserRow[]> {
 export const userStatusMeta = (lang: Lang, s: UserStatus): { tone: Tone; label: string } =>
   s === 'ACTIVE' ? { tone: 'success', label: P(lang, 'Hoạt động', 'Active') }
   : s === 'LOCKED' ? { tone: 'danger', label: P(lang, 'Đã khoá', 'Locked') }
+  : s === 'PENDING_ACTIVATION' ? { tone: 'info', label: P(lang, 'Chờ kích hoạt', 'Pending activation') }
   : { tone: 'warning', label: P(lang, 'Chờ xoá', 'Pending deletion') };
 
 export const userPlanMeta = (p: UserPlan): { tone: Tone; label: string } =>
@@ -121,15 +126,36 @@ export async function deleteAdminUser(id: string): Promise<{ id: string }> {
 }
 
 // POST /admin/users — tạo user thủ công (mock: thêm vào đầu danh sách).
-export async function createAdminUser(input: { name: string; email: string; role: UserRole; plan: UserPlan }): Promise<AdminUserRow> {
+// status: ACTIVE (đặt mật khẩu thủ công) | PENDING_ACTIVATION (gửi email mời kích hoạt).
+export async function createAdminUser(input: {
+  name: string; email: string; role: UserRole; plan: UserPlan; phone?: string; status?: UserStatus;
+}): Promise<AdminUserRow> {
   const row: AdminUserRow = {
     id: 'u' + Date.now().toString(36),
-    name: input.name, email: input.email, role: input.role, status: 'ACTIVE',
+    name: input.name, email: input.email, role: input.role, status: input.status ?? 'ACTIVE',
     createdAt: new Date().toISOString().slice(0, 10), initials: initials(input.name),
     plan: input.plan, channelsUsed: 0, channelsLimit: PLAN_LIMITS[input.plan], tokenUsagePercent: 0, lastLoginAt: null,
+    phone: input.phone,
   };
   users().unshift(row);
   return delay({ ...row });
+}
+
+// PATCH /admin/users/{id} — cập nhật thông tin tài khoản (mock). Đổi gói → cập nhật lại giới hạn kênh.
+export async function updateAdminUser(id: string, patch: {
+  name: string; email: string; phone?: string; role: UserRole; plan: UserPlan; status: UserStatus;
+}): Promise<AdminUserRow> {
+  const u = users().find((x) => x.id === id);
+  if (!u) return Promise.reject(new Error('NOT_FOUND'));
+  u.name = patch.name;
+  u.email = patch.email;
+  u.phone = patch.phone;
+  u.role = patch.role;
+  u.plan = patch.plan;
+  u.channelsLimit = PLAN_LIMITS[patch.plan];
+  u.status = patch.status;
+  u.initials = initials(patch.name);
+  return delay({ ...u });
 }
 
 // ===== Bài đăng lỗi & bị từ chối (FR-82 + FR-83) — GET /admin/posts/problems =====

@@ -253,8 +253,9 @@ export default function Trends() {
           )}
         </div>
 
-        {/* Sidebar phải — sticky khi hiển thị 2 cột, nội dung khối giữa đổi theo sub-tab */}
-        <div style={sideBySide ? { position: 'sticky', top: 8, maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' } : undefined}>
+        {/* Sidebar phải — sticky khi 2 cột; để cao tự nhiên (không giới hạn/cuộn nội bộ) nên 3 card
+            (gồm Lịch sử research) hiển thị đủ ngay từ đầu trên laptop, không bị cắt */}
+        <div style={sideBySide ? { position: 'sticky', top: 8 } : undefined}>
           <TrendsSidebar tab={tab} sessions={sessions} ideas={allIdeas} trends={allTrends} savedIds={savedIds} onViewHistory={() => { setHistoryPage(1); setTab('history'); }} />
         </div>
       </div>

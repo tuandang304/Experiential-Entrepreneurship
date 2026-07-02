@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Users as UsersIcon, UserCheck, Lock, UserPlus, Download, SlidersHorizontal,
+  Users as UsersIcon, UserCheck, Lock, Unlock, Eye, Trash2, UserPlus, Download, SlidersHorizontal,
   ArrowUp, ArrowDown, ArrowUpDown, X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Card, Icon } from '../../components/ui';
 import Modal from '../../components/Modal';
 import ConfirmDialog from '../../components/brand/ConfirmDialog';
 import StatusBadge from '../../components/admin/StatusBadge';
 import Pagination from '../../components/admin/Pagination';
-import AdminListPage, { SearchInput, FilterSelect, DataTable, DetailRow, type ListState } from '../../components/admin/AdminListPage';
+import RowActionsMenu, { type RowAction } from '../../components/admin/RowActionsMenu';
+import AdminListPage, { SearchInput, FilterSelect, DataTable, type ListState } from '../../components/admin/AdminListPage';
+import PasswordStrengthBar from '../../components/PasswordStrengthBar';
 import { validEmail } from '../../validations/authValidation';
+import { phoneOk } from '../../validations/profileValidation';
+import { passwordValid } from '../../validations/password';
 import {
-  getAdminUsers, setUserLocked, setUsersLocked, deleteAdminUser, createAdminUser,
-  userStatusMeta, userPlanMeta, timeAgo, daysSinceLogin,
-  type AdminUserRow, type UserRole, type UserPlan,
+  getAdminUsers, setUserLocked, setUsersLocked, createAdminUser, updateAdminUser, deleteAdminUser,
+  userStatusMeta, userPlanMeta, timeAgo, daysSinceLogin, PLAN_LIMITS,
+  type AdminUserRow, type UserRole, type UserPlan, type UserStatus,
 } from '../../api/admin';
 
 const PAGE_SIZE = 8;
@@ -24,11 +29,15 @@ type ConfirmState =
   | { kind: 'lock' | 'unlock' | 'delete'; user: AdminUserRow }
   | { kind: 'bulkLock' | 'bulkUnlock'; users: AdminUserRow[]; skippedAdmins: number };
 
+// Xoá người dùng: chỉ áp dụng cho tài khoản USER thường; tài khoản ADMIN được bảo vệ nên
+// KHÔNG hiện mục Xoá (api/admin.ts còn tự reject 'ADMIN_PROTECTED' như lớp chặn thứ hai).
+
 /** Màu progress token: xanh <70%, cam 70–90%, đỏ >90%. */
 const tokenColor = (p: number) => (p > 90 ? '#dc2626' : p >= 70 ? '#d97706' : '#16a34a');
 
 export default function Users() {
   const { t, lang, brandGradient } = useApp();
+  const { isMobile } = useBreakpoint();
   const [load, setLoad] = useState<'loading' | 'error' | 'ok'>('loading');
   const [rows, setRows] = useState<AdminUserRow[]>([]);
   const [query, setQuery] = useState('');
@@ -151,22 +160,33 @@ export default function Users() {
     setConfirm({ kind: lock ? 'bulkLock' : 'bulkUnlock', users: eligible, skippedAdmins: selectedAdmins });
   };
 
+  // Menu 3 chấm mỗi hàng: "Chi tiết" (mở form xem/sửa) + Khoá/Mở khoá (khi ACTIVE/LOCKED) + Xoá.
+  // Với tài khoản ADMIN: chỉ có "Chi tiết" — không hiện Khoá/Mở khoá lẫn Xoá (quản trị được bảo vệ).
+  const rowActions = (u: AdminUserRow): RowAction[] => {
+    const acts: RowAction[] = [
+      { key: 'detail', label: t.detail, icon: <Eye size={16} strokeWidth={1.8} />, onClick: () => setSelected(u) },
+    ];
+    if (u.role === 'ADMIN') return acts;
+    if (u.status === 'ACTIVE' || u.status === 'LOCKED') {
+      const locked = u.status === 'LOCKED';
+      acts.push({
+        key: 'lock',
+        label: locked ? t.usrUnlock : t.usrLock,
+        icon: locked ? <Unlock size={16} strokeWidth={1.8} /> : <Lock size={16} strokeWidth={1.8} />,
+        onClick: () => requestLockToggle(u),
+        danger: !locked,
+      });
+    }
+    acts.push({ key: 'delete', label: t.usrDelete, icon: <Trash2 size={16} strokeWidth={1.8} />, onClick: () => requestDelete(u), danger: true });
+    return acts;
+  };
+
   const runConfirm = () => {
     if (!confirm) return;
     setBusy(true);
     const done = () => { setBusy(false); setConfirm(null); };
 
-    if (confirm.kind === 'lock' || confirm.kind === 'unlock') {
-      const u = confirm.user;
-      setUserLocked(u.id, confirm.kind === 'lock')
-        .then((res) => {
-          setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, status: res.status } : x)));
-          setSelected((s) => (s && s.id === u.id ? { ...s, status: res.status } : s));
-          setToast({ type: 'success', msg: `${confirm.kind === 'lock' ? t.usrLocked : t.usrUnlocked} ${u.name}` });
-        })
-        .catch(() => setToast({ type: 'error', msg: t.usrNoLockAdmin }))
-        .finally(done);
-    } else if (confirm.kind === 'delete') {
+    if (confirm.kind === 'delete') {
       const u = confirm.user;
       deleteAdminUser(u.id)
         .then(() => {
@@ -177,7 +197,17 @@ export default function Users() {
         })
         .catch(() => setToast({ type: 'error', msg: t.usrNoDeleteAdmin }))
         .finally(done);
-    } else {
+    } else if (confirm.kind === 'lock' || confirm.kind === 'unlock') {
+      const u = confirm.user;
+      setUserLocked(u.id, confirm.kind === 'lock')
+        .then((res) => {
+          setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, status: res.status } : x)));
+          setSelected((s) => (s && s.id === u.id ? { ...s, status: res.status } : s));
+          setToast({ type: 'success', msg: `${confirm.kind === 'lock' ? t.usrLocked : t.usrUnlocked} ${u.name}` });
+        })
+        .catch(() => setToast({ type: 'error', msg: t.usrNoLockAdmin }))
+        .finally(done);
+    } else if (confirm.kind === 'bulkLock' || confirm.kind === 'bulkUnlock') {
       const lock = confirm.kind === 'bulkLock';
       setUsersLocked(confirm.users.map((u) => u.id), lock)
         .then((res) => {
@@ -228,7 +258,7 @@ export default function Users() {
     <>
       <SearchInput value={query} onChange={setQuery} />
       <FilterSelect value={role} onChange={setRole} options={[['all', `${t.filterRole}: ${t.filterAll}`], ['USER', t.roleUser], ['ADMIN', t.roleAdmin]]} />
-      <FilterSelect value={status} onChange={setStatus} options={[['all', `${t.colStatus}: ${t.filterAll}`], ['ACTIVE', t.stActive], ['LOCKED', t.stLocked], ['PENDING_DELETE', t.stPendingDel]]} />
+      <FilterSelect value={status} onChange={setStatus} options={[['all', `${t.colStatus}: ${t.filterAll}`], ['ACTIVE', t.stActive], ['LOCKED', t.stLocked], ['PENDING_ACTIVATION', t.stPendingActive], ['PENDING_DELETE', t.stPendingDel]]} />
       <FilterSelect value={plan} onChange={setPlan} options={[['all', `${t.filterPlan}: ${t.filterAll}`], ['free', 'Free'], ['plus', 'Plus'], ['pro', 'Pro']]} />
       <button
         type="button"
@@ -289,29 +319,33 @@ export default function Users() {
         body: <UserBox user={confirm.user} />,
       };
     }
-    const lock = confirm.kind === 'bulkLock';
-    return {
-      title: lock ? t.usrBulkLockTitle : t.usrBulkUnlockTitle,
-      message: `${confirm.users.length} ${t.usrBulkAffected}`,
-      confirmLabel: lock ? t.usrLockSel : t.usrUnlockSel,
-      variant: lock ? ('danger' as const) : ('warning' as const),
-      body: (
-        <div style={{ marginBottom: 8 }}>
-          {confirm.users.length <= 6 && (
-            <div style={{ background: '#faf9fe', border: '1px solid #f1eef8', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#3f3a55', display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {confirm.users.map((u) => (
-                <span key={u.id}><b>{u.name}</b> — {u.email}</span>
-              ))}
-            </div>
-          )}
-          {confirm.skippedAdmins > 0 && (
-            <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#d97706', background: '#fdf0dc', borderRadius: 10, padding: '8px 12px' }}>
-              ⚠ {confirm.skippedAdmins} {t.usrAdminSkipped}
-            </div>
-          )}
-        </div>
-      ),
-    };
+    if (confirm.kind === 'bulkLock' || confirm.kind === 'bulkUnlock') {
+      const lock = confirm.kind === 'bulkLock';
+      const { users, skippedAdmins } = confirm;
+      return {
+        title: lock ? t.usrBulkLockTitle : t.usrBulkUnlockTitle,
+        message: `${users.length} ${t.usrBulkAffected}`,
+        confirmLabel: lock ? t.usrLockSel : t.usrUnlockSel,
+        variant: lock ? ('danger' as const) : ('warning' as const),
+        body: (
+          <div style={{ marginBottom: 8 }}>
+            {users.length <= 6 && (
+              <div style={{ background: '#faf9fe', border: '1px solid #f1eef8', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#3f3a55', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {users.map((u) => (
+                  <span key={u.id}><b>{u.name}</b> — {u.email}</span>
+                ))}
+              </div>
+            )}
+            {skippedAdmins > 0 && (
+              <div style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: '#d97706', background: '#fdf0dc', borderRadius: 10, padding: '8px 12px' }}>
+                ⚠ {skippedAdmins} {t.usrAdminSkipped}
+              </div>
+            )}
+          </div>
+        ),
+      };
+    }
+    return null;
   })();
 
   return (
@@ -366,67 +400,86 @@ export default function Users() {
       )}
 
       <AdminListPage state={state} toolbar={toolbar} onRetry={fetchUsers}>
-        <DataTable head={head} minWidth={1080}>
-          {paged.map((u) => {
-            const rm = roleMeta(u.role);
-            const sm = userStatusMeta(lang, u.status);
-            const pm = userPlanMeta(u.plan);
-            const isAdmin = u.role === 'ADMIN';
-            return (
-              <tr key={u.id} style={{ borderTop: '1px solid #f1eef8', background: selectedIds.has(u.id) ? '#faf8ff' : 'transparent' }}>
-                <td style={{ padding: '13px 16px', width: 36 }}>
-                  <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleRow(u.id)} style={checkboxStyle} aria-label={u.name} />
-                </td>
-                <td style={{ padding: '13px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ width: 32, height: 32, flex: 'none', borderRadius: '50%', background: brandGradient, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{u.initials}</span>
-                    <div>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2b2543' }}>{u.name}</div>
-                      <div style={{ fontSize: 11.5, color: '#a59fbb' }}>{u.email}</div>
+        {isMobile ? (
+          // Mobile: mỗi người dùng là một card dọc (ẩn bảng ngang).
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
+            {paged.map((u) => {
+              const rm = roleMeta(u.role);
+              const sm = userStatusMeta(lang, u.status);
+              const pm = userPlanMeta(u.plan);
+              const sel = selectedIds.has(u.id);
+              return (
+                <Card key={u.id} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 11, ...(sel ? { background: '#faf8ff', borderColor: '#e7d9fb' } : {}) }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <input type="checkbox" checked={sel} onChange={() => toggleRow(u.id)} style={{ ...checkboxStyle, marginTop: 5 }} aria-label={u.name} />
+                    <span style={{ width: 38, height: 38, flex: 'none', borderRadius: '50%', background: brandGradient, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>{u.initials}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#2b2543', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</div>
+                      <div style={{ fontSize: 12, color: '#a59fbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
                     </div>
+                    <RowActionsMenu actions={rowActions(u)} ariaLabel={`${t.usrMoreActions} — ${u.name}`} />
                   </div>
-                </td>
-                <td style={{ padding: '13px 16px' }}><StatusBadge tone={rm.tone} label={rm.label} /></td>
-                <td style={{ padding: '13px 16px' }}><StatusBadge tone={pm.tone} label={pm.label} /></td>
-                <td style={{ padding: '13px 16px' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: '#2b2543', whiteSpace: 'nowrap' }}>{u.channelsUsed}/{u.channelsLimit} {t.usrChannelUnit}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <div style={{ width: 64, height: 6, borderRadius: 99, background: '#f1eef9', overflow: 'hidden' }}>
-                      <div style={{ width: `${u.tokenUsagePercent}%`, height: '100%', borderRadius: 99, background: tokenColor(u.tokenUsagePercent) }} />
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <StatusBadge tone={rm.tone} label={rm.label} />
+                    <StatusBadge tone={pm.tone} label={pm.label} />
+                    <StatusBadge tone={sm.tone} label={sm.label} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTop: '1px solid #f4f1fa', paddingTop: 10 }}>
+                    <span style={{ fontSize: 12, color: '#8a85a0' }}>{t.colUsage}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: '#2b2543' }}>
+                      {u.channelsUsed}/{u.channelsLimit} {t.usrChannelUnit} · <span style={{ color: tokenColor(u.tokenUsagePercent) }}>{u.tokenUsagePercent}%</span>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 11.5, color: '#8a85a0' }}>
+                    <span>{t.colLastLogin}: {timeAgo(lang, u.lastLoginAt)}</span>
+                    <span>{t.colCreated}: {u.createdAt}</span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <DataTable head={head} minWidth={1080}>
+            {paged.map((u) => {
+              const rm = roleMeta(u.role);
+              const sm = userStatusMeta(lang, u.status);
+              const pm = userPlanMeta(u.plan);
+              return (
+                <tr key={u.id} style={{ borderTop: '1px solid #f1eef8', background: selectedIds.has(u.id) ? '#faf8ff' : 'transparent' }}>
+                  <td style={{ padding: '13px 16px', width: 36 }}>
+                    <input type="checkbox" checked={selectedIds.has(u.id)} onChange={() => toggleRow(u.id)} style={checkboxStyle} aria-label={u.name} />
+                  </td>
+                  <td style={{ padding: '13px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ width: 32, height: 32, flex: 'none', borderRadius: '50%', background: brandGradient, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 }}>{u.initials}</span>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: '#2b2543' }}>{u.name}</div>
+                        <div style={{ fontSize: 11.5, color: '#a59fbb' }}>{u.email}</div>
+                      </div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: tokenColor(u.tokenUsagePercent) }}>{u.tokenUsagePercent}%</span>
-                  </div>
-                </td>
-                <td style={{ padding: '13px 16px', fontSize: 13, color: '#6b6680', whiteSpace: 'nowrap' }}>{timeAgo(lang, u.lastLoginAt)}</td>
-                <td style={{ padding: '13px 16px' }}><StatusBadge tone={sm.tone} label={sm.label} /></td>
-                <td style={{ padding: '13px 16px', fontSize: 13, color: '#8a85a0', whiteSpace: 'nowrap' }}>{u.createdAt}</td>
-                <td style={{ padding: '13px 16px' }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => setSelected(u)} style={btnGhost}>{t.detail}</button>
-                    {u.status !== 'PENDING_DELETE' && (
-                      <button
-                        onClick={() => requestLockToggle(u)}
-                        disabled={isAdmin}
-                        title={isAdmin ? t.usrNoLockAdmin : undefined}
-                        style={{ ...(u.status === 'LOCKED' ? btnGreen : btnRed), ...(isAdmin ? btnDisabled : {}) }}
-                      >
-                        {u.status === 'LOCKED' ? t.usrUnlock : t.usrLock}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => requestDelete(u)}
-                      disabled={isAdmin}
-                      title={isAdmin ? t.usrNoDeleteAdmin : undefined}
-                      style={{ ...btnRed, ...(isAdmin ? btnDisabled : {}) }}
-                    >
-                      {t.usrDelete}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </DataTable>
+                  </td>
+                  <td style={{ padding: '13px 16px' }}><StatusBadge tone={rm.tone} label={rm.label} /></td>
+                  <td style={{ padding: '13px 16px' }}><StatusBadge tone={pm.tone} label={pm.label} /></td>
+                  <td style={{ padding: '13px 16px' }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#2b2543', whiteSpace: 'nowrap' }}>{u.channelsUsed}/{u.channelsLimit} {t.usrChannelUnit}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                      <div style={{ width: 64, height: 6, borderRadius: 99, background: '#f1eef9', overflow: 'hidden' }}>
+                        <div style={{ width: `${u.tokenUsagePercent}%`, height: '100%', borderRadius: 99, background: tokenColor(u.tokenUsagePercent) }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: tokenColor(u.tokenUsagePercent) }}>{u.tokenUsagePercent}%</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '13px 16px', fontSize: 13, color: '#6b6680', whiteSpace: 'nowrap' }}>{timeAgo(lang, u.lastLoginAt)}</td>
+                  <td style={{ padding: '13px 16px' }}><StatusBadge tone={sm.tone} label={sm.label} /></td>
+                  <td style={{ padding: '13px 16px', fontSize: 13, color: '#8a85a0', whiteSpace: 'nowrap' }}>{u.createdAt}</td>
+                  <td style={{ padding: '13px 16px' }}>
+                    <RowActionsMenu actions={rowActions(u)} ariaLabel={`${t.usrMoreActions} — ${u.name}`} />
+                  </td>
+                </tr>
+              );
+            })}
+          </DataTable>
+        )}
         <div style={{ padding: '0 16px 16px' }}>
           <Pagination page={page} pageCount={pageCount} onChange={setPage} />
         </div>
@@ -434,27 +487,15 @@ export default function Users() {
 
       {/* Modal chi tiết */}
       {selected && (
-        <Modal title={t.usrDetailTitle} onClose={() => setSelected(null)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-            <span style={{ width: 52, height: 52, flex: 'none', borderRadius: '50%', background: brandGradient, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700 }}>{selected.initials}</span>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#211c38' }}>{selected.name}</div>
-              <div style={{ fontSize: 13, color: '#8a85a0' }}>{selected.email}</div>
-            </div>
-          </div>
-          <DetailRow label={t.colRole} value={<StatusBadge {...roleMeta(selected.role)} />} />
-          <DetailRow label={t.colPlan} value={<StatusBadge {...userPlanMeta(selected.plan)} />} />
-          <DetailRow label={t.colStatus} value={<StatusBadge {...userStatusMeta(lang, selected.status)} />} />
-          <DetailRow label={t.colUsage} value={`${selected.channelsUsed}/${selected.channelsLimit} ${t.usrChannelUnit}`} />
-          <DetailRow label={t.usrTokenLabel} value={<span style={{ color: tokenColor(selected.tokenUsagePercent) }}>{selected.tokenUsagePercent}%</span>} />
-          <DetailRow label={t.colLastLogin} value={timeAgo(lang, selected.lastLoginAt)} />
-          <DetailRow label={t.colCreated} value={selected.createdAt} />
-          {selected.status !== 'PENDING_DELETE' && selected.role !== 'ADMIN' && (
-            <button onClick={() => requestLockToggle(selected)} style={{ ...(selected.status === 'LOCKED' ? btnGreen : btnRed), width: '100%', marginTop: 18, padding: '11px 0', fontSize: 14 }}>
-              {selected.status === 'LOCKED' ? t.usrUnlock : t.usrLock}
-            </button>
-          )}
-        </Modal>
+        <EditUserModal
+          user={selected}
+          onClose={() => setSelected(null)}
+          onSaved={(row) => {
+            setRows((prev) => prev.map((x) => (x.id === row.id ? row : x)));
+            setSelected(null);
+            setToast({ type: 'success', msg: `${t.usrSaved}: ${row.name}` });
+          }}
+        />
       )}
 
       {/* ConfirmDialog dùng chung cho khoá / mở khoá / xoá / bulk */}
@@ -496,38 +537,55 @@ function UserBox({ user }: { user: AdminUserRow }) {
   );
 }
 
-/** Form tạo user thủ công (Tên, Email, Vai trò, Gói) — validate qua validations/. */
+/**
+ * Form tạo user thủ công — đầy đủ trường, khớp với bảng & form sửa: Tên, Email, SĐT,
+ * Vai trò, Gói (kèm preview giới hạn kênh theo gói), và cách kích hoạt tài khoản:
+ * đặt mật khẩu thủ công → ACTIVE, hoặc gửi email mời → PENDING_ACTIVATION.
+ */
 function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: (row: AdminUserRow) => void }) {
-  const { t } = useApp();
+  const { t, lang } = useApp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('USER');
   const [plan, setPlan] = useState<UserPlan>('free');
-  const [errors, setErrors] = useState<{ name?: string; email?: string }>({});
+  const [activation, setActivation] = useState<'manual' | 'invite'>('manual');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string; password?: string }>({});
   const [busy, setBusy] = useState(false);
+
+  // Trạng thái khi tạo suy ra từ cách kích hoạt (tránh mâu thuẫn "gửi mời" + "đang hoạt động").
+  const createStatus: UserStatus = activation === 'invite' ? 'PENDING_ACTIVATION' : 'ACTIVE';
 
   const submit = () => {
     const er: typeof errors = {};
     if (!name.trim()) er.name = t.errNameReq;
     if (!email.trim()) er.email = t.errEmailReq;
     else if (!validEmail(email)) er.email = t.errEmailBad;
+    if (phone.trim() && !phoneOk(phone)) er.phone = t.errPhoneBad;
+    if (activation === 'manual' && !passwordValid(password)) er.password = password.trim() ? t.errPwWeak : t.errPwReq;
     setErrors(er);
     if (Object.keys(er).length > 0) return;
     setBusy(true);
-    createAdminUser({ name: name.trim(), email: email.trim(), role, plan })
+    createAdminUser({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, role, plan, status: createStatus })
       .then(onCreated)
       .finally(() => setBusy(false));
   };
 
   return (
-    <Modal title={t.usrAddTitle} onClose={onClose}>
+    <Modal title={t.usrAddTitle} onClose={onClose} maxWidth={520}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Field label={t.colName} error={errors.name}>
           <input value={name} onChange={(e) => setName(e.target.value)} style={fieldInput} />
         </Field>
-        <Field label={t.colEmail} error={errors.email}>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={fieldInput} />
-        </Field>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Field label={t.colEmail} error={errors.email} style={{ flex: '1 1 200px' }}>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={fieldInput} />
+          </Field>
+          <Field label={t.colPhone} error={errors.phone} style={{ flex: '1 1 160px' }}>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="0901234567" style={fieldInput} />
+          </Field>
+        </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <Field label={t.colRole} style={{ flex: 1 }}>
             <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} style={fieldInput}>
@@ -543,16 +601,143 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </select>
           </Field>
         </div>
+        {/* Giới hạn kênh theo gói — chỉ hiển thị, không nhập tay */}
+        <div style={infoRow}>
+          <span style={infoLabel}>{t.usrPlanLimit}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#6d28d9' }}>{t.usrUpTo} {PLAN_LIMITS[plan]} {t.usrChannelUnit}</span>
+        </div>
+        {/* Cách kích hoạt tài khoản (chọn 1 trong 2) */}
+        <Field label={t.usrActivation}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <RadioRow name="activation" checked={activation === 'manual'} onSelect={() => setActivation('manual')} label={t.usrActivationManual} />
+            <RadioRow name="activation" checked={activation === 'invite'} onSelect={() => setActivation('invite')} label={t.usrActivationInvite} hint={t.usrActivationInviteHint} />
+          </div>
+        </Field>
+        {activation === 'manual' && (
+          <Field label={t.usrPasswordLabel} error={errors.password}>
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="new-password" style={fieldInput} />
+            <PasswordStrengthBar password={password} />
+          </Field>
+        )}
+        {/* Trạng thái sau khi tạo (preview) */}
+        <div style={infoRow}>
+          <span style={infoLabel}>{t.usrCreateStatus}</span>
+          <StatusBadge {...userStatusMeta(lang, createStatus)} />
+        </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <button onClick={onClose} className="btn-soft" style={{ flex: 1, border: '1px solid #ece8f6', background: '#fff', borderRadius: 11, padding: '11px 0', fontSize: 14, fontWeight: 700, color: '#5b5670', cursor: 'pointer' }}>
-            {t.cancel}
-          </button>
-          <button onClick={submit} disabled={busy} className="btn-grad" style={{ flex: 1, border: 'none', background: 'var(--brand)', borderRadius: 11, padding: '11px 0', fontSize: 14, fontWeight: 700, color: '#fff', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
-            {t.usrCreate}
-          </button>
+          <button onClick={onClose} className="btn-soft" style={modalCancelBtn}>{t.cancel}</button>
+          <button onClick={submit} disabled={busy} className="btn-grad" style={modalPrimaryBtn(busy)}>{t.usrCreate}</button>
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Xem/chỉnh sửa tài khoản (mở từ "Chi tiết"). Sửa được: Tên, Email, SĐT, Vai trò,
+ * Gói, Trạng thái. Chỉ đọc (disable): ngày tạo, đăng nhập gần nhất, số kênh đã kết nối.
+ */
+function EditUserModal({ user, onClose, onSaved }: { user: AdminUserRow; onClose: () => void; onSaved: (row: AdminUserRow) => void }) {
+  const { t, lang, brandGradient } = useApp();
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email);
+  const [phone, setPhone] = useState(user.phone ?? '');
+  const [role, setRole] = useState<UserRole>(user.role);
+  const [plan, setPlan] = useState<UserPlan>(user.plan);
+  const [status, setStatus] = useState<UserStatus>(user.status);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+  const [busy, setBusy] = useState(false);
+
+  const submit = () => {
+    const er: typeof errors = {};
+    if (!name.trim()) er.name = t.errNameReq;
+    if (!email.trim()) er.email = t.errEmailReq;
+    else if (!validEmail(email)) er.email = t.errEmailBad;
+    if (phone.trim() && !phoneOk(phone)) er.phone = t.errPhoneBad;
+    setErrors(er);
+    if (Object.keys(er).length > 0) return;
+    setBusy(true);
+    updateAdminUser(user.id, { name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, role, plan, status })
+      .then(onSaved)
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <Modal title={t.usrDetailTitle} onClose={onClose} maxWidth={520}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+        <span style={{ width: 52, height: 52, flex: 'none', borderRadius: '50%', background: brandGradient, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700 }}>{user.initials}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#211c38' }}>{user.name}</div>
+          <div style={{ fontSize: 13, color: '#8a85a0' }}>{user.email}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Field label={t.colName} error={errors.name}>
+          <input value={name} onChange={(e) => setName(e.target.value)} style={fieldInput} />
+        </Field>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Field label={t.colEmail} error={errors.email} style={{ flex: '1 1 200px' }}>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={fieldInput} />
+          </Field>
+          <Field label={t.colPhone} error={errors.phone} style={{ flex: '1 1 160px' }}>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="0901234567" style={fieldInput} />
+          </Field>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Field label={t.colRole} style={{ flex: 1 }}>
+            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} style={fieldInput}>
+              <option value="USER">{t.roleUser}</option>
+              <option value="ADMIN">{t.roleAdmin}</option>
+            </select>
+          </Field>
+          <Field label={t.filterPlan} style={{ flex: 1 }}>
+            <select value={plan} onChange={(e) => setPlan(e.target.value as UserPlan)} style={fieldInput}>
+              <option value="free">Free</option>
+              <option value="plus">Plus</option>
+              <option value="pro">Pro</option>
+            </select>
+          </Field>
+        </div>
+        <Field label={t.colStatus}>
+          <select value={status} onChange={(e) => setStatus(e.target.value as UserStatus)} style={fieldInput}>
+            <option value="ACTIVE">{t.stActive}</option>
+            <option value="LOCKED">{t.stLocked}</option>
+            <option value="PENDING_ACTIVATION">{t.stPendingActive}</option>
+            <option value="PENDING_DELETE">{t.stPendingDel}</option>
+          </select>
+        </Field>
+        {/* Trường chỉ đọc */}
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#a59fbb', letterSpacing: 0.3, textTransform: 'uppercase', marginTop: 2 }}>{t.usrReadonlyHint}</div>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Field label={t.colCreated} style={{ flex: '1 1 140px' }}>
+            <input value={user.createdAt} disabled style={fieldInputDisabled} />
+          </Field>
+          <Field label={t.colLastLogin} style={{ flex: '1 1 140px' }}>
+            <input value={timeAgo(lang, user.lastLoginAt)} disabled style={fieldInputDisabled} />
+          </Field>
+        </div>
+        <Field label={t.usrChannelsConnected}>
+          <input value={`${user.channelsUsed}/${PLAN_LIMITS[plan]} ${t.usrChannelUnit}`} disabled style={fieldInputDisabled} />
+        </Field>
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button onClick={onClose} className="btn-soft" style={modalCancelBtn}>{t.cancel}</button>
+          <button onClick={submit} disabled={busy} className="btn-grad" style={modalPrimaryBtn(busy)}>{t.usrSave}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** Ô radio dạng thẻ (label + mô tả phụ) — dùng cho "cách kích hoạt tài khoản". */
+function RadioRow({ name, checked, onSelect, label, hint }: { name: string; checked: boolean; onSelect: () => void; label: string; hint?: string }) {
+  return (
+    <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', border: `1px solid ${checked ? '#c9adfb' : '#ece8f6'}`, background: checked ? '#f6f0ff' : '#fff', borderRadius: 11, padding: '10px 12px', cursor: 'pointer' }}>
+      <input type="radio" name={name} checked={checked} onChange={onSelect} style={{ accentColor: '#7c3aed', marginTop: 2, cursor: 'pointer' }} />
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: '#2b2543' }}>{label}</span>
+        {hint && <span style={{ fontSize: 12, color: '#8a85a0', lineHeight: 1.5 }}>{hint}</span>}
+      </span>
+    </label>
   );
 }
 
@@ -567,8 +752,13 @@ function Field({ label, error, style, children }: { label: string; error?: strin
 }
 
 const fieldInput = { width: '100%', height: 40, border: '1px solid #ece8f6', borderRadius: 10, padding: '0 12px', fontSize: 13.5, color: '#241f3a', outline: 'none', background: '#fff' } as const;
+const fieldInputDisabled = { ...fieldInput, background: '#f4f2fb', color: '#8a85a0', cursor: 'not-allowed' } as const;
+
+const infoRow = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: '#faf9fe', border: '1px solid #f1eef8', borderRadius: 12, padding: '10px 14px' } as const;
+const infoLabel = { fontSize: 12.5, color: '#8a85a0', fontWeight: 600 } as const;
+const modalCancelBtn = { flex: 1, border: '1px solid #ece8f6', background: '#fff', borderRadius: 11, padding: '11px 0', fontSize: 14, fontWeight: 700, color: '#5b5670', cursor: 'pointer' } as const;
+const modalPrimaryBtn = (busy: boolean) => ({ flex: 1, border: 'none', background: 'var(--brand)', borderRadius: 11, padding: '11px 0', fontSize: 14, fontWeight: 700, color: '#fff', cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 } as const);
 
 const btnGhost = { display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid #ece8f6', background: '#fff', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#5b5670', cursor: 'pointer' } as const;
 const btnRed = { border: 'none', background: '#fde8e8', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#dc2626', cursor: 'pointer' } as const;
 const btnGreen = { border: 'none', background: '#e8f8ee', borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, color: '#16a34a', cursor: 'pointer' } as const;
-const btnDisabled = { opacity: 0.45, cursor: 'not-allowed' } as const;

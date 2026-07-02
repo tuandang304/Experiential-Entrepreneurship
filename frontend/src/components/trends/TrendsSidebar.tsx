@@ -1,5 +1,6 @@
 import { Globe, Hash, Newspaper, TrendingUp, CalendarClock, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Card, Icon, PlatformTag } from '../ui';
 import { PLATFORM_BG } from '../../theme';
 import {
@@ -19,9 +20,10 @@ const labelStyle = { fontSize: 12.5, color: '#8a85a0', fontWeight: 600 } as cons
 const valueStyle = { fontSize: 13, fontWeight: 700, color: '#2b2543', textAlign: 'right' } as const;
 
 /**
- * Sidebar phải của trang Xu hướng. Khối "Trạng thái research" (trên) và
- * "Lịch research tự động" (dưới) cố định; khối giữa đổi theo sub-tab:
- * hot → lịch sử rút gọn · ideas → thống kê ý tưởng · history → thống kê phiên.
+ * Sidebar phải của trang Xu hướng. Thứ tự ưu tiên: "Lịch research tự động" (toggle
+ * quan trọng, đặt trên đầu để không bị cắt khi cột phải dài) → "Trạng thái research"
+ * → khối giữa đổi theo sub-tab: hot → lịch sử rút gọn · ideas → thống kê ý tưởng ·
+ * history → thống kê phiên. Cả hai khối cố định luôn hiển thị ở mọi sub-tab.
  */
 export default function TrendsSidebar({
   tab,
@@ -43,7 +45,10 @@ export default function TrendsSidebar({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* 1. Trạng thái research — cố định ở mọi sub-tab */}
+      {/* 1. Lịch research tự động — toggle quan trọng, đưa lên đầu để không bị che khi sidebar dài */}
+      <AutoScheduleCard />
+
+      {/* 2. Trạng thái research — cố định ở mọi sub-tab */}
       <Card style={{ padding: 20 }}>
         <div style={{ ...rowStyle, marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#211c38' }}>{t.trSideStatus}</div>
@@ -91,36 +96,43 @@ export default function TrendsSidebar({
         </button>
       </Card>
 
-      {/* 2. Khối giữa — đổi theo sub-tab */}
+      {/* 3. Khối giữa — đổi theo sub-tab */}
       {tab === 'hot' && <HistoryBrief sessions={sessions} onViewHistory={onViewHistory} />}
       {tab === 'ideas' && <IdeaStats ideas={ideas} trends={trends} savedIds={savedIds} />}
       {tab === 'history' && <SessionStats sessions={sessions} />}
-
-      {/* 3. Lịch research tự động — cố định ở mọi sub-tab */}
-      <Card style={{ padding: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 36, height: 36, flex: 'none', borderRadius: 10, background: 'linear-gradient(135deg,#f1e9ff,#e9f0ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon icon={CalendarClock} size={18} stroke="#8b5cf6" />
-          </div>
-          <div style={{ flex: 1, fontWeight: 700, fontSize: 15, color: '#211c38' }}>{t.trSideSchedule}</div>
-          <Pill text={t.trScheduleOn} color={SESSION_STATUS_COLORS.done.color} bg={SESSION_STATUS_COLORS.done.bg} />
-        </div>
-        <div style={{ fontSize: 12.5, color: '#6b6680', lineHeight: 1.55, marginBottom: 14 }}>{t.trScheduleDesc}</div>
-        <button
-          type="button"
-          className="btn-outline"
-          style={{ width: '100%', border: '1px solid #ece8f6', background: '#fff', color: '#4b4660', fontWeight: 700, fontSize: 12.5, borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
-        >
-          {t.trScheduleBtn}
-        </button>
-      </Card>
     </div>
   );
 }
 
-/** Tab "Trend nổi bật": lịch sử research rút gọn 4 item + link Xem tất cả. */
+/** Lịch research tự động — toggle cố định, hiển thị ở mọi sub-tab (đặt đầu sidebar). */
+function AutoScheduleCard() {
+  const { t } = useApp();
+  return (
+    <Card style={{ padding: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div style={{ width: 36, height: 36, flex: 'none', borderRadius: 10, background: 'linear-gradient(135deg,#f1e9ff,#e9f0ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon icon={CalendarClock} size={18} stroke="#8b5cf6" />
+        </div>
+        <div style={{ flex: 1, fontWeight: 700, fontSize: 15, color: '#211c38' }}>{t.trSideSchedule}</div>
+        <Pill text={t.trScheduleOn} color={SESSION_STATUS_COLORS.done.color} bg={SESSION_STATUS_COLORS.done.bg} />
+      </div>
+      <div style={{ fontSize: 12.5, color: '#6b6680', lineHeight: 1.55, marginBottom: 14 }}>{t.trScheduleDesc}</div>
+      <button
+        type="button"
+        className="btn-outline"
+        style={{ width: '100%', border: '1px solid #ece8f6', background: '#fff', color: '#4b4660', fontWeight: 700, fontSize: 12.5, borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
+      >
+        {t.trScheduleBtn}
+      </button>
+    </Card>
+  );
+}
+
+/** Tab "Trend nổi bật": lịch sử research rút gọn (3 mục ở laptop, 5 mục ở PC) + link Xem tất cả. */
 function HistoryBrief({ sessions, onViewHistory }: { sessions: ResearchSession[]; onViewHistory: () => void }) {
   const { t } = useApp();
+  const { width } = useBreakpoint();
+  const briefCount = width >= 1280 ? 5 : 3;
   return (
     <Card style={{ padding: 20 }}>
       <div style={{ ...rowStyle, marginBottom: 12 }}>
@@ -136,7 +148,7 @@ function HistoryBrief({ sessions, onViewHistory }: { sessions: ResearchSession[]
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {sessions.slice(0, 4).map((s, i) => {
+        {sessions.slice(0, briefCount).map((s, i) => {
           const st = SESSION_STATUS_COLORS[s.status];
           return (
             <div key={s.id} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid #f4f1fa' : 'none' }}>

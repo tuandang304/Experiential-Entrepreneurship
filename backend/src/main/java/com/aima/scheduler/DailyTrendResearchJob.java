@@ -1,0 +1,81 @@
+package com.aima.scheduler;
+
+import com.aima.entity.BrandProfile;
+import com.aima.entity.TrendResearchSession;
+import com.aima.enums.Platform;
+import com.aima.enums.ResearchStatus;
+import com.aima.enums.StrategyStatus;
+import com.aima.mapper.TrendResearchMapper;
+import com.aima.repository.BrandProfileRepository;
+import com.aima.repository.ContentStrategyRepository;
+import com.aima.repository.TrendResearchSessionRepository;
+import com.aima.service.TrendResearchWorkerService;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+/**
+ * FR-19: nghiên cứu xu hướng tự động lúc 02:00 mỗi ngày. Quét các hồ sơ thương hiệu đang hoạt động
+ * (isActive) có chiến lược ACTIVE (BR-01, BR-03); bỏ qua user đang có phiên PENDING/RUNNING
+ * (không chạy song song — cùng guard với "Research ngay"). Phiên được xử lý bởi worker nền
+ * {@link TrendResearchWorkerService} như luồng thủ công. Resilient: lỗi từng hồ sơ được log + bỏ qua.
+ */
+@Component
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
+public class DailyTrendResearchJob {
+
+    BrandProfileRepository brandProfileRepository;
+    ContentStrategyRepository contentStrategyRepository;
+    TrendResearchSessionRepository sessionRepository;
+    TrendResearchMapper trendResearchMapper;
+    TrendResearchWorkerService trendResearchWorkerService;
+
+    @Scheduled(cron = "0 0 2 * * *")
+    public void run() {
+        List<BrandProfile> brands = brandProfileRepository.findByIsActiveTrueAndDeletedAtIsNull();
+        if (brands.isEmpty()) {
+            log.info("[DailyTrendResearch] Không có hồ sơ thương hiệu đang hoạt động.");
+            return;
+        }
+
+        int started = 0;
+        for (BrandProfile brand : brands) {
+            try {
+                if (startResearchFor(brand)) {
+                    started++;
+                }
+            } catch (Exception e) {
+                log.warn("[DailyTrendResearch] Bỏ qua hồ sơ {}: {}", brand.getId(), e.getMessage(), e);
+            }
+        }
+        log.info("[DailyTrendResearch] Đã khởi động {}/{} phiên nghiên cứu.", started, brands.size());
+    }
+
+    private boolean startResearchFor(BrandProfile brand) {
+        if (contentStrategyRepository
+                .findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        brand.getId(), StrategyStatus.ACTIVE)
+                .isEmpty()) {
+            return false; // thiếu chiến lược ACTIVE — không tự nghiên cứu
+        }
+        if (sessionRepository.existsByBrandProfile_User_IdAndStatusInAndDeletedAtIsNull(
+                brand.getUser().getId(), List.of(ResearchStatus.PENDING, ResearchStatus.RUNNING))) {
+            return false; // đã có phiên đang chạy cho user này
+        }
+
+        // Không có transaction bao ngoài — save commit ngay nên dispatch worker trực tiếp
+        // (khác luồng "Research ngay" phải chờ afterCommit).
+        TrendResearchSession session = sessionRepository
+                .save(trendResearchMapper.toSession(brand, Platform.FACEBOOK));
+        trendResearchWorkerService.process(session.getId());
+        log.info("[DailyTrendResearch] Đã tạo phiên {} cho hồ sơ {}", session.getId(), brand.getId());
+        return true;
+    }
+}

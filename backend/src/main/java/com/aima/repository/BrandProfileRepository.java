@@ -18,6 +18,9 @@ public interface BrandProfileRepository extends JpaRepository<BrandProfile, UUID
     Optional<BrandProfile> findByIdAndUser_IdAndDeletedAtIsNull(UUID id, UUID userId);
     Optional<BrandProfile> findFirstByUser_IdAndIsActiveTrueAndDeletedAtIsNull(UUID userId);
 
+    // FR-19: scheduler 02:00 quét mọi hồ sơ đang hoạt động (tối đa 1 active/user).
+    List<BrandProfile> findByIsActiveTrueAndDeletedAtIsNull();
+
     // Phân trang + lọc server-side cho tab Thương hiệu (q rỗng / industry rỗng = bỏ qua điều kiện).
     @Query("""
             select b from BrandProfile b

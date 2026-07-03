@@ -184,6 +184,7 @@ backend/
 >   `config/{AsyncConfig, AiServiceProperties, AiServiceWebClientConfig}`. See §4 "Content Generation".
 > - **Trend Research (AI, async)**: `controller/TrendResearchController`,
 >   `service/{TrendResearchService, TrendResearchWorkerService}` (+ `Impl/`), `AiServiceClient.research()`,
+>   `scheduler/DailyTrendResearchJob` (2:00 AM daily run),
 >   `mapper/TrendResearchMapper`, `entity/{TrendResearchSession, Trend, ContentIdea}`,
 >   `dto/ai/{ResearchPayload, ResearchResultPayload, TrendPayload, ContentIdeaPayload}`. See §4 "Trend Research".
 
@@ -496,7 +497,7 @@ A `PENDING_DELETE` user can still log in (only `LOCKED` is blocked) so they can 
 
 **Ghi chú mapping** — AI trả platform dạng chuỗi ("Facebook"/"Instagram"/"Threads") → `parsePlatform` chuẩn hoá về enum (lạ → FACEBOOK); mỗi idea link trend cha qua `trend_name` (không khớp → gắn trend đầu tiên). Nguồn signal phía AI service: Facebook connector + Trends-MCP (YouTube/TikTok/IG Reels — xem `ai/src/platform/trends_mcp.py`).
 
-**Chưa build**: scheduler 2:00 AM daily của FR-19 (mới có "Research now").
+**Scheduler 2:00 AM (FR-19)** — `scheduler/DailyTrendResearchJob` (`@Scheduled(cron = "0 0 2 * * *")`): quét mọi brand profile `isActive` (`findByIsActiveTrueAndDeletedAtIsNull`), yêu cầu strategy ACTIVE, bỏ qua user đang có phiên PENDING/RUNNING (cùng guard với "Research ngay"), tạo session qua `TrendResearchMapper.toSession(brand, FACEBOOK)` rồi dispatch thẳng `TrendResearchWorkerService.process(id)` (không cần afterCommit — scheduler không có transaction bao ngoài, repo save commit ngay). Resilient: lỗi từng hồ sơ log + bỏ qua.
 
 **ErrorCodes** 1910–1913: `ACTIVE_BRAND_PROFILE_REQUIRED`, `ACTIVE_STRATEGY_REQUIRED`, `RESEARCH_ALREADY_RUNNING`, `RESEARCH_SESSION_NOT_FOUND`.
 

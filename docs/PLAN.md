@@ -43,7 +43,7 @@
 - [x] FR-18b Expired token → account `Expired`, scheduled posts → `On Hold` `[BE]` — done 2026-06-27 (TokenHealthCheckJob safe status migration)
 
 ## 5. Trend Research (Agent AI)
-- [ ] FR-19 Scheduled research (2:00 AM daily) + "Research now" button; requires active Brand Profile & Strategy; no overlapping sessions `[BE][AI][FE]` — AI analysis (`POST /research`) done 2026-06-13; BE "Research now" + session guard (async worker, `POST /trend-research/sessions`) + FE nút Research ngay (modal chọn hồ sơ thương hiệu + nền tảng → poll; cảnh báo khi thiếu hồ sơ / chiến lược ACTIVE) done 2026-07-02; hồ sơ thương hiệu đầu tiên của user tự động `isActive` (BE); BE 2:00 AM scheduler pending
+- [x] FR-19 Scheduled research (2:00 AM daily) + "Research now" button; requires active Brand Profile & Strategy; no overlapping sessions `[BE][AI][FE]` — AI analysis (`POST /research`) done 2026-06-13; BE "Research now" + session guard (async worker, `POST /trend-research/sessions`) + FE nút Research ngay (modal chọn hồ sơ thương hiệu + nền tảng → poll; cảnh báo khi thiếu hồ sơ / chiến lược ACTIVE) done 2026-07-02; hồ sơ thương hiệu đầu tiên của user tự động `isActive` (BE); BE 2:00 AM scheduler (`DailyTrendResearchJob`: quét hồ sơ `isActive` có chiến lược ACTIVE, bỏ qua user đang có phiên PENDING/RUNNING, dispatch cùng worker nền) done 2026-07-03
 - [x] FR-20 Filter trends by industry `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-21 Relevance rating (High / Medium / Low) `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-22 Create content ideas from trends `[AI]` — done 2026-06-13 (AI svc)
@@ -148,7 +148,7 @@
 - [x] Password hashing (SEC-01) + JWT protection (SEC-02) `[BE]` — done 2026-06-12
 - [ ] AES-256 token encryption, never exposed to frontend (SEC-03) `[BE]`
 - [ ] Async background jobs for all AI/posting tasks (NFR-04) `[BE][AI]` — content generation done 2026-07-01 (`ContentGenerationJob` + `@Async` worker + FE polling); research/formatting/analysis/posting still pending
-- [ ] Scheduler (posting calendar trigger + 2:00 AM research run) `[BE]`
+- [ ] Scheduler (posting calendar trigger + 2:00 AM research run) `[BE]` — 2:00 AM research run done 2026-07-03 (`DailyTrendResearchJob`); posting calendar trigger pending
 - [ ] Platform adapter/interface layer for future platforms (NFR-09) `[BE]`
 - [ ] Webhook endpoints for post-publication violation notifications `[BE]`
 - [ ] Logging for AI errors, posting, platform API calls (NFR-11) `[BE][AI]`

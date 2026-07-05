@@ -304,6 +304,12 @@ If a target DTO has no mapper method yet, add one and call it from the service. 
 - `request → entity` (create): `to<Entity>` (e.g. `toUser`, `toBrandProfile`).
 - `@MappingTarget` update: `update(RequestDto request, @MappingTarget Entity entity)` — source first, target last; add a suffix only when one mapper has several updates from different sources (`updateProfile`, `completeProfile`).
 
+**Entity→entity create mappers MUST ignore `id` + audit fields.** Khi source là một entity khác
+(vd `toSession(BrandProfile brand, ...)`, `toJob(ContentItem item, ...)`, `toPost(PostSchedule schedule)`),
+MapStruct auto-map `source.id` → `target.id` và cả `createdAt/updatedAt/deletedAt` — target sinh ra mang id
+của entity nguồn → JPA `save()` đi đường `merge` → `StaleObjectStateException` (500). Luôn khai báo
+`@Mapping(target = "id", ignore = true)` + ignore 3 audit fields trên mọi mapper entity→entity.
+
 **Only add `@Mapping` where MapStruct can't auto-resolve.** Same-name source/target fields, enum→`String` (via `.name()`), and source-parameter names that match a target property are mapped automatically — adding a redundant `@Mapping(target = "x", source = "x")` is noise. Reserve `@Mapping` for renamed/nested fields (`@Mapping(target = "role", source = "role.roleName")`), `ignore = true`, or constants. With multiple source params (e.g. `(User user, Long daysRemaining, String message)`) MapStruct matches a target first by parameter name, then by a property of the bean params — so `status`/`deletionDate` resolve from `user` and `daysRemaining`/`message` from the like-named params with **no** annotations.
 
 ---

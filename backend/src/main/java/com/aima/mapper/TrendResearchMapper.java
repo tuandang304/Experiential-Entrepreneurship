@@ -34,6 +34,12 @@ public interface TrendResearchMapper {
 
     // ===== Create session =====
 
+    // id/audit PHẢI ignore: nếu không MapStruct auto-map brand.id → session.id, JPA save()
+    // tưởng entity đã tồn tại → merge → StaleObjectStateException (500 khi bấm Research ngay).
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "brandProfile", source = "brand")
     @Mapping(target = "industry", source = "brand.industry")
     @Mapping(target = "researchTime", expression = "java(java.time.LocalDateTime.now())")

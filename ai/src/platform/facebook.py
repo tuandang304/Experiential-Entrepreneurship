@@ -56,7 +56,12 @@ class FacebookTrendAnalyzer:
             use_mock_fallback: If True, falls back to high-quality simulated data when no credentials
                                are present or when the API call fails/lacks permissions.
         """
-        self.access_token = access_token or os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN") or os.getenv("FACEBOOK_USER_ACCESS_TOKEN")
+        token = access_token or os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN") or os.getenv("FACEBOOK_USER_ACCESS_TOKEN")
+        # .env.example placeholders ("your_..._here") are non-empty strings — treat them
+        # as "no credentials" so we go straight to mock instead of firing doomed API calls.
+        if token and token.startswith("your_"):
+            token = None
+        self.access_token = token
         self.api_version = api_version
         self.base_url = f"https://graph.facebook.com/{self.api_version}"
         self.use_mock_fallback = use_mock_fallback

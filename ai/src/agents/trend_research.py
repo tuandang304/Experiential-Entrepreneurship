@@ -16,6 +16,8 @@ from __future__ import annotations
 from langchain_core.prompts import ChatPromptTemplate
 
 from ..llm import get_llm
+from concurrent.futures import ThreadPoolExecutor
+
 from ..platform.facebook import FacebookTrendAnalyzer
 from ..platform.trends_mcp import TrendsMCPConnector
 from ..schemas import ResearchRequest, ResearchResponse
@@ -25,7 +27,10 @@ def _collect_signal(req: ResearchRequest) -> dict:
     """Gather and aggregate raw engagement signal for the LLM to reason over.
 
     Falls back to mock data when no Facebook token / source ids are configured,
-    so research is demoable without live credentials.
+    so research is demoable without live credentials. The independent sources
+    (Facebook, YouTube, TikTok, Reels roundup) are fetched IN PARALLEL so a slow
+    or failing external API (unregistered key, network error...) only costs the
+    time of the slowest source, not the sum of all of them.
     """
     analyzer = FacebookTrendAnalyzer(use_mock_fallback=True)
     trends_connector = TrendsMCPConnector(use_mock_fallback=True)
@@ -33,30 +38,48 @@ def _collect_signal(req: ResearchRequest) -> dict:
     page_ids = req.sources.page_ids or ["industry_public_page"]
     group_ids = req.sources.group_ids or ["industry_public_group"]
 
-    content: list[dict] = []
-    for pid in page_ids:
-        content.extend(analyzer.fetch_public_page_posts(pid, limit=25))
-        content.extend(analyzer.fetch_reels(pid, limit=15))
-    for gid in group_ids:
-        content.extend(analyzer.fetch_public_group_feed(gid, limit=25))
+    def fetch_facebook() -> list[dict]:
+        items: list[dict] = []
+        for pid in page_ids:
+            items.extend(analyzer.fetch_public_page_posts(pid, limit=25))
+            items.extend(analyzer.fetch_reels(pid, limit=15))
+        for gid in group_ids:
+            items.extend(analyzer.fetch_public_group_feed(gid, limit=25))
+        return items
 
-    comments_map: dict[str, list] = {}
-    for item in content[:5]:
-        comments_map[item["id"]] = analyzer.fetch_comments(item["id"], limit=10)
-
-    # Cross-platform trending signal (Trends-MCP connector).
-    youtube_items = trends_connector.fetch_youtube_trending(
-        region=req.sources.youtube_region, limit=10
-    )
-    content.extend(youtube_items)
-    content.extend(trends_connector.fetch_tiktok_trending(limit=10))
-    for item in youtube_items[:2]:
-        comments_map[item["id"]] = trends_connector.fetch_youtube_comments(
-            item["video_id"], limit=10
+    def fetch_youtube() -> list[dict]:
+        return trends_connector.fetch_youtube_trending(
+            region=req.sources.youtube_region, limit=10
         )
 
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        fb_future = pool.submit(fetch_facebook)
+        yt_future = pool.submit(fetch_youtube)
+        tiktok_future = pool.submit(trends_connector.fetch_tiktok_trending, 10)
+        reels_future = pool.submit(trends_connector.fetch_reels_trends)
+
+        fb_items = fb_future.result()
+        youtube_items = yt_future.result()
+
+        comment_futures = {
+            item["id"]: pool.submit(analyzer.fetch_comments, item["id"], 10)
+            for item in fb_items[:5]
+        }
+        # Comments for mock video ids don't exist on YouTube — skip the doomed live calls.
+        comment_futures.update({
+            item["id"]: pool.submit(
+                trends_connector.fetch_youtube_comments, item["video_id"], 10
+            )
+            for item in youtube_items[:2]
+            if not str(item["video_id"]).startswith("mock_")
+        })
+
+        content = fb_items + youtube_items + tiktok_future.result()
+        comments_map = {item_id: f.result() for item_id, f in comment_futures.items()}
+        curated_reels = reels_future.result()
+
     signal = analyzer.analyze_trends(content, comments=comments_map, top_n=15)
-    signal["curated_reels_trends"] = trends_connector.fetch_reels_trends()
+    signal["curated_reels_trends"] = curated_reels
     return signal
 
 

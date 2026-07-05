@@ -60,7 +60,11 @@ class TrendsMCPConnector:
             use_mock_fallback: If True, falls back to simulated data when a key is
                                missing or a live fetch fails.
         """
-        self.tiktok_api_key = tiktok_api_key or os.getenv("TIKTOK_RAPIDAPI_KEY")
+        key = tiktok_api_key or os.getenv("TIKTOK_RAPIDAPI_KEY")
+        # .env.example placeholder ("your_...") counts as missing — skip doomed live calls.
+        if key and key.startswith("your_"):
+            key = None
+        self.tiktok_api_key = key
         self.use_mock_fallback = use_mock_fallback
 
         if not self.tiktok_api_key:

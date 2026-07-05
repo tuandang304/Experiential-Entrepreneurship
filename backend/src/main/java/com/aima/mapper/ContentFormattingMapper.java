@@ -25,6 +25,9 @@ public interface ContentFormattingMapper {
     // ===== Create job =====
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true) // audit fields — không copy từ item
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "status", ignore = true) // giữ default PENDING — không lấy status của item
     @Mapping(target = "contentItem", source = "item")
     @Mapping(target = "platforms", source = "platforms", qualifiedByName = "joinPlatforms")

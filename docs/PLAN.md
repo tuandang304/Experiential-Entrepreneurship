@@ -40,7 +40,7 @@
 - [x] FR-16 Disconnect `[BE][FE]` — done 2026-06-27 (Revoke token & soft delete connection)
 - [x] FR-17 Connection check before posting `[BE]` — done 2026-06-27 (TokenValidationJob & validateConnection endpoint)
 - [x] FR-18a Auto token refresh (< 24h remaining) `[BE]` — done 2026-06-27 (TokenHealthCheckJob & refreshConnection endpoint)
-- [x] FR-18b Expired token → account `Expired`, scheduled posts → `On Hold` `[BE]` — done 2026-06-27 (TokenHealthCheckJob safe status migration)
+- [x] FR-18b Expired token → account `Expired`, scheduled posts → `On Hold` `[BE]` — done 2026-06-27 (TokenHealthCheckJob safe status migration); phần "scheduled posts → On Hold" hoàn tất 2026-07-05 khi có PostSchedule (job + luồng đăng mã 190 đều chuyển lịch sang ON_HOLD, kèm notification RECONNECT_NEEDED)
 
 ## 5. Trend Research (Agent AI)
 - [x] FR-19 Scheduled research (2:00 AM daily) + "Research now" button; requires active Brand Profile & Strategy; no overlapping sessions `[BE][AI][FE]` — AI analysis (`POST /research`) done 2026-06-13; BE "Research now" + session guard (async worker, `POST /trend-research/sessions`) + FE nút Research ngay (modal chọn hồ sơ thương hiệu + nền tảng → poll; cảnh báo khi thiếu hồ sơ / chiến lược ACTIVE) done 2026-07-02; hồ sơ thương hiệu đầu tiên của user tự động `isActive` (BE); BE 2:00 AM scheduler (`DailyTrendResearchJob`: quét hồ sơ `isActive` có chiến lược ACTIVE, bỏ qua user đang có phiên PENDING/RUNNING, dispatch cùng worker nền) done 2026-07-03
@@ -60,11 +60,11 @@
 - [x] FR-32 Regenerate / FR-33 Manual edit / FR-34 Review before posting `[BE][FE]` — FR-32 regenerate done end-to-end 2026-07-01 (Create.tsx → `POST /content-items/generate` with `regenerateFrom` → AI `/generate`); FR-33/FR-34 done 2026-07-03: BE `ContentItemController` (`GET/PUT /content-items/{id}`, `PATCH /{id}/status`), thêm `NEED_REVIEW`/`APPROVED` vào `ContentLifecycle` theo state machine, sửa nội dung APPROVED tự quay về NEED_REVIEW; FE Create.tsx panel preview có nút Chỉnh sửa (script/caption/hashtag/media prompt) + badge trạng thái + nút Gửi duyệt → Phê duyệt
 
 ## 7. Policy Violation Handling (no custom filter — SEC-06)
-- [ ] FR-35 Handle platform 400/403 policy errors: `Failed`, no retry, store original code + message, notify `[BE]` — xử lý + lưu mã lỗi gốc done 2026-07-05 (`PublishException` giữ code/message gốc → `PublishResult` + `PostingJob.errorType`, POLICY_VIOLATION không retry — BR-07); phần notify chờ FR-75/76
+- [x] FR-35 Handle platform 400/403 policy errors: `Failed`, no retry, store original code + message, notify `[BE]` — done 2026-07-05 (`PublishException` giữ code/message gốc → `PublishResult` + `PostingJob.errorType`, POLICY_VIOLATION không retry — BR-07; notify qua `NotificationService` POST_FAILED)
 - [x] FR-36 Move violating post to `Failed` + store error `[BE]` — done 2026-07-05 (worker `saveFailure`: post/schedule/version/item → FAILED, lỗi lưu ở `PublishResult` + job)
 - [x] FR-37 Classify policy violations vs technical errors `[BE]` — done 2026-07-05 (`MetaApiClientImpl.classifyPublishError`: policy 368/message "policy" > tạm thời 5xx/rate-limit 1,2,4,17,32,341,613 > còn lại vĩnh viễn; enum `PublishErrorType`)
-- [ ] FR-38 Violation notification (platform, reason, next steps) `[BE][FE]`
-- [ ] FR-39 Edit/regenerate then reschedule `[BE][FE]`
+- [ ] FR-38 Violation notification (platform, reason, next steps) `[BE][FE]` — BE done 2026-07-05 (notification POST_FAILED riêng cho vi phạm: nền tảng + mã/lý do gốc + bước tiếp theo); FE hiển thị pending
+- [ ] FR-39 Edit/regenerate then reschedule `[BE][FE]` — một phần 2026-07-05: regenerate (FR-32/FR-88) + hủy lịch FAILED → version về FORMATTED → lên lịch lại đã có; còn thiếu: cho phép SỬA item FAILED (hiện `EDITABLE_STATUSES` chưa gồm FAILED) + FE flow
 
 ## 8. Platform Formatting
 - [x] FR-40 Create one version per selected platform `[AI]` — done 2026-06-13 (AI svc)
@@ -86,7 +86,7 @@
 - [x] FR-53 Call platform API / FR-54 receive result `[BE]` — done 2026-07-05 (adapter `PlatformPublisher` (NFR-09): Facebook Page `POST /{page-id}/feed` + Threads container TEXT→publish qua `MetaApiClient`; Instagram trả lỗi vĩnh viễn rõ ràng — cần media, MVP chỉ có media prompt FR-29; kết quả lưu `Post.platformPostId` + `PublishResult`)
 - [x] FR-55 Persist post status (state machine in WORKFLOWS.md) `[BE]` — done 2026-07-05 (Scheduled → Posting → Posted/Failed đồng bộ trên PostSchedule + Post + ContentVersion + ContentItem; retry giữ Posting, thất bại chung cuộc → Failed)
 - [x] FR-56 Retry policy (3 attempts at 5/15/30 min, temporary errors only) `[BE]` — done 2026-07-05 (chỉ TEMPORARY; job RETRYING với `nextRetryAt` 5/15/30 phút, tối đa 3 lần; POLICY_VIOLATION/PERMANENT dừng ngay — BR-07)
-- [ ] FR-57 Failure notification / FR-58 user resolution (edit/reconnect/repost) `[BE][FE]` — chờ hệ thống notification (FR-75..79) + FE
+- [ ] FR-57 Failure notification / FR-58 user resolution (edit/reconnect/repost) `[BE][FE]` — FR-57 BE done 2026-07-05 (POST_FAILED khi thất bại chung cuộc, RECONNECT_NEEDED khi token hết hạn); FR-58 BE một phần (hủy lịch FAILED → version về FORMATTED → lên lịch lại; PUT lịch ON_HOLD với account đã ACTIVE lại → tự về SCHEDULED); FE pending
 
 ## 11. Performance Analysis
 - [ ] FR-59 Collect metrics (views, likes, comments, shares, saves, CTR, conversion, watch time) at 24h/48h/7d `[BE]`
@@ -101,16 +101,16 @@
 - [ ] FR-68 User accepts/rejects proposals `[BE][FE]`
 
 ## 13. Error Management
-- [ ] FR-69 Unconnected account → block posting + notify `[BE]` — chặn done 2026-07-05 (tạo lịch yêu cầu account ACTIVE — `CONNECTION_NOT_ACTIVE`, BR-05); notify chờ FR-75+
-- [ ] FR-70 Expired token handling (align with FR-18b: `On Hold` + reconnect prompt) `[BE]` — BE done 2026-07-05 (đăng bài gặp mã 190 → account EXPIRED + các lịch SCHEDULED của account → ON_HOLD); reconnect prompt (FE/notification) pending
+- [x] FR-69 Unconnected account → block posting + notify `[BE]` — done 2026-07-05 (tạo lịch yêu cầu account ACTIVE — `CONNECTION_NOT_ACTIVE`, BR-05; thất bại lúc đăng → notification POST_FAILED)
+- [x] FR-70 Expired token handling (align with FR-18b: `On Hold` + reconnect prompt) `[BE]` — done 2026-07-05 (mã 190 khi đăng HOẶC `TokenHealthCheckJob` hết hạn → account EXPIRED + lịch SCHEDULED → ON_HOLD + notification RECONNECT_NEEDED; PUT lịch ON_HOLD khi account ACTIVE lại → về SCHEDULED)
 - [ ] FR-71 Invalid media format → notify + suggest fix `[BE]`
 - [x] FR-72 Platform API error → log + retry where appropriate `[BE]` — done 2026-07-05 (mọi lỗi đăng bài được log + lưu `PublishResult`; retry chỉ cho lỗi tạm thời theo FR-56; các call Meta khác log qua `MetaApiClient`)
 - [ ] FR-73 Restricted account → stop posting + notify `[BE]`
 - [ ] FR-74 System error logging `[BE]`
 
 ## 14. Notifications
-- [ ] FR-75 Post published / FR-76 post failed `[BE][FE]`
-- [ ] FR-77 Review needed / FR-78 reconnection needed / FR-79 new insight `[BE][FE]`
+- [ ] FR-75 Post published / FR-76 post failed `[BE][FE]` — BE done 2026-07-05 (entity `Notification` + `NotificationService.notify` best-effort; API `/notifications` list phân trang + unread-count + đánh dấu đã đọc; phát từ worker đăng bài); FE (chuông + danh sách) pending
+- [ ] FR-77 Review needed / FR-78 reconnection needed / FR-79 new insight `[BE][FE]` — FR-77 BE done 2026-07-05 (phát khi AI tạo nội dung xong); FR-78 BE done 2026-07-05 (phát từ luồng đăng bài mã 190 + `TokenHealthCheckJob`); FR-79 chờ analytics (FR-59+); FE pending
 
 ## 15. Admin
 - [ ] FR-80 Manage users `[BE][FE]` — FE UI done 2026-06-23 (list + search/filter/pagination, lock/unlock, detail; mock via `api/admin.ts`, BE endpoint pending)

@@ -140,6 +140,11 @@ public class PostScheduleServiceImpl implements PostScheduleService {
         }
 
         schedule.setScheduledTime(request.getScheduledTime());
+        // Lịch ON_HOLD (FR-18b) mà tài khoản đã ACTIVE trở lại (user kết nối lại) → dời giờ = kích hoạt lại.
+        if (schedule.getStatus() == ScheduleStatus.ON_HOLD
+                && schedule.getPlatformAccount().getConnectionStatus() == ConnectionStatus.ACTIVE) {
+            schedule.setStatus(ScheduleStatus.SCHEDULED);
+        }
         PostSchedule saved = postScheduleRepository.save(schedule);
 
         PostScheduleResponse response = postScheduleMapper.toResponse(saved);

@@ -7,12 +7,14 @@ import com.aima.entity.ContentGenerationJob;
 import com.aima.entity.ContentItem;
 import com.aima.entity.ContentStrategy;
 import com.aima.enums.GenerationJobStatus;
+import com.aima.enums.NotificationType;
 import com.aima.mapper.AiContentMapper;
 import com.aima.mapper.ContentItemMapper;
 import com.aima.repository.ContentGenerationJobRepository;
 import com.aima.repository.ContentItemRepository;
 import com.aima.service.AiServiceClient;
 import com.aima.service.ContentGenerationWorkerService;
+import com.aima.service.NotificationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -42,6 +44,7 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
     ContentItemMapper contentItemMapper;
     AiContentMapper aiContentMapper;
     TransactionTemplate transactionTemplate;
+    NotificationService notificationService;
 
     @Async("contentGenerationExecutor")
     @Override
@@ -92,11 +95,19 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
             return;
         }
         ContentItem item = contentItemMapper.toContentItem(result);
-        item.setBrandProfile(job.getContentStrategy().getBrandProfile());
+        BrandProfile brand = job.getContentStrategy().getBrandProfile();
+        item.setBrandProfile(brand);
         contentItemRepository.save(item);
         job.setResultContentItem(item);
         job.setStatus(GenerationJobStatus.SUCCESS);
         jobRepository.save(job);
+
+        // FR-77: nội dung mới do AI tạo — nhắc user xem và duyệt trước khi lên lịch.
+        notificationService.notify(brand.getUser(), NotificationType.REVIEW_NEEDED,
+                "Nội dung mới cần xem xét",
+                "AI vừa tạo nội dung mới cho thương hiệu " + brand.getBrandName()
+                        + ". Hãy xem và duyệt trước khi định dạng/lên lịch đăng.",
+                item.getId());
     }
 
     private void saveFailure(UUID jobId, String message) {

@@ -197,6 +197,10 @@ backend/
 >   FacebookPublisherImpl, InstagramPublisherImpl, ThreadsPublisherImpl}`), `MetaApiClient.publishPagePost/
 >   publishThreadsPost`, `mapper/PostPublishMapper`, `repository/{PostRepository, PostingJobRepository}`,
 >   `exception/PublishException` + `enums/PublishErrorType`. See §4 "Auto-Posting".
+> - **Notifications (FR-75..FR-79)**: `controller/NotificationController`, `service/NotificationService`
+>   (+`Impl`), `mapper/NotificationMapper`, `entity/Notification`, `enums/NotificationType`,
+>   `repository/NotificationRepository`. Phát từ worker đăng bài, worker tạo nội dung và
+>   `TokenHealthCheckJob`. See §4 "Notifications".
 
 ---
 
@@ -595,9 +599,26 @@ thành công, schedule/version/item → POSTED; tx3 failure: `PublishResult` lư
 
 **Retry (FR-56, BR-07/BR-08)** — chỉ `TEMPORARY` và `retryCount < 3`: tạo `PostingJob` mới status `RETRYING`, `retryCount+1`,
 `nextRetryAt = now + {5,15,30} phút` (theo retryCount của lần fail); schedule/version/item giữ POSTING trong chu kỳ retry.
-Hết retry hoặc lỗi POLICY_VIOLATION/PERMANENT → schedule/version/item FAILED (notification FR-57 chưa có — log). Mã **190**
-(token hết hạn) → account `EXPIRED` + mọi lịch SCHEDULED của account → `ON_HOLD` (FR-70, khớp FR-18b). `PostingJob` có 2 cột mới:
-`error_type`, `next_retry_at`. Lịch FAILED bị user hủy rồi lên lịch lại sẽ **tái sử dụng Post** cũ (unique `schedule_id`), mở chu kỳ mới retryCount=0.
+Hết retry hoặc lỗi POLICY_VIOLATION/PERMANENT → schedule/version/item FAILED + notification `POST_FAILED` (FR-57/FR-38 — title riêng
+cho vi phạm chính sách, message gồm nền tảng + mã/lý do gốc + bước tiếp theo). Mã **190** (token hết hạn) → account `EXPIRED` + mọi lịch
+SCHEDULED của account → `ON_HOLD` (FR-70, khớp FR-18b) + notification `RECONNECT_NEEDED`. `PostingJob` có 2 cột mới: `error_type`,
+`next_retry_at`. Lịch FAILED bị user hủy rồi lên lịch lại sẽ **tái sử dụng Post** cũ (unique `schedule_id`), mở chu kỳ mới retryCount=0.
+Lịch `ON_HOLD` được kích hoạt lại bằng `PUT /schedules/{id}` khi account đã ACTIVE trở lại (tự về SCHEDULED).
+
+### Notifications — FR-75..FR-79
+> Thông báo in-app cho user. `NotificationService.notify(user, type, title, message, refId)` là API nội bộ
+> cho worker/scheduler — **best-effort**: lỗi chỉ log, không ném ra (không phá luồng đăng bài/tạo nội dung).
+> Entity `Notification` (user, type, title, message, `ref_id` để FE điều hướng, `read_at`); enum
+> `NotificationType`: POST_PUBLISHED / POST_FAILED / REVIEW_NEEDED / RECONNECT_NEEDED / NEW_INSIGHT (NEW_INSIGHT
+> phát khi làm analytics FR-59+). KHÔNG có trong DATA_MODEL.md — entity bổ sung cho mục 14.
+
+**Endpoints** (`/notifications`, auth required): GET `/notifications?unreadOnly=&page=&size=` (PageResponse, mới nhất trước,
+size chặn ≤ 50) • GET `/unread-count` (badge chuông) • PATCH `/{id}/read` • PATCH `/read-all` (trả số bản ghi đã cập nhật,
+`@Modifying` bulk update).
+
+**Điểm phát hiện tại**: worker đăng bài (POST_PUBLISHED khi POSTED; POST_FAILED khi thất bại chung cuộc; RECONNECT_NEEDED khi mã 190)
+• `ContentGenerationWorkerServiceImpl.saveSuccess` (REVIEW_NEEDED — FR-77) • `TokenHealthCheckJob.markExpired` (RECONNECT_NEEDED +
+chuyển lịch SCHEDULED → ON_HOLD, hoàn tất phần lịch của FR-18b). **ErrorCode** dùng lại `NOTIFICATION_NOT_FOUND` (1600, có sẵn).
 
 ### PostgreSQL (`application.yml` + `.env`)
 ```

@@ -194,7 +194,7 @@ public class PostPublishWorkerServiceImpl implements PostPublishWorkerService {
             return;
         }
 
-        // Thất bại chung cuộc (BR-07/BR-08): dừng pipeline, lưu lỗi; notification (FR-57) chưa có — log.
+        // Thất bại chung cuộc (BR-07/BR-08): dừng pipeline, lưu lỗi, báo user (FR-57/FR-76).
         PostSchedule schedule = post.getSchedule();
         schedule.setStatus(ScheduleStatus.FAILED);
         ContentVersion version = schedule.getContentVersion();
@@ -204,15 +204,43 @@ public class PostPublishWorkerServiceImpl implements PostPublishWorkerService {
         log.warn("[PostPublish] Bài {} thất bại chung cuộc trên {} [{}]: {}",
                 post.getId(), post.getPlatformName(), e.getErrorType(), e.getMessage());
 
+        PlatformAccount account = schedule.getPlatformAccount();
+        notifyFailure(account, post, e);
+
         // FR-70 (khớp FR-18b): token hết hạn → tài khoản EXPIRED, các lịch SCHEDULED khác → ON_HOLD.
         if (TOKEN_EXPIRED_CODE.equals(e.getResponseCode())) {
-            PlatformAccount account = schedule.getPlatformAccount();
             account.setConnectionStatus(ConnectionStatus.EXPIRED);
             List<PostSchedule> waiting = scheduleRepository
                     .findByPlatformAccount_IdAndStatusAndDeletedAtIsNull(account.getId(), ScheduleStatus.SCHEDULED);
             waiting.forEach(s -> s.setStatus(ScheduleStatus.ON_HOLD));
             log.warn("[PostPublish] Token {} hết hạn — chuyển {} lịch chờ sang ON_HOLD",
                     account.getPlatformName(), waiting.size());
+            // FR-78: nhắc kết nối lại.
+            notificationService.notify(account.getUser(), NotificationType.RECONNECT_NEEDED,
+                    "Cần kết nối lại tài khoản",
+                    "Token của " + account.getAccountName() + " trên " + account.getPlatformName()
+                            + " đã hết hạn — các bài đã lên lịch được tạm giữ (On Hold). "
+                            + "Vui lòng kết nối lại trong phần Cài đặt.",
+                    account.getId());
         }
+    }
+
+    // FR-38/FR-76: nền tảng nào, lý do gì, bước tiếp theo — phân biệt vi phạm chính sách và lỗi kỹ thuật.
+    private void notifyFailure(PlatformAccount account, Post post, PublishException e) {
+        String platform = String.valueOf(post.getPlatformName());
+        if (e.getErrorType() == PublishErrorType.POLICY_VIOLATION) {
+            notificationService.notify(account.getUser(), NotificationType.POST_FAILED,
+                    "Bài bị từ chối do vi phạm chính sách",
+                    platform + " từ chối bài viết (mã " + e.getResponseCode() + "): " + e.getMessage()
+                            + ". Vui lòng chỉnh sửa hoặc tạo lại nội dung rồi lên lịch đăng lại.",
+                    post.getId());
+            return;
+        }
+        notificationService.notify(account.getUser(), NotificationType.POST_FAILED,
+                "Đăng bài thất bại",
+                "Đăng lên " + platform + " (" + account.getAccountName() + ") thất bại (mã "
+                        + e.getResponseCode() + "): " + e.getMessage()
+                        + ". Hãy kiểm tra kết nối tài khoản rồi lên lịch đăng lại.",
+                post.getId());
     }
 }

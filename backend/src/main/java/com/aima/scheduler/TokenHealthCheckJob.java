@@ -1,9 +1,14 @@
 package com.aima.scheduler;
 
 import com.aima.entity.PlatformAccount;
+import com.aima.entity.PostSchedule;
 import com.aima.enums.ConnectionStatus;
+import com.aima.enums.NotificationType;
+import com.aima.enums.ScheduleStatus;
 import com.aima.repository.PlatformAccountRepository;
+import com.aima.repository.PostScheduleRepository;
 import com.aima.service.MetaOAuthService;
+import com.aima.service.NotificationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -25,7 +30,9 @@ import java.util.List;
 public class TokenHealthCheckJob {
 
     PlatformAccountRepository accountRepository;
+    PostScheduleRepository scheduleRepository;
     MetaOAuthService metaOAuthService;
+    NotificationService notificationService;
 
     @Scheduled(cron = "0 0 2 * * *")
     public void run() {
@@ -55,6 +62,20 @@ public class TokenHealthCheckJob {
         try {
             account.setConnectionStatus(ConnectionStatus.EXPIRED);
             accountRepository.save(account);
+
+            // FR-18b: bài SCHEDULED của tài khoản hết hạn → ON_HOLD chờ user kết nối lại.
+            List<PostSchedule> waiting = scheduleRepository
+                    .findByPlatformAccount_IdAndStatusAndDeletedAtIsNull(account.getId(), ScheduleStatus.SCHEDULED);
+            waiting.forEach(s -> s.setStatus(ScheduleStatus.ON_HOLD));
+            scheduleRepository.saveAll(waiting);
+
+            // FR-78: nhắc kết nối lại.
+            notificationService.notify(account.getUser(), NotificationType.RECONNECT_NEEDED,
+                    "Cần kết nối lại tài khoản",
+                    "Token của " + account.getAccountName() + " trên " + account.getPlatformName()
+                            + " đã hết hạn — " + (waiting.isEmpty() ? "" : waiting.size() + " bài đã lên lịch được tạm giữ (On Hold). ")
+                            + "Vui lòng kết nối lại trong phần Cài đặt.",
+                    account.getId());
         } catch (Exception e) {
             log.error("[TokenHealthCheck] Không thể đánh dấu EXPIRED cho {}", account.getId(), e);
         }

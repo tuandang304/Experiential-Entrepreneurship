@@ -50,6 +50,10 @@ public class PostAnalytics extends BaseEntity {
     @Column(name = "watch_time")
     Long watchTime;
 
+    // FR-59: mốc thu thập tính từ lúc đăng — 24 / 48 / 168 (7 ngày) giờ.
+    @Column(name = "milestone_hours")
+    Integer milestoneHours;
+
     @Column(name = "collected_at", nullable = false)
     LocalDateTime collectedAt;
 

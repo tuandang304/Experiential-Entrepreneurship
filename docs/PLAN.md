@@ -89,8 +89,8 @@
 - [ ] FR-57 Failure notification / FR-58 user resolution (edit/reconnect/repost) `[BE][FE]` — FR-57 BE done 2026-07-05 (POST_FAILED khi thất bại chung cuộc, RECONNECT_NEEDED khi token hết hạn); FR-58 BE một phần (hủy lịch FAILED → version về FORMATTED → lên lịch lại; PUT lịch ON_HOLD với account đã ACTIVE lại → tự về SCHEDULED); FE pending
 
 ## 11. Performance Analysis
-- [ ] FR-59 Collect metrics (views, likes, comments, shares, saves, CTR, conversion, watch time) at 24h/48h/7d `[BE]`
-- [ ] FR-60 Store in DB / FR-61 display to user / FR-62 compare posts `[BE][FE]`
+- [x] FR-59 Collect metrics (views, likes, comments, shares, saves, CTR, conversion, watch time) at 24h/48h/7d `[BE]` — done 2026-07-05 (`AnalyticsCollectionJob` mỗi giờ, mốc 24/48/168h mỗi bài thu một lần; FB: likes/comments/shares qua fields + views qua insights best-effort (cần read_insights); Threads: views/likes/replies + reposts+quotes→shares; CTR/conversion/watch time = null trong MVP — nền tảng không cung cấp cho bài text; version/item POSTED → ANALYZING khi có số liệu đầu tiên)
+- [ ] FR-60 Store in DB / FR-61 display to user / FR-62 compare posts `[BE][FE]` — BE done 2026-07-05 (`PostAnalytics` + cột `milestone_hours`; API `GET /analytics/posts` phân trang + `GET /analytics/posts/{id}`, mỗi bài kèm đủ snapshot các mốc để so sánh); FE (UI-08) pending
 - [x] FR-63 Success factor analysis (hook, caption, hashtags, CTA, media, timing, platform) `[AI]` — done 2026-06-13 (AI svc)
 - [x] FR-64 Produce optimization insights `[AI]` — done 2026-06-13 (AI svc)
 
@@ -124,9 +124,9 @@
 - [ ] FR-86 Setup progress bar on dashboard `[FE]`
 
 ## 17. Content Library
-- [ ] FR-87 View/filter/search all ContentItems `[BE][FE]`
+- [ ] FR-87 View/filter/search all ContentItems `[BE][FE]` — BE done 2026-07-05 (`GET /content-items` phân trang, lọc status/platform (theo version đã định dạng)/industry/khoảng ngày + tìm từ khóa trong caption/script); FE pending
 - [x] FR-88 Reuse (regenerate creates a new item) `[BE][AI]` — AI supports it (`regenerate_from` on `POST /generate`) 2026-06-13; BE new-item creation done 2026-07-01 (`ContentGenerationWorker` always creates a fresh `ContentItem` per job, including regenerate)
-- [ ] FR-89 Delete rules (`Draft`/`Generated` only; cascades to ContentVersions) `[BE]`
+- [x] FR-89 Delete rules (`Draft`/`Generated` only; cascades to ContentVersions) `[BE]` — done 2026-07-05 (`DELETE /content-items/{id}`: chỉ DRAFT/GENERATED (`CONTENT_ITEM_NOT_DELETABLE`), xóa mềm item + cascade ContentVersions + MediaAssets)
 
 ## UI Pages (UI_API.md)
 - [x] UI-01 Landing Page `[FE]` — done 2026-07-03: thêm section Bảng giá `#pricing` (3 gói Free/Pro 499k/Business 1.99M đồng bộ cấu hình admin, card Pro nổi bật nền tím đậm, CTA → đăng ký), band CTA cuối trang, footer newsletter hoạt động (validate email + trạng thái đã đăng ký), nav Pricing trỏ section thật + scroll-spy, reveal khi cuộn (anime.js, tôn trọng reduced-motion)

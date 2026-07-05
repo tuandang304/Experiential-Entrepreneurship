@@ -226,6 +226,96 @@ public class MetaApiClientImpl implements MetaApiClient {
         }
     }
 
+    // ---------- Post metrics (FR-59) ----------
+
+    @Override
+    public MetaPostMetrics getPostMetrics(Platform platform, String platformPostId, String token) {
+        if (platform == Platform.THREADS) {
+            return getThreadsPostMetrics(platformPostId, token);
+        }
+        if (platform == Platform.FACEBOOK) {
+            return getFacebookPostMetrics(platformPostId, token);
+        }
+        // Instagram: chưa có bài đăng (MVP không đăng media) — không có gì để thu thập.
+        throw new AppException(ErrorCode.META_API_ERROR);
+    }
+
+    private MetaPostMetrics getFacebookPostMetrics(String postId, String pageToken) {
+        Platform platform = Platform.FACEBOOK;
+        String version = versionService.getCurrentVersion(platform);
+        String url = withProof(UriComponentsBuilder.fromUriString(metaProperties.graphBaseUrl())
+                .pathSegment(version, postId)
+                .queryParam("fields", "likes.summary(true),comments.summary(true),shares")
+                .queryParam("access_token", pageToken), pageToken, platform)
+                .toUriString();
+        JsonNode body = get(url, platform);
+
+        Long likes = summaryCount(body, "likes");
+        Long comments = summaryCount(body, "comments");
+        JsonNode sharesNode = body.path("shares").path("count");
+        Long shares = sharesNode.isMissingNode() || sharesNode.isNull() ? 0L : sharesNode.asLong();
+
+        // Views (post_impressions) cần quyền read_insights — best-effort, thiếu quyền thì null.
+        Long views = null;
+        try {
+            String insightsUrl = withProof(UriComponentsBuilder.fromUriString(metaProperties.graphBaseUrl())
+                    .pathSegment(version, postId, "insights")
+                    .queryParam("metric", "post_impressions")
+                    .queryParam("access_token", pageToken), pageToken, platform)
+                    .toUriString();
+            JsonNode insights = get(insightsUrl, platform);
+            JsonNode value = insights.path("data").path(0).path("values").path(0).path("value");
+            if (!value.isMissingNode() && !value.isNull()) {
+                views = value.asLong();
+            }
+        } catch (Exception e) {
+            log.debug("[Meta] Không lấy được post_impressions cho {} (thiếu read_insights?): {}",
+                    postId, e.getMessage());
+        }
+        return new MetaPostMetrics(views, likes, comments, shares, null); // FB post không có saves
+    }
+
+    private MetaPostMetrics getThreadsPostMetrics(String mediaId, String token) {
+        Platform platform = Platform.THREADS;
+        String version = versionService.getCurrentVersion(platform);
+        String url = UriComponentsBuilder.fromUriString(metaProperties.threadsBaseUrl())
+                .pathSegment(version, mediaId, "insights")
+                .queryParam("metric", "views,likes,replies,reposts,quotes")
+                .queryParam("access_token", token)
+                .toUriString();
+        JsonNode body = get(url, platform);
+
+        Long views = null;
+        Long likes = null;
+        Long replies = null;
+        long sharesTotal = 0;
+        boolean hasShares = false;
+        for (JsonNode metric : body.path("data")) {
+            String name = text(metric, "name");
+            JsonNode value = metric.path("values").path(0).path("value");
+            if (name == null || value.isMissingNode() || value.isNull()) {
+                continue;
+            }
+            switch (name) {
+                case "views" -> views = value.asLong();
+                case "likes" -> likes = value.asLong();
+                case "replies" -> replies = value.asLong();
+                case "reposts", "quotes" -> {
+                    sharesTotal += value.asLong();
+                    hasShares = true;
+                }
+                default -> log.debug("[Meta] Threads metric lạ: {}", name);
+            }
+        }
+        // reposts + quotes gộp thành shares; Threads không có saves.
+        return new MetaPostMetrics(views, likes, replies, hasShares ? sharesTotal : null, null);
+    }
+
+    private static Long summaryCount(JsonNode body, String field) {
+        JsonNode count = body.path(field).path("summary").path("total_count");
+        return count.isMissingNode() || count.isNull() ? null : count.asLong();
+    }
+
     // ---------- Publish (FR-53/FR-54) ----------
 
     @Override

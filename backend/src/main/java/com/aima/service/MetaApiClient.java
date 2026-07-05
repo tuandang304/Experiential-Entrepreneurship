@@ -37,6 +37,12 @@ public interface MetaApiClient {
     /** Đăng bài text lên Threads: tạo container (media_type=TEXT) rồi publish. */
     MetaPostResult publishThreadsPost(String token, String text);
 
+    /**
+     * FR-59: số liệu tương tác của một bài đã đăng. Metric nền tảng không cung cấp → null
+     * (Threads không có saves; FB Page cần read_insights cho views — thiếu quyền thì views null).
+     */
+    MetaPostMetrics getPostMetrics(Platform platform, String platformPostId, String token);
+
     // --- Kết quả trả về ---
     record MetaTokenResult(String accessToken, Long expiresInSeconds) {
     }
@@ -51,5 +57,8 @@ public interface MetaApiClient {
     }
 
     record MetaPostResult(String platformPostId) {
+    }
+
+    record MetaPostMetrics(Long views, Long likes, Long comments, Long shares, Long saves) {
     }
 }

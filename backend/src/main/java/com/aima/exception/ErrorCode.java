@@ -163,7 +163,13 @@ public enum ErrorCode {
     SCHEDULE_ALREADY_EXISTS(1938, "Bản nội dung này đã có lịch đăng. Vui lòng cập nhật hoặc hủy lịch cũ.", HttpStatus.CONFLICT),
     SCHEDULE_NOT_FOUND(1939, "Không tìm thấy lịch đăng bài", HttpStatus.NOT_FOUND),
     SCHEDULE_NOT_EDITABLE(1940, "Lịch đăng ở trạng thái này không thể cập nhật", HttpStatus.BAD_REQUEST),
-    SCHEDULE_NOT_CANCELLABLE(1941, "Chỉ hủy được lịch chưa đăng bài", HttpStatus.BAD_REQUEST),;
+    SCHEDULE_NOT_CANCELLABLE(1941, "Chỉ hủy được lịch chưa đăng bài", HttpStatus.BAD_REQUEST),
+
+    // PERFORMANCE ANALYSIS ERRORS (FR-59..FR-62)
+    POST_NOT_FOUND(1946, "Không tìm thấy bài đăng", HttpStatus.NOT_FOUND),
+
+    // CONTENT LIBRARY ERRORS (FR-87..FR-89)
+    CONTENT_ITEM_NOT_DELETABLE(1947, "Chỉ xóa được nội dung ở trạng thái Draft/Generated", HttpStatus.BAD_REQUEST),;
 
     private int code;
     private String message;

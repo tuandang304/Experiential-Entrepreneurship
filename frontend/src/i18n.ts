@@ -61,7 +61,7 @@ export const STRINGS = {
     prTitle: 'Chọn gói phù hợp với bạn', prSub: 'Bắt đầu miễn phí, nâng cấp khi thương hiệu của bạn lớn lên. Hủy bất cứ lúc nào.',
     prPopular: 'Phổ biến nhất', prNote: 'Giá đã gồm VAT · Không cần thẻ tín dụng cho gói Free',
     ctaTitle: 'Sẵn sàng để marketing tự chạy?', ctaSub: 'Thiết lập thương hiệu một lần — AI lo phần còn lại: nghiên cứu, viết bài, đăng và tối ưu.',
-    ctaBtn: 'Tạo tài khoản miễn phí', ctaHint: 'Chưa cần thẻ tín dụng',
+    ctaBtn: 'Tạo tài khoản miễn phí', ctaGoApp: 'Truy cập ngay', ctaHint: 'Chưa cần thẻ tín dụng',
     ctaEyebrow: 'Bắt đầu trong 2 phút', ctaCancelAnytime: 'Huỷ bất cứ lúc nào',
     // landing — cách hoạt động
     hiwTitle: 'AIMA hoạt động thế nào?', hiwSub: 'Ba bước để marketing tự chạy — bạn luôn là người duyệt cuối cùng.',
@@ -87,7 +87,6 @@ export const STRINGS = {
     faqA4: 'Có. Bạn có thể huỷ bất cứ lúc nào; gói Free dùng mãi mãi và không cần thẻ tín dụng.',
     // trang /pricing
     ppCompareTitle: 'So sánh chi tiết các gói', ppColFeature: 'Tính năng',
-    builtWith: 'Được xây dựng với',
     ftBlog: 'Blog', ftGuide: 'Hướng dẫn', ftDocs: 'Tài liệu',
     ftAbout: 'Giới thiệu', ftContact: 'Liên hệ', ftCareers: 'Tuyển dụng',
     ftNews: 'Đăng ký nhận tin', ftNewsSub: 'Nhận insight marketing & cập nhật sản phẩm mỗi tuần.',
@@ -383,7 +382,7 @@ export const STRINGS = {
     prTitle: 'Pick the plan that fits', prSub: 'Start free, upgrade as your brand grows. Cancel anytime.',
     prPopular: 'Most popular', prNote: 'VAT included · No credit card needed for Free',
     ctaTitle: 'Ready to put marketing on autopilot?', ctaSub: 'Set up your brand once — the AI handles the rest: research, writing, publishing and optimizing.',
-    ctaBtn: 'Create a free account', ctaHint: 'No credit card required',
+    ctaBtn: 'Create a free account', ctaGoApp: 'Open the app', ctaHint: 'No credit card required',
     ctaEyebrow: 'Get started in 2 minutes', ctaCancelAnytime: 'Cancel anytime',
     // landing — how it works
     hiwTitle: 'How does AIMA work?', hiwSub: 'Three steps to put marketing on autopilot — you always have the final say.',
@@ -409,7 +408,6 @@ export const STRINGS = {
     faqA4: 'Yes. Cancel whenever you like; the Free plan is free forever and needs no credit card.',
     // /pricing page
     ppCompareTitle: 'Compare plans in detail', ppColFeature: 'Feature',
-    builtWith: 'Built with',
     ftBlog: 'Blog', ftGuide: 'Guides', ftDocs: 'Documentation',
     ftAbout: 'About', ftContact: 'Contact', ftCareers: 'Careers',
     ftNews: 'Subscribe', ftNewsSub: 'Get marketing insights & product updates every week.',

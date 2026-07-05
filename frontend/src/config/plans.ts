@@ -27,7 +27,7 @@ export function pricingPlans(lang: Lang): PricingPlan[] {
       id: 'free',
       name: 'Free',
       priceValue: 0,
-      cadence: P(lang, 'mãi mãi', 'forever'),
+      cadence: P(lang, 'trọn đời', 'forever'),
       desc: P(lang, 'Trải nghiệm quy trình AI với một thương hiệu.', 'Try the AI pipeline with one brand.'),
       features: [
         P(lang, '1 hồ sơ thương hiệu', '1 brand profile'),

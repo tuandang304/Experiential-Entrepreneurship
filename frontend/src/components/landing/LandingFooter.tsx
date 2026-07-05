@@ -36,8 +36,6 @@ export default function LandingFooter() {
     setNlState('done');
   };
 
-  const builtWith = ['React', 'TypeScript', 'Tailwind CSS'];
-
   return (
     <footer id="resources" className="scroll-anchor" style={{ position: 'relative', zIndex: 1, borderTop: '1px solid #ece7f6', background: 'linear-gradient(180deg,rgba(247,246,253,0),rgba(244,243,251,.92)),radial-gradient(820px 340px at 82% 130%,rgba(124,92,255,.12),transparent 60%),radial-gradient(620px 300px at 12% 120%,rgba(34,211,238,.10),transparent 60%),#fbfafe', overflow: 'hidden' }}>
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: isMobile ? '48px 24px 104px' : '64px 28px 30px' }}>
@@ -135,17 +133,6 @@ export default function LandingFooter() {
         </div>
 
         <div style={{ height: 1, background: '#ece7f6', margin: '44px 0 22px' }} />
-
-        {/* Dải "Built with" nhỏ — tách riêng khỏi section nền tảng tích hợp phía trên. */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
-          <span style={{ fontSize: 12, color: '#8a85a0' }}>{t.builtWith}</span>
-          {builtWith.map((tech, i) => (
-            <span key={tech} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 600, color: '#6b6680' }}>
-              {i > 0 && <span aria-hidden style={{ color: '#c9c2dd' }}>·</span>}
-              {tech}
-            </span>
-          ))}
-        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between', gap: isMobile ? 18 : 16, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', textAlign: isMobile ? 'center' : 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 12 : 18, flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>

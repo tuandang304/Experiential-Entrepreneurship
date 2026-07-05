@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../auth/AuthContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { CTA_BG, BRAND_GLOW } from '../../theme';
 import { Reveal } from '../motion/Reveal';
@@ -8,8 +9,10 @@ import { CONTACT_EMAIL } from './LandingFooter';
 // CTA cuối trang (redesign): eyebrow → tiêu đề → mô tả → 2 nút (chính + Đặt Demo)
 // → hàng badge tin cậy. Nền indigo sâu + glow brand ở 2 góc để có chiều sâu; nút
 // chính dùng dải brand để bật lên, nút phụ dạng ghost/viền.
+// Đã đăng nhập: nút chính đổi thành "Truy cập ngay" → dashboard (khỏi mời tạo tài khoản).
 export default function CtaSection() {
   const { t, go, brandGradient } = useApp();
+  const { user } = useAuth();
   const { isMobile } = useBreakpoint();
 
   const badges = [t.ctaHint, t.ctaCancelAnytime];
@@ -29,8 +32,8 @@ export default function CtaSection() {
             <h2 style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: isMobile ? 26 : 36, letterSpacing: '-.02em', margin: '16px 0 0', color: '#fff' }}>{t.ctaTitle}</h2>
             <p style={{ fontSize: isMobile ? 14.5 : 16.5, lineHeight: 1.6, color: 'rgba(255,255,255,.88)', maxWidth: 560, margin: '12px auto 0' }}>{t.ctaSub}</p>
             <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'center', alignItems: isMobile ? 'stretch' : 'center', gap: 12, marginTop: 26 }}>
-              <button className="btn-grad" onClick={() => go('register')} style={{ border: 'none', borderRadius: 14, padding: isMobile ? '13px 26px' : '15px 34px', fontWeight: 700, fontSize: isMobile ? 14.5 : 16, color: '#fff', background: brandGradient, boxShadow: `0 18px 36px -14px ${BRAND_GLOW}`, cursor: 'pointer' }}>
-                {t.ctaBtn}
+              <button className="btn-grad" onClick={() => go(user ? 'dashboard' : 'register')} style={{ border: 'none', borderRadius: 14, padding: isMobile ? '13px 26px' : '15px 34px', fontWeight: 700, fontSize: isMobile ? 14.5 : 16, color: '#fff', background: brandGradient, boxShadow: `0 18px 36px -14px ${BRAND_GLOW}`, cursor: 'pointer' }}>
+                {user ? t.ctaGoApp : t.ctaBtn}
               </button>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}

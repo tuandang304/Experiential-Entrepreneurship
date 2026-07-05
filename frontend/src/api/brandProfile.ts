@@ -1,8 +1,8 @@
 import client, { type ApiResponse, type PageResponse } from "./apiClient";
 
 // Brand Profile gọi backend thật qua api/apiClient.ts (envelope { code, message, result }).
-// Controller backend map "/api/brand-profiles"; baseURL đã chứa context-path nên path tương đối
-// là "/api/brand-profiles".
+// Controller backend map "/brand-profiles"; baseURL đã chứa context-path nên path tương đối
+// là "/brand-profiles".
 
 export type Platform = "FACEBOOK" | "INSTAGRAM" | "THREADS";
 
@@ -41,7 +41,7 @@ export interface BrandProfileInput {
   brandDonts?: string[];
 }
 
-const BASE = "/api/brand-profiles";
+const BASE = "/brand-profiles";
 
 // Tham số phân trang + lọc server-side (PageResponse của backend; page đánh số từ 0).
 export interface BrandProfileListParams {
@@ -51,7 +51,7 @@ export interface BrandProfileListParams {
   size?: number;
 }
 
-// GET /api/brand-profiles — phân trang server-side (mặc định backend: 6/trang, mới nhất trước).
+// GET /brand-profiles — phân trang server-side (mặc định backend: 6/trang, mới nhất trước).
 export async function listBrandProfiles(params: BrandProfileListParams = {}): Promise<PageResponse<BrandProfile>> {
   const { data } = await client.get<ApiResponse<PageResponse<BrandProfile>>>(BASE, { params });
   return data.result;
@@ -63,7 +63,7 @@ export async function listAllBrandProfiles(): Promise<BrandProfile[]> {
   return data.result.content;
 }
 
-// GET /api/brand-profiles/industries — toàn bộ ngành hàng user đang dùng (dropdown lọc).
+// GET /brand-profiles/industries — toàn bộ ngành hàng user đang dùng (dropdown lọc).
 export async function listBrandIndustries(): Promise<string[]> {
   const { data } = await client.get<ApiResponse<string[]>>(`${BASE}/industries`);
   return data.result;

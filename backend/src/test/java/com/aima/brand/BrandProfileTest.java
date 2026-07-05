@@ -66,7 +66,7 @@ class BrandProfileTest {
 
     @Test
     void requiresAuthentication() throws Exception {
-        mockMvc.perform(get("/api/brand-profiles"))
+        mockMvc.perform(get("/brand-profiles"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
     }
@@ -75,7 +75,7 @@ class BrandProfileTest {
     void createsAndListsBrandProfile() throws Exception {
         String token = authToken("brand-create@example.com");
 
-        mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
+        mockMvc.perform(post("/brand-profiles").header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(validBody()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
@@ -84,7 +84,7 @@ class BrandProfileTest {
                 .andExpect(jsonPath("$.result.brandKeywords.length()").value(2));
 
         // List trả PageResponse (phân trang server-side): bản ghi nằm trong result.content.
-        mockMvc.perform(get("/api/brand-profiles").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/brand-profiles").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.content.length()").value(1))
                 .andExpect(jsonPath("$.result.totalElements").value(1));
@@ -97,7 +97,7 @@ class BrandProfileTest {
                 {"brandName":"","industry":"Cosmetics","targetAudience":"Women",
                  "platforms":["FACEBOOK"]}
                 """;
-        mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
+        mockMvc.perform(post("/brand-profiles").header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
@@ -110,7 +110,7 @@ class BrandProfileTest {
                 {"brandName":"Acme","industry":"Cosmetics","targetAudience":"Women",
                  "platforms":[]}
                 """;
-        mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
+        mockMvc.perform(post("/brand-profiles").header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("platforms: Select at least one platform"));
@@ -120,26 +120,26 @@ class BrandProfileTest {
     void updatesViewsAndDeletes() throws Exception {
         String token = authToken("brand-crud@example.com");
 
-        MvcResult created = mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + token)
+        MvcResult created = mockMvc.perform(post("/brand-profiles").header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(validBody()))
                 .andExpect(status().isOk())
                 .andReturn();
         String id = objectMapper.readTree(created.getResponse().getContentAsString()).at("/result/id").asText();
 
         String updated = validBody().replace("Acme Cosmetics", "Acme Beauty");
-        mockMvc.perform(put("/api/brand-profiles/" + id).header("Authorization", "Bearer " + token)
+        mockMvc.perform(put("/brand-profiles/" + id).header("Authorization", "Bearer " + token)
                         .contentType(APPLICATION_JSON).content(updated))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.brandName").value("Acme Beauty"));
 
-        mockMvc.perform(get("/api/brand-profiles/" + id).header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/brand-profiles/" + id).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.brandName").value("Acme Beauty"));
 
-        mockMvc.perform(delete("/api/brand-profiles/" + id).header("Authorization", "Bearer " + token))
+        mockMvc.perform(delete("/brand-profiles/" + id).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/api/brand-profiles/" + id).header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/brand-profiles/" + id).header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
 
@@ -148,13 +148,13 @@ class BrandProfileTest {
         String owner = authToken("brand-owner@example.com");
         String other = authToken("brand-other@example.com");
 
-        MvcResult created = mockMvc.perform(post("/api/brand-profiles").header("Authorization", "Bearer " + owner)
+        MvcResult created = mockMvc.perform(post("/brand-profiles").header("Authorization", "Bearer " + owner)
                         .contentType(APPLICATION_JSON).content(validBody()))
                 .andExpect(status().isOk())
                 .andReturn();
         String id = objectMapper.readTree(created.getResponse().getContentAsString()).at("/result/id").asText();
 
-        mockMvc.perform(get("/api/brand-profiles/" + id).header("Authorization", "Bearer " + other))
+        mockMvc.perform(get("/brand-profiles/" + id).header("Authorization", "Bearer " + other))
                 .andExpect(status().isNotFound());
     }
 }

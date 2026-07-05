@@ -8,7 +8,6 @@ import org.mapstruct.Mapping;
 public interface AuthenticationMapper {
 
     // Đăng nhập/refresh thường: refresh token chỉ đi qua cookie nên bỏ khỏi body.
-    @Mapping(target = "token", source = "token")
     @Mapping(target = "authenticated", constant = "true")
     @Mapping(target = "refreshToken", ignore = true)
     AuthenticationResponse toAuthResponse(String token);

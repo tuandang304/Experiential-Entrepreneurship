@@ -124,7 +124,7 @@
 - [ ] FR-86 Setup progress bar on dashboard `[FE]`
 
 ## 17. Content Library
-- [ ] FR-87 View/filter/search all ContentItems `[BE][FE]` — BE done 2026-07-05 (`GET /content-items` phân trang, lọc status/platform (theo version đã định dạng)/industry/khoảng ngày + tìm từ khóa trong caption/script); FE pending
+- [x] FR-87 View/filter/search all ContentItems `[BE][FE]` — BE done 2026-07-05 (`GET /content-items` phân trang, lọc status/platform (theo version đã định dạng)/industry/khoảng ngày + tìm từ khóa trong caption/script); mở rộng 2026-07-08: thêm filter `brandProfileId` + trả `brandProfileId` trong response + sort server-side `newest`/`voice` (điểm brand-voice cao nhất)/`status`; FE done 2026-07-08 (danh sách 1 card/bài mô hình B2, tab theo version thật ở panel Xem, xóa với thông báo chặn FR-89 rõ ràng, dọn bài DRAFT mồ côi khi rời wizard/đổi nguồn mà chưa lưu)
 - [x] FR-88 Reuse (regenerate creates a new item) `[BE][AI]` — AI supports it (`regenerate_from` on `POST /generate`) 2026-06-13; BE new-item creation done 2026-07-01 (`ContentGenerationWorker` always creates a fresh `ContentItem` per job, including regenerate)
 - [x] FR-89 Delete rules (`Draft`/`Generated` only; cascades to ContentVersions) `[BE]` — done 2026-07-05 (`DELETE /content-items/{id}`: chỉ DRAFT/GENERATED (`CONTENT_ITEM_NOT_DELETABLE`), xóa mềm item + cascade ContentVersions + MediaAssets)
 

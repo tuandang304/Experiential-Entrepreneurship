@@ -28,6 +28,12 @@ public class ContentGenerationRequest {
             example = "3fa85f64-5717-4562-b3fc-2c963f66afa6", requiredMode = Schema.RequiredMode.REQUIRED)
     UUID strategyId;
 
+    @NotNull(message = "CONTENT_ITEM_ID_REQUIRED")
+    @Schema(description = "B2: content item (bài) to write this platform's version into — created "
+            + "beforehand via POST /content-items; must be DRAFT and owned by the caller.",
+            requiredMode = Schema.RequiredMode.REQUIRED)
+    UUID contentItemId;
+
     @NotNull(message = "GENERATION_PLATFORM_REQUIRED")
     @Schema(description = "Target platform for the draft.", requiredMode = Schema.RequiredMode.REQUIRED)
     Platform platform;

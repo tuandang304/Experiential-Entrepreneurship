@@ -35,6 +35,8 @@ export default function GenerateStep({
   genIndex,
   setGenIndex,
   runs,
+  starting,
+  startError,
   onGenerate,
   onRegenerate,
   onRetryPlatform,
@@ -48,6 +50,10 @@ export default function GenerateStep({
   setGenIndex: (i: number) => void;
   /** Trạng thái run theo nền tảng của BẢN đang xem (rỗng với bản đã hoàn tất từ trước). */
   runs: Partial<Record<Platform, PlatformRun>>;
+  /** Đang tạo bài / khởi động lượt generate — khoá nút "Tạo nội dung với AI" (chống double-click). */
+  starting: boolean;
+  /** Lỗi khi tạo bài (trước khi có job nào) — hiển thị cạnh nút tạo. */
+  startError: string | null;
   onGenerate: () => void;
   onRegenerate: (note: string) => void;
   onRetryPlatform: (platform: Platform) => void;
@@ -66,7 +72,9 @@ export default function GenerateStep({
 
   const version = gen?.versions.find((v) => v.platform === platform) ?? null;
   const run = runs[platform];
-  const anyRunning = Object.values(runs).some((r) => r?.status === 'running');
+  // Khoá "Tạo lại"/"Thử lại" khi còn job chạy HOẶC đang khởi động lượt mới (chống double-fire).
+  const busy = starting || Object.values(runs).some((r) => r?.status === 'running');
+  const anyRunning = busy;
   // Tiếp tục chỉ mở khi MỌI nền tảng của bài đã có version (nền tảng lỗi phải thử lại
   // hoặc quay về mốc 1 bỏ chọn) và không còn job đang chạy.
   const allDone = !!gen && source.platforms.every((p) => gen.versions.some((v) => v.platform === p));
@@ -93,16 +101,23 @@ export default function GenerateStep({
   const mainCard = (
     <Card>
       {!gen ? (
-        <div style={{ textAlign: 'center', padding: '28px 8px' }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(150deg,#f6f2ff,#fcf1fc)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <Icon icon={Sparkles} size={28} stroke="#a78bfa" />
+        starting ? (
+          <Loader label={t.cwGenerating} />
+        ) : (
+          <div style={{ textAlign: 'center', padding: '28px 8px' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(150deg,#f6f2ff,#fcf1fc)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Icon icon={Sparkles} size={28} stroke="#a78bfa" />
+            </div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 17, color: '#211c38' }}>{t.cwStep2}</div>
+            <div style={{ fontSize: 13, color: '#8a85a0', margin: '8px auto 20px', maxWidth: 380, lineHeight: 1.55 }}>{t.cwGenIntro}</div>
+            {startError && (
+              <div style={{ margin: '0 auto 14px', maxWidth: 380, fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{startError}</div>
+            )}
+            <button onClick={onGenerate} disabled={starting} className="btn-grad" style={{ border: 'none', borderRadius: 12, padding: '13px 26px', fontWeight: 700, fontSize: 14, color: '#fff', background: brandGradient, boxShadow: '0 14px 28px -12px rgba(139,92,246,.6)', cursor: starting ? 'not-allowed' : 'pointer', opacity: starting ? 0.6 : 1 }}>
+              {t.cwGenBtn}
+            </button>
           </div>
-          <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 17, color: '#211c38' }}>{t.cwStep2}</div>
-          <div style={{ fontSize: 13, color: '#8a85a0', margin: '8px auto 20px', maxWidth: 380, lineHeight: 1.55 }}>{t.cwGenIntro}</div>
-          <button onClick={onGenerate} className="btn-grad" style={{ border: 'none', borderRadius: 12, padding: '13px 26px', fontWeight: 700, fontSize: 14, color: '#fff', background: brandGradient, boxShadow: '0 14px 28px -12px rgba(139,92,246,.6)', cursor: 'pointer' }}>
-            {t.cwGenBtn}
-          </button>
-        </div>
+        )
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -151,8 +166,9 @@ export default function GenerateStep({
               </div>
               <button
                 onClick={() => onRetryPlatform(platform)}
+                disabled={busy}
                 className="btn-grad"
-                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, alignSelf: 'flex-start', border: 'none', borderRadius: 11, padding: '10px 20px', fontWeight: 700, fontSize: 13, color: '#fff', background: brandGradient, cursor: 'pointer' }}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, alignSelf: 'flex-start', border: 'none', borderRadius: 11, padding: '10px 20px', fontWeight: 700, fontSize: 13, color: '#fff', background: brandGradient, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}
               >
                 <Icon icon={RefreshCw} size={14} stroke="#fff" />{t.cwRetry}
               </button>

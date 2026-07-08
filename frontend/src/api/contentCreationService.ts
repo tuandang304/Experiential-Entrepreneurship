@@ -1,12 +1,20 @@
 import type { Platform } from "./brandProfile";
-import type { ContentLifecycle, GeneratedContentItem } from "./contentGeneration";
-import { startContentGeneration, getContentGenerationJob } from "./contentGeneration";
+import type { ContentItemResponse, ContentLifecycle, ContentVersionResponse } from "./contentGeneration";
+import {
+  createContentItem as apiCreateContentItem,
+  startContentGeneration,
+  getContentGenerationJob,
+  updateContentVersion,
+  updateContentItemStatus,
+  listContentItems,
+  getContentItem,
+  deleteContentItem,
+} from "./contentGeneration";
 import { listTrendResearchSessions, getTrendResearchSession } from "./trendResearch";
 import type { PageResponse } from "./apiClient";
 import { useAppStore } from "../store/useAppStore";
 import {
   mockContentList,
-  mockGeneration,
   mockBrandVoice,
   placeholderImage,
   draftListTitle,
@@ -14,13 +22,16 @@ import {
 
 // ===== Lớp service THỐNG NHẤT cho màn Tạo nội dung (list + wizard) =====
 //
-// ĐÃ NỐI API THẬT: generateVersion (PA1 — mỗi nền tảng một job: start + poll qua
-// api/contentGeneration.ts, NFR-04) và listAttachableTrends (dữ liệu research thật
-// từ api/trendResearch.ts).
+// ĐÃ NỐI API THẬT:
+// - createContentItem (B2: tạo bài shell DRAFT) + generateVersion (mỗi nền tảng một job
+//   ghi ContentVersion GIÀU vào bài; start + poll qua api/contentGeneration.ts, NFR-04).
+// - saveContent (PUT từng bản nền tảng + PATCH trạng thái bài).
+// - listContents / getContentDetail / deleteContent (FR-87/FR-89, đợt 3) — GET/DELETE thật.
+// - listAttachableTrends (dữ liệu research thật từ api/trendResearch.ts).
+// - brandVoice trong toContentVersion đọc THẬT từ backend (FR-30).
 //
 // CÒN MOCK (đánh dấu TODO(api) ở từng hàm — backend chưa có endpoint):
-// listContents / getContentDetail / deleteContent / saveContent / nháp wizard /
-// checkBrandVoice / generateImage, và brandVoice trong toContentVersion.
+// nháp wizard (saveWizardDraft/getWizardDraft) / checkBrandVoice (nút "Kiểm tra lại") / generateImage.
 // Lang chỉ dùng cho phần mock (đọc từ useAppStore) — backend thật tự sinh theo brand profile.
 
 // ---- Kiểu dữ liệu dùng chung ----
@@ -97,6 +108,8 @@ export interface ContentListParams {
 /** Input tạo MỘT phiên bản cho MỘT nền tảng (PA1: mỗi nền tảng một job backend). */
 export interface GenerateVersionInput {
   strategyId: string;
+  /** B2: bài (ContentItem) mà bản nền tảng này ghi vào — tạo trước bằng createContentItem. */
+  contentItemId: string;
   platform: Platform;
   /** Trend gắn kèm — gửi id, backend resolve NỘI DUNG (ownership check, id lạ bị bỏ qua). */
   trendId?: string;
@@ -127,14 +140,22 @@ export interface CheckBrandVoiceInput {
   caption: string;
 }
 
+/** Nội dung cuối của MỘT bản nền tảng cần lưu — ghi đè vào version đang active của bài. */
+export interface SaveVersionInput {
+  /** Id bản nền tảng đang active trên backend (PUT target). */
+  versionId: string;
+  script: string;
+  caption: string;
+  hashtags: string[];
+  cta: string;
+  mediaPrompt: string;
+}
+
 export interface SaveContentInput {
-  brandId: string;
-  /** Chỉ để hiển thị trên card mock — backend thật tự join từ brandId. */
-  brandName: string;
-  strategyId: string;
-  trendId?: string;
-  status: ContentLifecycle;
-  versions: ContentVersion[];
+  itemId: string;
+  /** Trạng thái khi lưu: giữ Nháp (không PATCH) / gửi duyệt / phê duyệt. */
+  status: "DRAFT" | "NEED_REVIEW" | "APPROVED";
+  versions: SaveVersionInput[];
 }
 
 /** Bản nháp phiên wizard — lưu ngầm khi người dùng rời wizard giữa chừng (kể cả mốc 1). */
@@ -172,57 +193,61 @@ const ensureStore = (): ContentListItem[] => {
 
 // ---- API của service ----
 
-// Thứ tự trạng thái theo state machine (WORKFLOWS.md) cho sort "Theo trạng thái".
-const STATUS_ORDER: ContentLifecycle[] = [
-  "DRAFT", "GENERATED", "NEED_REVIEW", "APPROVED", "FORMATTED",
-  "SCHEDULED", "POSTING", "POSTED", "FAILED", "ANALYZING", "OPTIMIZED",
-];
+// Thứ tự nền tảng cố định trên card (FB → IG → TH), không phụ thuộc thứ tự backend trả version.
+const PLATFORM_ORDER: Platform[] = ["FACEBOOK", "INSTAGRAM", "THREADS"];
 
-// TODO(api): GET /content-items?q=&platform=&status=&brandId=&sort=&page=&size= (PageResponse,
-// Pageable 0-based, mặc định updatedAt desc) — thay thân hàm bằng client.get, giữ nguyên
-// tham số/kết quả. Backend cần bổ sung endpoint list; filter/sort/phân trang làm server-side.
-export async function listContents(params: ContentListParams = {}): Promise<PageResponse<ContentListItem>> {
-  await delay(600);
-  const q = params.q?.trim().toLowerCase();
-  const rows = ensureStore().filter(
-    (it) =>
-      (!q || it.title.toLowerCase().includes(q) || it.excerpt.toLowerCase().includes(q)) &&
-      (!params.platform || it.platforms.includes(params.platform)) &&
-      (!params.status || it.status === params.status) &&
-      (!params.brandId || it.brandId === params.brandId),
-  );
-  const sort = params.sort ?? "newest";
-  rows.sort((a, b) => {
-    if (sort === "voice") return b.brandVoice - a.brandVoice;
-    if (sort === "status") return STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status);
-    return b.updatedAt.localeCompare(a.updatedAt); // mới nhất lên đầu (mặc định)
-  });
-  const size = params.size ?? 6;
-  const page = params.page ?? 0;
-  const totalPages = Math.ceil(rows.length / size);
+// Bài (B2) → mục danh sách. Nội dung nằm ở các version (row bài thường rỗng), nên title/excerpt
+// lấy từ bản nền tảng đầu tiên; brand voice của card = điểm cao nhất trong các bản.
+// isDraft LUÔN false: nháp DRAFT thật hiển thị như bài (badge trạng thái "Nháp" tự phân biệt) —
+// KHÁC "nháp wizard" (resume) vẫn là tính năng mock riêng, không surface vào danh sách thật.
+function toContentListItem(r: ContentItemResponse): ContentListItem {
+  const versions = r.versions ?? [];
+  const first = versions[0];
+  const scriptLines = (first?.script ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const caption = first?.formattedCaption?.trim() ?? "";
+  const title = scriptLines[0] || caption || draftListTitle(lang());
+  const excerpt = caption || scriptLines.slice(1).join(" ") || "";
+  const platforms = PLATFORM_ORDER.filter((p) => versions.some((v) => v.platformName === p));
+  const scores = versions
+    .map((v) => v.voiceScore)
+    .filter((n): n is number => typeof n === "number");
   return {
-    content: rows.slice(page * size, page * size + size),
-    page,
-    size,
-    totalElements: rows.length,
-    totalPages,
-    last: page >= totalPages - 1,
+    id: r.id,
+    title,
+    excerpt,
+    platforms,
+    status: r.status,
+    brandVoice: scores.length ? Math.max(...scores) : 0,
+    brandId: r.brandProfileId ?? "",
+    brandName: r.brandName ?? "",
+    updatedAt: r.updatedAt ?? new Date().toISOString(),
+    isDraft: false,
   };
 }
 
-// TODO(api): GET /content-items/{id} — chi tiết nội dung kèm ContentVersion theo nền tảng.
-export async function getContentDetail(id: string): Promise<{ item: ContentListItem; versions: ContentVersion[] }> {
-  await delay(600);
-  const item = ensureStore().find((it) => it.id === id);
-  if (!item) throw new Error('Content not found');
-  return { item, versions: mockGeneration(lang(), item.platforms, 0).versions };
+// FR-87: GET /content-items — filter/sort/phân trang server-side (Pageable 0-based, mặc định mới nhất).
+export async function listContents(params: ContentListParams = {}): Promise<PageResponse<ContentListItem>> {
+  const pg = await listContentItems({
+    q: params.q?.trim() || undefined,
+    platform: params.platform,
+    status: params.status,
+    brandProfileId: params.brandId,
+    sort: params.sort ?? "newest",
+    page: params.page ?? 0,
+    size: params.size ?? 6,
+  });
+  return { ...pg, content: pg.content.map(toContentListItem) };
 }
 
-// TODO(api): DELETE /content-items/{id} (soft delete phía backend).
+// FR-87: GET /content-items/{id} — bài kèm các bản nền tảng còn hiệu lực (tab theo version thật).
+export async function getContentDetail(id: string): Promise<{ item: ContentListItem; versions: ContentVersion[] }> {
+  const r = await getContentItem(id);
+  return { item: toContentListItem(r), versions: (r.versions ?? []).map(toContentVersion) };
+}
+
+// FR-89: DELETE /content-items/{id} — xóa mềm; backend chặn nếu bài không ở DRAFT/GENERATED.
 export async function deleteContent(id: string): Promise<void> {
-  await delay(500);
-  store = ensureStore().filter((it) => it.id !== id);
-  drafts.delete(id);
+  await deleteContentItem(id);
 }
 
 // Nháp wizard lưu trong module cho phiên làm việc (API thật sẽ lưu ở backend).
@@ -273,31 +298,46 @@ function splitScript(script: string, fallbackCta: string): PostContent {
   return { hook: lines[0], body: lines.slice(1, -1).join("\n"), cta: lines[lines.length - 1] };
 }
 
-function toContentVersion(item: GeneratedContentItem, platform: Platform): ContentVersion {
+// Map bản nền tảng GIÀU từ backend → ContentVersion cho UI. Brand voice đọc THẬT
+// (FR-30: backend trả voiceScore + voiceNotes; tone/wording/message backend không có nên để trống).
+function toContentVersion(v: ContentVersionResponse): ContentVersion {
   return {
-    id: item.id,
-    platform,
-    post: splitScript(item.script ?? "", item.cta ?? ""),
-    caption: item.caption ?? "",
-    hashtags: (item.hashtags ?? []).map((h) => (h.startsWith("#") ? h : `#${h}`)),
-    cta: item.cta ?? "",
-    mediaPrompt: item.mediaPrompt ?? "",
+    id: v.id,
+    platform: v.platformName,
+    post: splitScript(v.script ?? "", v.cta ?? ""),
+    caption: v.formattedCaption ?? "",
+    hashtags: (v.formattedHashtags ?? []).map((h) => (h.startsWith("#") ? h : `#${h}`)),
+    cta: v.cta ?? "",
+    mediaPrompt: v.mediaPrompt ?? "",
+    // Ảnh chưa sinh (tính năng chưa làm); imagePrompt backend đã lưu, đón cho lượt sau.
     imageUrl: null,
-    // TODO(api): Python trả brand_voice_check nhưng backend chưa persist/expose qua
-    // ContentItemResponse — tạm chấm mock; khi backend trả trường này thì map thẳng vào.
-    brandVoice: mockBrandVoice(lang(), item.id.length % 4),
+    brandVoice: {
+      score: v.voiceScore ?? 0,
+      summary: v.voiceNotes ?? "",
+      tone: "",
+      wording: "",
+      message: "",
+    },
     createdAt: new Date().toISOString(),
   };
 }
 
+// B2: tạo BÀI shell (DRAFT) — trả itemId để bắn các job generate ghi version vào.
+export async function createContentItem(strategyId: string, ideaId?: string): Promise<string> {
+  const item = await apiCreateContentItem({ strategyId, ideaId });
+  return item.id;
+}
+
 /**
- * Tạo MỘT ContentVersion cho MỘT nền tảng bằng backend THẬT:
+ * Tạo MỘT ContentVersion cho MỘT nền tảng bằng backend THẬT (ghi vào bài contentItemId):
  * POST /content-items/generate → poll GET /content-items/jobs/{id} tới SUCCESS/FAILED.
- * Ném lỗi khi job FAILED — UI hiển thị trạng thái lỗi + "Thử lại" riêng nền tảng đó.
+ * Lỗi (job FAILED, hoặc START trả mã 1905/1906/1920) đẩy ra ngoài — UI hiển thị trạng
+ * thái lỗi + "Thử lại" riêng nền tảng đó, không làm đứng wizard.
  */
 export async function generateVersion(input: GenerateVersionInput): Promise<ContentVersion> {
   let job = await startContentGeneration({
     strategyId: input.strategyId,
+    contentItemId: input.contentItemId,
     platform: input.platform,
     trendId: input.trendId,
     ideaId: input.ideaId,
@@ -308,10 +348,10 @@ export async function generateVersion(input: GenerateVersionInput): Promise<Cont
     await delay(2000);
     job = await getContentGenerationJob(job.id);
   }
-  if (job.status !== "SUCCESS" || !job.contentItem) {
+  if (job.status !== "SUCCESS" || !job.contentVersion) {
     throw new Error(job.errorMessage ?? "AI_SERVICE_ERROR");
   }
-  return toContentVersion(job.contentItem, input.platform);
+  return toContentVersion(job.contentVersion);
 }
 
 /**
@@ -347,26 +387,28 @@ export async function checkBrandVoice(input: CheckBrandVoiceInput): Promise<Bran
   return mockBrandVoice(lang(), (input.post.hook.length + input.caption.length) % 4);
 }
 
-// TODO(api): PUT /content-items/{id} + PATCH /content-items/{id}/status
-// (api/contentGeneration.ts đã có updateContentItem/updateContentItemStatus) hoặc endpoint
-// lưu trọn bộ version theo nền tảng. Input cần truyền: brandId, strategyId, trendId, status,
-// versions (mỗi nền tảng một bản).
-export async function saveContent(input: SaveContentInput): Promise<ContentListItem> {
-  await delay(700);
-  const first = input.versions[0];
-  const item: ContentListItem = {
-    id: `mock-content-${Date.now()}`,
-    title: first.caption.split(/[.!?]/)[0].slice(0, 80),
-    excerpt: first.caption,
-    platforms: input.versions.map((v) => v.platform),
-    status: input.status,
-    brandVoice: Math.round(input.versions.reduce((s, v) => s + v.brandVoice.score, 0) / input.versions.length),
-    brandId: input.brandId,
-    brandName: input.brandName,
-    updatedAt: new Date().toISOString(),
-    isDraft: input.status === 'DRAFT',
-    draftStep: input.status === 'DRAFT' ? 4 : undefined,
-  };
-  store = [item, ...ensureStore()];
-  return item;
+/**
+ * Lưu bài ở mốc 4 (B2, API THẬT): PUT nội dung cuối vào TỪNG bản nền tảng đang active
+ * (đẩy cả sửa tay lẫn "chọn bản khác"), rồi PATCH trạng thái bài.
+ * - DRAFT: bài đã ở DRAFT → không PATCH.
+ * - NEED_REVIEW: PATCH một bước (DRAFT→NEED_REVIEW).
+ * - APPROVED: PATCH hai bước (DRAFT→NEED_REVIEW→APPROVED) vì backend chỉ duyệt từ NEED_REVIEW.
+ */
+export async function saveContent(input: SaveContentInput): Promise<void> {
+  for (const v of input.versions) {
+    await updateContentVersion(input.itemId, v.versionId, {
+      script: v.script,
+      caption: v.caption,
+      // Backend lưu hashtag không '#' (Python trả không '#') → cắt '#' trước khi gửi, tránh nhân đôi.
+      hashtags: v.hashtags.map((h) => h.replace(/^#+/, "")),
+      cta: v.cta,
+      mediaPrompt: v.mediaPrompt,
+    });
+  }
+  if (input.status === "NEED_REVIEW") {
+    await updateContentItemStatus(input.itemId, "NEED_REVIEW");
+  } else if (input.status === "APPROVED") {
+    await updateContentItemStatus(input.itemId, "NEED_REVIEW");
+    await updateContentItemStatus(input.itemId, "APPROVED");
+  }
 }

@@ -23,12 +23,14 @@ export default function BrandVoicePanel({
 }) {
   const { t } = useApp();
   const dropped = !!check && baselineScore !== undefined && check.score < baselineScore;
-  const row = (label: string, value: string) => (
-    <div style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.5 }}>
-      <span style={{ flex: 'none', fontWeight: 700, color: '#574f6e' }}>{label}:</span>
-      <span style={{ color: '#6b6680' }}>{value}</span>
-    </div>
-  );
+  // Backend brand voice thật chỉ có score + notes (tone/wording/message để trống) — bỏ dòng rỗng.
+  const row = (label: string, value: string) =>
+    value ? (
+      <div style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.5 }}>
+        <span style={{ flex: 'none', fontWeight: 700, color: '#574f6e' }}>{label}:</span>
+        <span style={{ color: '#6b6680' }}>{value}</span>
+      </div>
+    ) : null;
   return (
     <Card style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

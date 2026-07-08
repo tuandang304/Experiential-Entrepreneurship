@@ -1,7 +1,9 @@
 package com.aima.service;
 
+import com.aima.dto.request.ContentItemCreateRequest;
 import com.aima.dto.request.ContentItemStatusRequest;
 import com.aima.dto.request.ContentItemUpdateRequest;
+import com.aima.dto.request.ContentVersionUpdateRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.ContentItemResponse;
 import com.aima.dto.response.PageResponse;
@@ -13,13 +15,20 @@ import java.util.UUID;
 
 public interface ContentItemService {
 
-    ApiResponse<PageResponse<ContentItemResponse>> list(String email, ContentLifecycle status, Platform platform,
-                                                        String industry, LocalDate fromDate, LocalDate toDate,
-                                                        String q, int page, int size);
+    ApiResponse<PageResponse<ContentItemResponse>> list(String email, ContentLifecycle status, UUID brandProfileId,
+                                                        Platform platform, String industry, LocalDate fromDate,
+                                                        LocalDate toDate, String q, String sort, int page, int size);
+
+    /** B2: tạo bài (shell DRAFT) để các job generate ghi ContentVersion theo nền tảng vào. */
+    ApiResponse<ContentItemResponse> create(String email, ContentItemCreateRequest request);
 
     ApiResponse<ContentItemResponse> getItem(String email, UUID itemId);
 
     ApiResponse<ContentItemResponse> updateItem(String email, UUID itemId, ContentItemUpdateRequest request);
+
+    /** B2/FR-33: sửa thủ công MỘT bản nền tảng trong bài (partial update). */
+    ApiResponse<ContentItemResponse> updateVersion(String email, UUID itemId, UUID versionId,
+                                                   ContentVersionUpdateRequest request);
 
     ApiResponse<ContentItemResponse> updateStatus(String email, UUID itemId, ContentItemStatusRequest request);
 

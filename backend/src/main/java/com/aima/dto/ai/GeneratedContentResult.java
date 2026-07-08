@@ -12,8 +12,6 @@ import java.util.List;
 
 /**
  * Mirrors ai/src/schemas.py ContentItem — the body returned by POST {ai-service}/generate.
- * brand_voice_check (FR-30) is not persisted yet, so it's intentionally left off this mapping;
- * Jackson ignores the unrecognized JSON field by default.
  */
 @Data
 @Builder
@@ -32,4 +30,12 @@ public class GeneratedContentResult {
 
     @JsonProperty("media_prompt")
     String mediaPrompt;
+
+    /** Mô tả ẢNH TĨNH (schema Python để dành cho tính năng tạo ảnh — có thể rỗng). */
+    @JsonProperty("image_prompt")
+    String imagePrompt;
+
+    /** FR-30: AI tự chấm brand voice — persist vào ContentVersion (voice_*). */
+    @JsonProperty("brand_voice_check")
+    BrandVoiceCheckPayload brandVoiceCheck;
 }

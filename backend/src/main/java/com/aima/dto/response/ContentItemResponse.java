@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,4 +41,18 @@ public class ContentItemResponse {
 
     @Schema(description = "Content lifecycle status.", example = "GENERATED")
     ContentLifecycle status;
+
+    // ===== B2: bài là MỘT thực thể chứa N bản nền tảng =====
+
+    @Schema(description = "Per-platform versions of this item (active only — soft-deleted excluded).")
+    List<ContentVersionResponse> versions;
+
+    @Schema(description = "Owning brand profile's id (for the content-library brand filter).")
+    UUID brandProfileId;
+
+    @Schema(description = "Owning brand profile's display name (for list cards).")
+    String brandName;
+
+    @Schema(description = "Last update time.")
+    LocalDateTime updatedAt;
 }

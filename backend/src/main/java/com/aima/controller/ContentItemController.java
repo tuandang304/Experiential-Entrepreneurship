@@ -1,8 +1,10 @@
 package com.aima.controller;
 
 import com.aima.dto.request.ContentFormatRequest;
+import com.aima.dto.request.ContentItemCreateRequest;
 import com.aima.dto.request.ContentItemStatusRequest;
 import com.aima.dto.request.ContentItemUpdateRequest;
+import com.aima.dto.request.ContentVersionUpdateRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.ContentFormattingJobResponse;
 import com.aima.dto.response.ContentItemResponse;
@@ -46,18 +48,31 @@ public class ContentItemController {
 
     @GetMapping
     @Operation(summary = "Content library — list/filter/search (FR-87)",
-            description = "Paged, newest first. Optional filters: status, platform (of formatted versions), "
-                    + "industry, fromDate/toDate (ISO date, on createdAt), q (keyword in caption/script).")
+            description = "Paged. Optional filters: status, brandProfileId, platform (of formatted versions), "
+                    + "industry, fromDate/toDate (ISO date, on createdAt), q (keyword in caption/script). "
+                    + "sort = newest (default) | voice (highest brand-voice score) | status (grouped).")
     public ApiResponse<PageResponse<ContentItemResponse>> list(@AuthenticationPrincipal UserDetails principal,
                                                                @RequestParam(required = false) ContentLifecycle status,
+                                                               @RequestParam(required = false) UUID brandProfileId,
                                                                @RequestParam(required = false) Platform platform,
                                                                @RequestParam(required = false) String industry,
                                                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
                                                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
                                                                @RequestParam(required = false) String q,
+                                                               @RequestParam(defaultValue = "newest") String sort,
                                                                @RequestParam(defaultValue = "0") int page,
                                                                @RequestParam(defaultValue = "10") int size) {
-        return contentItemService.list(principal.getUsername(), status, platform, industry, fromDate, toDate, q, page, size);
+        return contentItemService.list(principal.getUsername(), status, brandProfileId, platform, industry, fromDate, toDate, q, sort, page, size);
+    }
+
+    // B2: bài là MỘT thực thể — tạo shell DRAFT trước, các job generate ghi version vào.
+    @PostMapping
+    @Operation(summary = "Create a content item shell (B2)",
+            description = "Creates one DRAFT item under the strategy's brand profile; per-platform "
+                    + "generation jobs then write one rich ContentVersion each into it.")
+    public ApiResponse<ContentItemResponse> create(@AuthenticationPrincipal UserDetails principal,
+                                                   @Valid @RequestBody ContentItemCreateRequest request) {
+        return contentItemService.create(principal.getUsername(), request);
     }
 
     @GetMapping("/{itemId}")
@@ -86,6 +101,18 @@ public class ContentItemController {
                                                        @PathVariable UUID itemId,
                                                        @Valid @RequestBody ContentItemUpdateRequest request) {
         return contentItemService.updateItem(principal.getUsername(), itemId, request);
+    }
+
+    // B2/FR-33: sửa thủ công một BẢN NỀN TẢNG trong bài (partial update).
+    @PutMapping("/{itemId}/versions/{versionId}")
+    @Operation(summary = "Manually edit one per-platform version (B2, FR-33)",
+            description = "Partial update of script/caption/hashtags/CTA/media prompt on one ContentVersion; "
+                    + "same status rules as editing the item — editing an APPROVED item moves it back to NEED_REVIEW.")
+    public ApiResponse<ContentItemResponse> updateVersion(@AuthenticationPrincipal UserDetails principal,
+                                                          @PathVariable UUID itemId,
+                                                          @PathVariable UUID versionId,
+                                                          @Valid @RequestBody ContentVersionUpdateRequest request) {
+        return contentItemService.updateVersion(principal.getUsername(), itemId, versionId, request);
     }
 
     @PatchMapping("/{itemId}/status")

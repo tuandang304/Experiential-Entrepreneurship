@@ -1,18 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 import { useBreakpoint } from '../../hooks/useBreakpoint.ts';
 import { Icon } from '../../components/ui.tsx';
 import type { ApiError } from '../../api/apiClient.ts';
-import type { ContentLifecycle } from '../../api/contentGeneration.ts';
+import {
+  type ContentLifecycle,
+  ERR_CONTENT_ITEM_NOT_DRAFT,
+  ERR_CONTENT_ITEM_NOT_FOUND,
+  ERR_CONTENT_ITEM_ID_REQUIRED,
+} from '../../api/contentGeneration.ts';
 import type { Platform } from '../../api/brandProfile.ts';
 import {
+  createContentItem,
   generateVersion,
   saveContent,
+  deleteContent,
   getWizardDraft,
   type ContentVersion,
   type GenerationResult,
+  type SaveVersionInput,
   type WizardDraft,
 } from '../../api/contentCreationService.ts';
 import type { PlatformRun } from '../../components/create/steps/GenerateStep.tsx';
@@ -51,6 +59,27 @@ export default function CreateWizard() {
   const [step, setStep] = useState<WizardStep>(1);
   const [maxReached, setMaxReached] = useState<WizardStep>(1);
   const [source, setSource] = useState<SourceSelection | null>(null);
+  // B2: bài (ContentItem) tạo sẵn ở lần generate đầu — mọi job/nền tảng ghi version vào đây,
+  // "Tạo lại" tái dùng (backend thay bản cùng nền tảng). Đổi nguồn → reset để tạo bài mới.
+  const [itemId, setItemId] = useState<string | null>(null);
+  // Orphan DRAFT: mỗi lần generate tạo một bài (DRAFT). Nếu user CHƯA lưu mà rời wizard
+  // (Về danh sách / điều hướng SPA) hoặc ĐỔI NGUỒN thì xóa mềm bài đó, tránh rác nháp trong
+  // danh sách. Chỉ bắt case rời trong SPA (unmount) + đổi nguồn; đóng tab/mất mạng chấp nhận
+  // là rác tạm (DELETE không kịp chạy khi unload) — bài vẫn hiện đúng badge "Nháp".
+  const itemIdRef = useRef<string | null>(null);
+  useEffect(() => { itemIdRef.current = itemId; }, [itemId]);
+  const savedRef = useRef(false);
+  const deleteOrphan = () => {
+    const id = itemIdRef.current;
+    if (id && !savedRef.current) {
+      itemIdRef.current = null; // tránh xóa lặp (đổi nguồn rồi unmount)
+      void deleteContent(id).catch(() => {});
+    }
+  };
+  useEffect(() => deleteOrphan, []); // rời /create/new khi chưa lưu → dọn bài mồ côi
+  const [starting, setStarting] = useState(false); // đang tạo bài / khởi động lượt generate
+  const [startError, setStartError] = useState<string | null>(null);
+  const startingRef = useRef(false); // guard đồng bộ chống double-click "Tạo nội dung với AI"
   const [gens, setGens] = useState<GenerationResult[]>([]);
   const [genIndex, setGenIndex] = useState(0);
   // PA1: mỗi nền tảng MỘT job backend độc lập — trạng thái run theo genId → platform.
@@ -69,12 +98,24 @@ export default function CreateWizard() {
   };
 
   // Nội dung đã tạo bị vô hiệu (đổi hồ sơ/chiến lược qua dialog ở mốc 1) → xóa khỏi phiên.
+  // Reset itemId để lượt generate mới tạo BÀI mới đúng nguồn (bài cũ thành nháp orphan trên BE).
   const discardGenerated = () => {
+    deleteOrphan(); // bài cũ (chưa lưu) thành mồ côi khi đổi nguồn → xóa mềm trước khi reset
     setGens([]);
     setGenIndex(0);
     setRunsByGen({});
     setBaselines({});
+    setItemId(null);
+    setStartError(null);
     setMaxReached(1);
+  };
+
+  // Mã lỗi backend (1905/1906/1920) → thông báo rõ nghĩa, không phải lỗi chung chung.
+  const generationErrorMessage = (err: ApiError): string => {
+    if (err.code === ERR_CONTENT_ITEM_NOT_DRAFT) return t.cwGenItemNotDraft;
+    if (err.code === ERR_CONTENT_ITEM_NOT_FOUND) return t.cwGenItemNotFound;
+    if (err.code === ERR_CONTENT_ITEM_ID_REQUIRED) return t.cwGenItemMissing;
+    return err.message;
   };
 
   const handleSourceNext = (sel: SourceSelection) => {
@@ -96,14 +137,21 @@ export default function CreateWizard() {
   const setRun = (genId: string, platform: Platform, run: PlatformRun) =>
     setRunsByGen((prev) => ({ ...prev, [genId]: { ...prev[genId], [platform]: run } }));
 
-  // Chạy MỘT job cho MỘT nền tảng (API thật: start + poll). Cập nhật state dạng hàm —
-  // chỉ đụng version của nền tảng này, nội dung các nền tảng đã xong giữ nguyên.
-  const runPlatform = async (genId: string, platform: Platform, regenerateFrom?: string, regenNote?: string) => {
+  // Chạy MỘT job cho MỘT nền tảng (API thật: start + poll) ghi version vào bài targetItemId.
+  // Cập nhật state dạng hàm — chỉ đụng version của nền tảng này, các nền tảng đã xong giữ nguyên.
+  const runPlatform = async (
+    targetItemId: string,
+    genId: string,
+    platform: Platform,
+    regenerateFrom?: string,
+    regenNote?: string,
+  ) => {
     if (!source) return;
     setRun(genId, platform, { status: 'running' });
     try {
       const version = await generateVersion({
         strategyId: source.strategy.id,
+        contentItemId: targetItemId,
         platform,
         // Trend/idea + ghi chú user chọn/nhập ở mốc 1 — truyền thẳng vào payload backend.
         trendId: source.trend?.kind === 'trend' ? source.trend.id : undefined,
@@ -119,36 +167,57 @@ export default function CreateWizard() {
       setBaselines((prev) => ({ ...prev, [version.id]: version.brandVoice.score }));
       setRun(genId, platform, { status: 'done' });
     } catch (e) {
-      setRun(genId, platform, { status: 'error', error: (e as ApiError).message });
+      setRun(genId, platform, { status: 'error', error: generationErrorMessage(e as ApiError) });
     }
   };
 
-  // Lượt tạo mới (lần đầu hoặc "Tạo lại" kèm note): 1 GenerationResult + N job SONG SONG.
-  // "Tạo lại" sinh BẢN MỚI dựa trên bản hiện tại — không ghi đè; bản trước gửi dạng TEXT
-  // (caption của đúng nền tảng đó), không phải id.
-  const startGeneration = (regenNote?: string) => {
-    if (!source) return;
-    const prevGen = gens[genIndex] ?? null;
-    const genId = `gen-${Date.now()}`;
-    const gen: GenerationResult = { id: genId, note: regenNote, createdAt: new Date().toISOString(), versions: [] };
-    setGens((prev) => {
-      setGenIndex(prev.length);
-      return [...prev, gen];
-    });
-    for (const p of source.platforms) {
-      const regenerateFrom = regenNote !== undefined ? prevGen?.versions.find((v) => v.platform === p)?.caption : undefined;
-      void runPlatform(genId, p, regenerateFrom, regenNote);
+  // Lượt tạo mới (lần đầu hoặc "Tạo lại" kèm note): tạo BÀI (lần đầu) rồi 1 GenerationResult
+  // + N job SONG SONG. Guard đồng bộ (startingRef) chống bấm "Tạo nội dung với AI" hai lần.
+  // "Tạo lại" sinh BẢN MỚI, không ghi đè; bản trước gửi dạng TEXT (caption đúng nền tảng đó).
+  const startGeneration = async (regenNote?: string) => {
+    if (!source || startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
+    setStartError(null);
+    try {
+      // Tạo bài shell (DRAFT) một lần; "Tạo lại" tái dùng bài cũ.
+      let targetItemId = itemId;
+      if (!targetItemId) {
+        targetItemId = await createContentItem(
+          source.strategy.id,
+          source.trend?.kind === 'idea' ? source.trend.id : undefined,
+        );
+        setItemId(targetItemId);
+        itemIdRef.current = targetItemId; // set ngay để dọn orphan đúng kể cả khi rời trang lập tức
+      }
+      const prevGen = gens[genIndex] ?? null;
+      const genId = `gen-${Date.now()}`;
+      const gen: GenerationResult = { id: genId, note: regenNote, createdAt: new Date().toISOString(), versions: [] };
+      setGens((prev) => {
+        setGenIndex(prev.length);
+        return [...prev, gen];
+      });
+      for (const p of source.platforms) {
+        const regenerateFrom = regenNote !== undefined ? prevGen?.versions.find((v) => v.platform === p)?.caption : undefined;
+        void runPlatform(targetItemId, genId, p, regenerateFrom, regenNote);
+      }
+    } catch (e) {
+      // Tạo bài thất bại (vd chiến lược hết ACTIVE) — báo lỗi rõ, không tạo gen, không đứng wizard.
+      setStartError((e as ApiError).message || t.cwCreateItemError);
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
   };
 
   // "Thử lại" riêng nền tảng lỗi của bản hiện tại — các nền tảng đã xong không bị đụng.
   const retryPlatform = (platform: Platform) => {
     const gen = gens[genIndex];
-    if (!gen) return;
+    if (!gen || !itemId) return;
     const idx = gens.findIndex((g) => g.id === gen.id);
     const prevGen = idx > 0 ? gens[idx - 1] : null;
     const regenerateFrom = gen.note !== undefined ? prevGen?.versions.find((v) => v.platform === platform)?.caption : undefined;
-    void runPlatform(gen.id, platform, regenerateFrom, gen.note);
+    void runPlatform(itemId, gen.id, platform, regenerateFrom, gen.note);
   };
 
   // Chỉnh sửa (mốc 3) / sinh ảnh / kiểm tra brand voice cập nhật version trong bản hiện tại.
@@ -161,18 +230,31 @@ export default function CreateWizard() {
   };
 
   const handleSave = async () => {
-    if (!source || !gens[genIndex] || saving) return;
+    if (!source || !itemId || !gens[genIndex] || saving) return;
+    const selected = gens[genIndex];
+    // Bản đang active trên backend = bản mới nhất mỗi nền tảng (gen cuối). Nếu user chọn
+    // BẢN CŨ để lưu, đẩy NỘI DUNG bản cũ vào version active đó (điểm treo (c) đã duyệt).
+    const latest = gens[gens.length - 1] ?? selected;
     setSaving(true);
     setSaveError(null);
     try {
-      await saveContent({
-        brandId: source.brand.id,
-        brandName: source.brand.brandName,
-        strategyId: source.strategy.id,
-        trendId: source.trend?.id,
-        status,
-        versions: gens[genIndex].versions,
-      });
+      const versions = source.platforms
+        .map((p): SaveVersionInput | null => {
+          const content = selected.versions.find((v) => v.platform === p);
+          const target = latest.versions.find((v) => v.platform === p) ?? content;
+          if (!content || !target) return null;
+          return {
+            versionId: target.id,
+            script: [content.post.hook, content.post.body, content.post.cta].filter(Boolean).join('\n'),
+            caption: content.caption,
+            hashtags: content.hashtags,
+            cta: content.cta,
+            mediaPrompt: content.mediaPrompt,
+          };
+        })
+        .filter((v): v is SaveVersionInput => v !== null);
+      await saveContent({ itemId, status: status as 'DRAFT' | 'NEED_REVIEW' | 'APPROVED', versions });
+      savedRef.current = true; // đã lưu (kể cả giữ Nháp có chủ đích) → KHÔNG dọn như orphan khi unmount
       go('create');
     } catch (e) {
       setSaveError((e as ApiError).message);
@@ -215,6 +297,8 @@ export default function CreateWizard() {
           genIndex={genIndex}
           setGenIndex={setGenIndex}
           runs={gen ? runsByGen[gen.id] ?? {} : {}}
+          starting={starting}
+          startError={startError}
           onGenerate={() => startGeneration()}
           onRegenerate={(note) => startGeneration(note)}
           onRetryPlatform={retryPlatform}

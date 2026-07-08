@@ -18,13 +18,14 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Schema(name = "ContentVersionResponse", description = "Platform-formatted version of a content item (BR-04, FR-46).")
+@Schema(name = "ContentVersionResponse", description = "Per-platform version of a content item (BR-04). "
+        + "Generate flow fills the rich fields; format flow fills the formatted_* subset.")
 public class ContentVersionResponse {
 
     @Schema(description = "Unique content version identifier.")
     UUID id;
 
-    @Schema(description = "Platform this version was formatted for.")
+    @Schema(description = "Platform this version targets.")
     Platform platformName;
 
     @Schema(description = "Platform-native caption.")
@@ -36,6 +37,29 @@ public class ContentVersionResponse {
     @Schema(description = "Suggested media format, e.g. 'vertical video', 'square image', 'link post'.")
     String mediaFormat;
 
-    @Schema(description = "Lifecycle status of this version.", example = "FORMATTED")
+    // ===== Bản giàu (B2) — luồng generate điền; luồng format trả null =====
+
+    @Schema(description = "Video script (hook, body/scenes, CTA) as newline-separated lines.")
+    String script;
+
+    @Schema(description = "Call-to-action for this platform (FR-28).")
+    String cta;
+
+    @Schema(description = "TEXT description of the video to film (FR-29).")
+    String mediaPrompt;
+
+    @Schema(description = "TEXT prompt for ONE static image (reserved for the image feature; may be empty).")
+    String imagePrompt;
+
+    @Schema(description = "FR-30: whether the AI judged this version on-brand.")
+    Boolean voiceAligned;
+
+    @Schema(description = "FR-30: brand-voice match score 0-100.")
+    Integer voiceScore;
+
+    @Schema(description = "FR-30: short brand-voice notes from the AI.")
+    String voiceNotes;
+
+    @Schema(description = "Lifecycle status of this version.", example = "GENERATED")
     ContentLifecycle status;
 }

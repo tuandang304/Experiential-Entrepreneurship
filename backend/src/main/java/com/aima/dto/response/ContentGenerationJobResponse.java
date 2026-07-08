@@ -31,6 +31,6 @@ public class ContentGenerationJobResponse {
     @Schema(description = "Error message, present only when status is FAILED.")
     String errorMessage;
 
-    @Schema(description = "Generated content item, present only when status is SUCCESS.")
-    ContentItemResponse contentItem;
+    @Schema(description = "B2: generated per-platform version, present only when status is SUCCESS.")
+    ContentVersionResponse contentVersion;
 }

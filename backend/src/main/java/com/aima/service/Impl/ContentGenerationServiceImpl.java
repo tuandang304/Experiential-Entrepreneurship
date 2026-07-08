@@ -4,13 +4,16 @@ import com.aima.dto.request.ContentGenerationRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.ContentGenerationJobResponse;
 import com.aima.entity.ContentGenerationJob;
+import com.aima.entity.ContentItem;
 import com.aima.entity.ContentStrategy;
 import com.aima.entity.User;
+import com.aima.enums.ContentLifecycle;
 import com.aima.enums.StrategyStatus;
 import com.aima.exception.AppException;
 import com.aima.exception.ErrorCode;
 import com.aima.mapper.ContentGenerationJobMapper;
 import com.aima.repository.ContentGenerationJobRepository;
+import com.aima.repository.ContentItemRepository;
 import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.ContentGenerationService;
@@ -35,6 +38,7 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
 
     ContentGenerationJobRepository contentGenerationJobRepository;
     ContentStrategyRepository contentStrategyRepository;
+    ContentItemRepository contentItemRepository;
     UserRepository userRepository;
     ContentGenerationJobMapper contentGenerationJobMapper;
     ContentGenerationWorkerService contentGenerationWorkerService;
@@ -51,8 +55,17 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
             throw new AppException(ErrorCode.STRATEGY_NOT_ACTIVE);
         }
 
+        // B2: job ghi version vào MỘT bài có sẵn — bài phải thuộc user và còn ở DRAFT.
+        ContentItem item = contentItemRepository
+                .findByIdAndBrandProfile_User_IdAndDeletedAtIsNull(request.getContentItemId(), user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.CONTENT_ITEM_NOT_FOUND));
+        if (item.getStatus() != ContentLifecycle.DRAFT) {
+            throw new AppException(ErrorCode.CONTENT_ITEM_NOT_DRAFT);
+        }
+
         ContentGenerationJob job = contentGenerationJobMapper.toContentGenerationJob(request);
         job.setContentStrategy(strategy);
+        job.setContentItem(item);
         ContentGenerationJob saved = contentGenerationJobRepository.save(job);
 
         // Chỉ dispatch worker nền SAU KHI transaction commit — nếu không, thread @Async có thể

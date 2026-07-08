@@ -8,13 +8,14 @@ import com.aima.entity.BrandProfile;
 import com.aima.entity.ContentGenerationJob;
 import com.aima.entity.ContentItem;
 import com.aima.entity.ContentStrategy;
+import com.aima.entity.ContentVersion;
 import com.aima.enums.GenerationJobStatus;
 import com.aima.enums.NotificationType;
 import com.aima.mapper.AiContentMapper;
 import com.aima.mapper.ContentItemMapper;
 import com.aima.repository.ContentGenerationJobRepository;
 import com.aima.repository.ContentIdeaRepository;
-import com.aima.repository.ContentItemRepository;
+import com.aima.repository.ContentVersionRepository;
 import com.aima.repository.TrendRepository;
 import com.aima.service.AiServiceClient;
 import com.aima.service.ContentGenerationWorkerService;
@@ -27,6 +28,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -43,7 +45,7 @@ import java.util.UUID;
 public class ContentGenerationWorkerServiceImpl implements ContentGenerationWorkerService {
 
     ContentGenerationJobRepository jobRepository;
-    ContentItemRepository contentItemRepository;
+    ContentVersionRepository contentVersionRepository;
     TrendRepository trendRepository;
     ContentIdeaRepository contentIdeaRepository;
     AiServiceClient aiServiceClient;
@@ -125,26 +127,52 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
                 });
     }
 
+    // B2: job ghi MỘT ContentVersion giàu vào bài (INSERT row con — không đụng row
+    // ContentItem, không job nào lật status bài → N job song song không còn race).
     private void saveSuccess(UUID jobId, GeneratedContentResult result) {
         ContentGenerationJob job = jobRepository.findById(jobId).orElse(null);
         if (job == null) {
             log.warn("[ContentGeneration] Job {} biến mất trước khi lưu kết quả", jobId);
             return;
         }
-        ContentItem item = contentItemMapper.toContentItem(result);
-        BrandProfile brand = job.getContentStrategy().getBrandProfile();
-        item.setBrandProfile(brand);
-        contentItemRepository.save(item);
-        job.setResultContentItem(item);
+        ContentItem item = job.getContentItem();
+        if (item == null || item.getDeletedAt() != null) {
+            // Bài bị xóa trong lúc job chạy — kết quả không còn chỗ ghi.
+            log.warn("[ContentGeneration] Bài của job {} không còn — bỏ kết quả", jobId);
+            saveFailureOn(job, "Bài nội dung không còn tồn tại");
+            return;
+        }
+
+        ContentVersion version = contentItemMapper.toGeneratedVersion(result);
+        version.setContentItem(item);
+        version.setPlatformName(job.getPlatform());
+
+        // Retry / "Tạo lại": bản cũ CÙNG nền tảng bị thay bằng xóa mềm (pattern FR-46
+        // của format worker) — các nền tảng khác không bị đụng.
+        LocalDateTime now = LocalDateTime.now();
+        contentVersionRepository
+                .findAllByContentItem_IdAndPlatformNameAndDeletedAtIsNull(item.getId(), job.getPlatform())
+                .forEach(old -> old.setDeletedAt(now));
+        contentVersionRepository.save(version);
+
+        job.setResultContentVersion(version);
         job.setStatus(GenerationJobStatus.SUCCESS);
         jobRepository.save(job);
 
         // FR-77: nội dung mới do AI tạo — nhắc user xem và duyệt trước khi lên lịch.
+        // (B2: mỗi nền tảng một thông báo — chấp nhận ồn nhẹ, tối ưu ở lượt sau.)
+        BrandProfile brand = item.getBrandProfile();
         notificationService.notify(brand.getUser(), NotificationType.REVIEW_NEEDED,
                 "Nội dung mới cần xem xét",
                 "AI vừa tạo nội dung mới cho thương hiệu " + brand.getBrandName()
                         + ". Hãy xem và duyệt trước khi định dạng/lên lịch đăng.",
                 item.getId());
+    }
+
+    private void saveFailureOn(ContentGenerationJob job, String message) {
+        job.setStatus(GenerationJobStatus.FAILED);
+        job.setErrorMessage(message);
+        jobRepository.save(job);
     }
 
     private void saveFailure(UUID jobId, String message) {

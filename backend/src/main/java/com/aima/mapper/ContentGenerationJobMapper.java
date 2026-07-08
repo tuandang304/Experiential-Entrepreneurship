@@ -9,9 +9,11 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = ContentItemMapper.class)
 public interface ContentGenerationJobMapper {
 
-    @Mapping(target = "contentItem", source = "resultContentItem")
+    // B2: kết quả job là bản nền tảng (ContentVersion giàu) — map qua ContentItemMapper.toVersionResponse.
+    @Mapping(target = "contentVersion", source = "resultContentVersion")
     ContentGenerationJobResponse toResponse(ContentGenerationJob job);
 
     @Mapping(target = "contentStrategy", ignore = true)
+    @Mapping(target = "contentItem", ignore = true) // service resolve theo contentItemId + ownership
     ContentGenerationJob toContentGenerationJob(ContentGenerationRequest request);
 }

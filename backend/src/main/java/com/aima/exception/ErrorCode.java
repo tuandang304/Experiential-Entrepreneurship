@@ -133,6 +133,8 @@ public enum ErrorCode {
     STRATEGY_NOT_ACTIVE(1902, "Chiến lược chưa được kích hoạt (ACTIVE) nên không thể tạo nội dung", HttpStatus.BAD_REQUEST),
     CONTENT_GENERATION_JOB_NOT_FOUND(1903, "Không tìm thấy tác vụ tạo nội dung", HttpStatus.NOT_FOUND),
     AI_SERVICE_ERROR(1904, "Lỗi khi gọi dịch vụ AI. Vui lòng thử lại sau.", HttpStatus.BAD_GATEWAY),
+    CONTENT_ITEM_ID_REQUIRED(1905, "Thiếu mã bài nội dung để ghi bản nền tảng", HttpStatus.BAD_REQUEST),
+    CONTENT_ITEM_NOT_DRAFT(1906, "Chỉ tạo bản nội dung vào bài đang ở trạng thái Nháp (DRAFT)", HttpStatus.BAD_REQUEST),
 
     // TREND RESEARCH ERRORS
     ACTIVE_BRAND_PROFILE_REQUIRED(1910, "Cần có hồ sơ thương hiệu đang hoạt động trước khi nghiên cứu xu hướng", HttpStatus.BAD_REQUEST),

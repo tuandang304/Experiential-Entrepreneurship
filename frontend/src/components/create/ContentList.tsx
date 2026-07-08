@@ -7,9 +7,9 @@ import { FilterSelect } from '../admin/AdminListPage';
 import Pagination from '../admin/Pagination';
 import SearchSuggestInput from '../brand/SearchSuggestInput';
 import ConfirmDialog from '../brand/ConfirmDialog';
-import type { PageResponse } from '../../api/apiClient';
+import type { PageResponse, ApiError } from '../../api/apiClient';
 import type { Platform } from '../../api/brandProfile';
-import type { ContentLifecycle } from '../../api/contentGeneration';
+import { type ContentLifecycle, ERR_CONTENT_ITEM_NOT_DELETABLE } from '../../api/contentGeneration';
 import { listContents, deleteContent, type ContentListItem, type ContentSort } from '../../api/contentCreationService';
 import ContentCard from './ContentCard';
 import ContentViewPanel from './ContentViewPanel';
@@ -50,6 +50,7 @@ export default function ContentList({
   const [viewing, setViewing] = useState<ContentListItem | null>(null);
   const [deleting, setDeleting] = useState<ContentListItem | null>(null);
   const [busy, setBusy] = useState(false);
+  const [delError, setDelError] = useState<string | null>(null);
 
   // Nguồn gợi ý tìm kiếm + option thương hiệu: toàn bộ nội dung (tải lại khi dữ liệu đổi).
   useEffect(() => {
@@ -86,14 +87,21 @@ export default function ContentList({
   const confirmDelete = async () => {
     if (!deleting) return;
     setBusy(true);
+    setDelError(null);
     try {
       await deleteContent(deleting.id);
       setDeleting(null);
       refresh();
+    } catch (e) {
+      // FR-89: bài đã vào pipeline (Scheduled/Posting/…) không xóa được → báo rõ, giữ danh sách.
+      const err = e as ApiError;
+      setDelError(err.code === ERR_CONTENT_ITEM_NOT_DELETABLE ? t.clDelNotAllowed : err.message);
     } finally {
       setBusy(false);
     }
   };
+
+  const closeDelete = () => { setDeleting(null); setDelError(null); };
 
   if (load === 'loading') return <CreateSkeleton />;
   if (load === 'error')
@@ -178,7 +186,11 @@ export default function ContentList({
       )}
 
       {deleting && (
-        <ConfirmDialog title={t.clDelTitle} message={t.clDelMsg} confirmLabel={t.clDelConfirm} busy={busy} onConfirm={confirmDelete} onClose={() => setDeleting(null)} />
+        <ConfirmDialog title={t.clDelTitle} message={t.clDelMsg} confirmLabel={t.clDelConfirm} busy={busy} onConfirm={confirmDelete} onClose={closeDelete}>
+          {delError && (
+            <div style={{ background: '#fee2e2', color: '#b91c1c', borderRadius: 10, padding: '10px 12px', fontSize: 12.5, fontWeight: 600, marginBottom: 12 }}>{delError}</div>
+          )}
+        </ConfirmDialog>
       )}
     </div>
   );

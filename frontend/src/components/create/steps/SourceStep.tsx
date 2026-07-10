@@ -8,7 +8,6 @@ import { listAllBrandProfiles, type BrandProfile } from '../../../api/brandProfi
 import type { Platform } from '../../../api/brandProfile';
 import { listAllContentStrategies, isStrategyRunnable, type ContentStrategy } from '../../../api/contentStrategy';
 import {
-  saveWizardDraft,
   listAttachableTrends,
   type AttachableTrend,
   type WizardDraft,
@@ -26,6 +25,16 @@ export interface SourceSelection {
   platforms: Platform[];
   /** Ghi chú thêm cho AI (tùy chọn) — truyền vào input tạo nội dung. */
   aiNote: string;
+}
+
+/** Lựa chọn ĐANG DỞ ở mốc 1 (chưa bấm Tiếp tục) — wizard auto-save xuống DB theo snapshot này. */
+export interface WizardLiveSelection {
+  brandId?: string;
+  strategyId?: string;
+  trendId?: string;
+  ideaId?: string;
+  platforms: Platform[];
+  note?: string;
 }
 
 const selectStyle = {
@@ -49,18 +58,22 @@ const softBtn = {
 export default function SourceStep({
   value,
   draft,
-  draftId,
   generatedSource,
+  autoNext,
   onDiscardGenerated,
+  onSelectionChange,
   onNext,
 }: {
   value: SourceSelection | null;
   /** Nháp khôi phục từ danh sách ("Tiếp tục") — chỉ chứa id, dữ liệu fetch lại mới. */
   draft: WizardDraft | null;
-  draftId?: string;
   /** Nguồn đã dùng để tạo nội dung trong phiên (null nếu chưa tạo) — đổi khác phải xác nhận. */
-  generatedSource: { brandId: string; strategyId: string } | null;
+  generatedSource: { brandId: string; strategyId: string | null } | null;
+  /** Resume bài dở ở bước ≥2: nguồn hợp lệ là tự qua bước kế (không bắt xác nhận lại). */
+  autoNext?: boolean;
   onDiscardGenerated: () => void;
+  /** Báo lựa chọn đang dở mỗi khi NGƯỜI DÙNG đổi (auto-pick ban đầu không tính) — cho auto-save. */
+  onSelectionChange?: (sel: WizardLiveSelection) => void;
   onNext: (sel: SourceSelection) => void;
 }) {
   const { t, go, brandGradient, activeBrandId } = useApp();
@@ -84,7 +97,10 @@ export default function SourceStep({
   const [confirmed, setConfirmed] = useState(!!value);
   // Đổi hồ sơ/chiến lược khi đã có nội dung → giữ thay đổi chờ dialog xác nhận.
   const [pendingChange, setPendingChange] = useState<{ apply: () => void } | null>(null);
-  const currentDraftId = useRef(draftId);
+  // Auto-save chỉ khi NGƯỜI DÙNG đã đụng vào lựa chọn — auto-pick/khôi phục nháp không tính,
+  // tránh tạo bài DRAFT rác mỗi lần mở wizard rồi rời ngay.
+  const dirtyRef = useRef(false);
+  const markDirty = () => { dirtyRef.current = true; };
 
   useEffect(() => {
     let cancelled = false;
@@ -149,9 +165,34 @@ export default function SourceStep({
 
   const ready = !!brand && !!strategy && picked.length > 0;
 
+  // Báo snapshot lựa chọn cho wizard auto-save (sau khi user đã đụng vào form).
+  useEffect(() => {
+    if (!dirtyRef.current || !onSelectionChange) return;
+    onSelectionChange({
+      brandId: brandId || undefined,
+      strategyId: strategyId || undefined,
+      trendId: trend?.kind === 'trend' ? trend.id : undefined,
+      ideaId: trend?.kind === 'idea' ? trend.id : undefined,
+      platforms: picked,
+      note: aiNote.trim() || undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandId, strategyId, trendKey, picked, aiNote]);
+
+  // Resume bài dở ở bước ≥2: nguồn khôi phục hợp lệ → tự xác nhận + qua bước kế đúng một lần.
+  const autoNextFired = useRef(false);
+  useEffect(() => {
+    if (!autoNext || autoNextFired.current || loading || !ready) return;
+    autoNextFired.current = true;
+    setConfirmed(true);
+    onNext({ brand: brand!, strategy: strategy!, trend, platforms: picked, aiNote: aiNote.trim() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoNext, loading, ready]);
+
   // Bỏ/thêm chip nền tảng cho riêng bài này (tối thiểu 1; thêm lại theo thứ tự chiến lược).
   const togglePlatform = (p: Platform) => {
     if (!strategy) return;
+    markDirty();
     setPicked((prev) =>
       prev.includes(p)
         ? prev.length > 1 ? prev.filter((x) => x !== p) : prev
@@ -161,33 +202,18 @@ export default function SourceStep({
 
   // Đổi hồ sơ/chiến lược KHÁC nguồn đã tạo nội dung → hỏi trước, xác nhận mới áp dụng.
   const changeBrand = (id: string) => {
+    markDirty();
     if (generatedSource && id !== generatedSource.brandId) setPendingChange({ apply: () => setBrandId(id) });
     else setBrandId(id);
   };
   const changeStrategy = (id: string) => {
+    markDirty();
     if (generatedSource && id !== generatedSource.strategyId) setPendingChange({ apply: () => setStrategyId(id) });
     else setStrategyId(id);
   };
 
-  // Lưu NGẦM bản nháp phiên tạo rồi điều hướng sang trang Thương hiệu (đúng tab).
-  // Nút chỉ điều hướng — không mở form phụ hay sửa gì trong wizard.
-  const leaveToBrand = async (tab: 'brand' | 'strategy') => {
-    try {
-      const saved = await saveWizardDraft({
-        draftId: currentDraftId.current,
-        step: 1,
-        brandId: brandId || undefined,
-        brandName: brand?.brandName,
-        strategyId: strategyId || undefined,
-        trendId: trend?.kind === 'trend' ? trend.id : undefined,
-        ideaId: trend?.kind === 'idea' ? trend.id : undefined,
-        platforms: picked.length ? picked : undefined,
-        note: aiNote || undefined,
-      });
-      currentDraftId.current = saved.draftId;
-    } catch {
-      // Lưu nháp thất bại không chặn điều hướng (lưu ngầm, không hỏi người dùng).
-    }
+  // Điều hướng sang trang Thương hiệu (đúng tab) — bản nháp đã được wizard auto-save ngầm.
+  const leaveToBrand = (tab: 'brand' | 'strategy') => {
     useUiStore.getState().setBrandInitialTab(tab);
     go('brand');
   };
@@ -256,7 +282,7 @@ export default function SourceStep({
 
       <label style={{ ...labelStyle, marginTop: 18 }}>{t.cwSrcTrend}</label>
       {/* Dữ liệu THẬT từ phiên research COMPLETED gần nhất của user (tab Xu hướng) */}
-      <select value={trendKey} onChange={(e) => setTrendKey(e.target.value)} style={selectStyle} disabled={trendOptions.length === 0}>
+      <select value={trendKey} onChange={(e) => { markDirty(); setTrendKey(e.target.value); }} style={selectStyle} disabled={trendOptions.length === 0}>
         <option value="">{t.cwSrcTrendNone}</option>
         {trendOptions.map((tr) => (
           <option key={`${tr.kind}:${tr.id}`} value={`${tr.kind}:${tr.id}`}>
@@ -303,7 +329,7 @@ export default function SourceStep({
       <label style={{ ...labelStyle, marginTop: 18 }}>{t.cwSrcNoteLabel}</label>
       <textarea
         value={aiNote}
-        onChange={(e) => setAiNote(e.target.value)}
+        onChange={(e) => { markDirty(); setAiNote(e.target.value); }}
         placeholder={t.cwSrcNotePh}
         style={{ ...selectStyle, cursor: 'text', resize: 'vertical', minHeight: 76, lineHeight: 1.55 }}
       />

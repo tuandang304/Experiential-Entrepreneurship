@@ -29,6 +29,29 @@ export const ERR_CONTENT_ITEM_ID_REQUIRED = 1905; // thiếu contentItemId
 export const ERR_CONTENT_ITEM_NOT_DRAFT = 1906; // bài không còn ở DRAFT (vd bấm tạo 2 lần)
 export const ERR_CONTENT_ITEM_NOT_DELETABLE = 1947; // FR-89: chỉ xóa được khi DRAFT/GENERATED
 
+// ---- Kịch bản video có cấu trúc (mirror VideoScriptDto backend; NON_NULL nên field có thể vắng) ----
+
+/** Một phần có mốc thời gian của kịch bản (hook mở đầu / CTA cuối). */
+export interface ScriptSectionResponse {
+  content?: string | null;
+  sceneSuggestion?: string | null;
+  timing?: string | null;
+}
+
+/** Một bước đánh số trong thân bài. */
+export interface ScriptStepResponse {
+  index?: number | null;
+  content?: string | null;
+  sceneSuggestion?: string | null;
+}
+
+/** Kịch bản quay: hook có timing → các bước đánh số → CTA cuối có timing (FR-25). */
+export interface VideoScriptResponse {
+  hook?: ScriptSectionResponse | null;
+  steps?: ScriptStepResponse[] | null;
+  cta?: ScriptSectionResponse | null;
+}
+
 /** Bản nền tảng GIÀU (B2) — luồng generate điền đủ; luồng format chỉ điền formatted_*. */
 export interface ContentVersionResponse {
   id: string;
@@ -36,7 +59,7 @@ export interface ContentVersionResponse {
   formattedCaption: string | null;
   formattedHashtags: string[];
   mediaFormat: string | null;
-  script: string | null;
+  script: VideoScriptResponse | null;
   cta: string | null;
   mediaPrompt: string | null;
   imagePrompt: string | null;
@@ -49,7 +72,7 @@ export interface ContentVersionResponse {
 /** Bài — MỘT thực thể chứa N bản nền tảng (versions). */
 export interface ContentItemResponse {
   id: string;
-  script: string | null;
+  script: VideoScriptResponse | null;
   caption: string | null;
   hashtags: string[];
   cta: string | null;
@@ -58,6 +81,13 @@ export interface ContentItemResponse {
   versions: ContentVersionResponse[];
   brandProfileId: string | null;
   brandName: string | null;
+  /** Idea gắn kèm (đặt lúc tạo bài / auto-save wizard). */
+  ideaId: string | null;
+  // ===== Trạng thái wizard (auto-save/resume) — chỉ có nghĩa khi DRAFT, null sau khi rời DRAFT =====
+  wizardStep: number | null;
+  wizardPlatforms: Platform[];
+  wizardNote: string | null;
+  trendId: string | null;
   updatedAt: string | null;
 }
 
@@ -111,7 +141,7 @@ export async function getContentGenerationJob(jobId: string): Promise<ContentGen
 
 // FR-33: chỉnh sửa thủ công MỘT bản nền tảng — partial update, field bỏ qua giữ nguyên.
 export interface ContentVersionUpdateInput {
-  script?: string;
+  script?: VideoScriptResponse;
   caption?: string;
   hashtags?: string[];
   cta?: string;
@@ -131,7 +161,26 @@ export async function updateContentVersion(
   return data.result;
 }
 
-// FR-34: review flow — DRAFT/GENERATED→NEED_REVIEW (gửi duyệt), NEED_REVIEW→APPROVED (phê duyệt).
+// C (resume): auto-save trạng thái wizard trên bài DRAFT — debounce phía FE ~1s.
+export interface WizardStateInput {
+  step: number;
+  platforms?: Platform[];
+  trendId?: string;
+  ideaId?: string;
+  note?: string;
+}
+
+// PATCH /content-items/{itemId}/wizard-state — chỉ khi bài còn DRAFT (khác → CONTENT_ITEM_NOT_EDITABLE).
+export async function updateWizardState(itemId: string, input: WizardStateInput): Promise<ContentItemResponse> {
+  const { data } = await client.patch<ApiResponse<ContentItemResponse>>(
+    `/content-items/${itemId}/wizard-state`,
+    input,
+  );
+  return data.result;
+}
+
+// FR-34: review flow — DRAFT/GENERATED→NEED_REVIEW (gửi duyệt), NEED_REVIEW→APPROVED (phê duyệt),
+// NEED_REVIEW→GENERATED (trả về sửa).
 // PATCH /content-items/{itemId}/status
 export async function updateContentItemStatus(itemId: string, status: ContentLifecycle): Promise<ContentItemResponse> {
   const { data } = await client.patch<ApiResponse<ContentItemResponse>>(`/content-items/${itemId}/status`, { status });

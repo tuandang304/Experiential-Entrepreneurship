@@ -1,5 +1,6 @@
 package com.aima.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,21 +8,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
-import java.util.List;
-
 /**
- * Mirrors ai/src/schemas.py VideoScript (FR-25).
+ * Mirrors ai/src/schemas.py ScriptSection (hook / closing CTA of the video script).
  */
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class VideoScriptPayload {
+public class ScriptSectionPayload {
 
-    ScriptSectionPayload hook;
+    String content;
 
-    List<ScriptStepPayload> steps;
+    @JsonProperty("scene_suggestion")
+    String sceneSuggestion;
 
-    ScriptSectionPayload cta;
+    String timing;
 }

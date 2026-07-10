@@ -6,13 +6,11 @@ import type { ContentVersion, GenerationResult } from '../../../api/contentCreat
 import type { SourceSelection } from './SourceStep';
 import StepLayout from '../StepLayout';
 import PlatformTabs from '../PlatformTabs';
+import ScriptEditor from '../ScriptEditor';
 import PostImagePreview from '../PostImagePreview';
 import BrandVoicePanel from '../BrandVoicePanel';
-import { CaptionCounter, HashtagCounter } from '../platformLimits';
+import { CaptionCounter, HashtagCounter, parseHashtags } from '../platformLimits';
 import { useBrandVoiceCheck } from '../useBrandVoiceCheck';
-
-const parseHashtags = (text: string): string[] =>
-  text.split(/[\s,]+/).map((h) => h.replace(/^#/, '').trim()).filter(Boolean).map((h) => `#${h}`);
 
 const label = { display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 8 } as const;
 const inputBase = {
@@ -62,14 +60,8 @@ export default function EditStep({
         <PlatformTabs platforms={source.platforms} value={version.platform} onChange={setPlatform} />
       </div>
 
-      <label style={label}>{t.cwHook}</label>
-      {area(version.post.hook, (v) => onPatchVersion(version.id, { post: { ...version.post, hook: v } }), 56)}
-
-      <label style={{ ...label, marginTop: 16 }}>{t.cwBody}</label>
-      {area(version.post.body, (v) => onPatchVersion(version.id, { post: { ...version.post, body: v } }), 140)}
-
-      <label style={{ ...label, marginTop: 16 }}>{t.cwEndCta}</label>
-      {area(version.post.cta, (v) => onPatchVersion(version.id, { post: { ...version.post, cta: v } }), 56)}
+      <label style={label}>{t.cwTabScript}</label>
+      <ScriptEditor script={version.script} onChange={(script) => onPatchVersion(version.id, { script })} />
 
       <label style={{ ...label, marginTop: 16 }}>{t.cwTabCaption}</label>
       {area(version.caption, (v) => onPatchVersion(version.id, { caption: v }), 90)}

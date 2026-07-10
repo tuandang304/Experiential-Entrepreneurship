@@ -17,7 +17,8 @@ import {
   generateVersion,
   saveContent,
   deleteContent,
-  getWizardDraft,
+  getWizardResume,
+  saveWizardState,
   type ContentVersion,
   type GenerationResult,
   type SaveVersionInput,
@@ -26,7 +27,7 @@ import {
 import type { PlatformRun } from '../../components/create/steps/GenerateStep.tsx';
 import WizardStepper, { type WizardStep } from '../../components/create/WizardStepper.tsx';
 import { WizardStepSkeleton } from '../../components/create/CreateSkeleton.tsx';
-import SourceStep, { type SourceSelection } from '../../components/create/steps/SourceStep.tsx';
+import SourceStep, { type SourceSelection, type WizardLiveSelection } from '../../components/create/steps/SourceStep.tsx';
 import GenerateStep from '../../components/create/steps/GenerateStep.tsx';
 import EditStep from '../../components/create/steps/EditStep.tsx';
 import ReviewStep from '../../components/create/steps/ReviewStep.tsx';
@@ -41,42 +42,81 @@ import ScheduleStep from '../../components/create/steps/ScheduleStep.tsx';
 export default function CreateWizard() {
   const { t, go } = useApp();
   const { width } = useBreakpoint();
-  // Bản nháp dở dang từ danh sách ("Tiếp tục"): nạp lại id đã chọn rồi để SourceStep
-  // tự fetch dữ liệu MỚI NHẤT (không dùng bản chụp cũ — hồ sơ/chiến lược vừa sửa hiện đúng).
+  // Bài DRAFT dở từ danh sách ("Tiếp tục"): draftId = id bài. Nạp trạng thái wizard đã
+  // auto-save (bước đang dừng + id nguồn) + các bản nền tảng đã sinh; SourceStep vẫn tự fetch
+  // dữ liệu MỚI NHẤT (không dùng bản chụp cũ — hồ sơ/chiến lược vừa sửa hiện đúng).
   const draftId = (useLocation().state as { draftId?: string } | null)?.draftId;
   const [draft, setDraft] = useState<WizardDraft | null>(null);
   const [draftLoading, setDraftLoading] = useState(!!draftId);
+  // Bước đang dở cần nhảy tới sau khi SourceStep tự xác nhận nguồn (resume bước ≥2).
+  const resumeStepRef = useRef<WizardStep | null>(null);
+
+  const [step, setStep] = useState<WizardStep>(1);
+  const [maxReached, setMaxReached] = useState<WizardStep>(1);
+  const [source, setSource] = useState<SourceSelection | null>(null);
+  // Lựa chọn ĐANG DỞ ở mốc 1 (SourceStep báo khi user đổi) — nguồn cho auto-save trước khi Next.
+  const [liveSel, setLiveSel] = useState<WizardLiveSelection | null>(null);
+  // B2: bài (ContentItem) tạo khi user bắt đầu chọn nguồn (auto-save) hoặc lượt generate đầu —
+  // mọi job/nền tảng ghi version vào đây, "Tạo lại" tái dùng. Đổi nguồn → thay bằng bài mới.
+  const [itemId, setItemId] = useState<string | null>(null);
+  const itemIdRef = useRef<string | null>(null);
+  useEffect(() => { itemIdRef.current = itemId; }, [itemId]);
+  const savedRef = useRef(false);
+  // Chiến lược mà bài hiện tại được tạo theo — đổi chiến lược thì bài cũ không còn khớp nguồn.
+  const itemStrategyRef = useRef<string | null>(null);
+  const creatingRef = useRef<Promise<string> | null>(null);
+
+  // Tạo bài shell DRAFT đúng MỘT lần — dùng chung cho auto-save + generate (chống race).
+  const ensureItem = (strategyId: string, ideaId?: string): Promise<string> => {
+    if (itemIdRef.current) return Promise.resolve(itemIdRef.current);
+    if (!creatingRef.current) {
+      creatingRef.current = createContentItem(strategyId, ideaId)
+        .then((id) => {
+          setItemId(id);
+          itemIdRef.current = id;
+          itemStrategyRef.current = strategyId;
+          return id;
+        })
+        .finally(() => { creatingRef.current = null; });
+    }
+    return creatingRef.current;
+  };
+
+  // Đổi nguồn → bài cũ (chưa lưu) không còn khớp: xóa mềm rồi reset để auto-save tạo bài mới.
+  // KHÔNG còn xóa khi rời wizard — bài dở là nháp hợp lệ, hiện trong danh sách với nút "Tiếp tục".
+  const dropItem = () => {
+    const id = itemIdRef.current;
+    itemIdRef.current = null;
+    itemStrategyRef.current = null;
+    setItemId(null);
+    if (id && !savedRef.current) void deleteContent(id).catch(() => {});
+  };
+
   useEffect(() => {
     if (!draftId) return;
     let cancelled = false;
-    getWizardDraft(draftId)
-      .then((d) => { if (!cancelled) setDraft(d); })
+    getWizardResume(draftId)
+      .then((res) => {
+        if (cancelled || !res) return;
+        setDraft(res.draft);
+        setItemId(draftId);
+        itemIdRef.current = draftId; // ghi tiếp vào đúng bài đang dở
+        if (res.versions.length > 0) {
+          const resumed: GenerationResult = {
+            id: `resume-${draftId}`,
+            createdAt: new Date().toISOString(),
+            versions: res.versions,
+          };
+          setGens([resumed]);
+          setBaselines(Object.fromEntries(res.versions.map((v) => [v.id, v.brandVoice.score])));
+        }
+        if (res.draft.step > 1) resumeStepRef.current = res.draft.step;
+      })
       .catch(() => {})
       .finally(() => { if (!cancelled) setDraftLoading(false); });
     return () => { cancelled = true; };
   }, [draftId]);
 
-  const [step, setStep] = useState<WizardStep>(1);
-  const [maxReached, setMaxReached] = useState<WizardStep>(1);
-  const [source, setSource] = useState<SourceSelection | null>(null);
-  // B2: bài (ContentItem) tạo sẵn ở lần generate đầu — mọi job/nền tảng ghi version vào đây,
-  // "Tạo lại" tái dùng (backend thay bản cùng nền tảng). Đổi nguồn → reset để tạo bài mới.
-  const [itemId, setItemId] = useState<string | null>(null);
-  // Orphan DRAFT: mỗi lần generate tạo một bài (DRAFT). Nếu user CHƯA lưu mà rời wizard
-  // (Về danh sách / điều hướng SPA) hoặc ĐỔI NGUỒN thì xóa mềm bài đó, tránh rác nháp trong
-  // danh sách. Chỉ bắt case rời trong SPA (unmount) + đổi nguồn; đóng tab/mất mạng chấp nhận
-  // là rác tạm (DELETE không kịp chạy khi unload) — bài vẫn hiện đúng badge "Nháp".
-  const itemIdRef = useRef<string | null>(null);
-  useEffect(() => { itemIdRef.current = itemId; }, [itemId]);
-  const savedRef = useRef(false);
-  const deleteOrphan = () => {
-    const id = itemIdRef.current;
-    if (id && !savedRef.current) {
-      itemIdRef.current = null; // tránh xóa lặp (đổi nguồn rồi unmount)
-      void deleteContent(id).catch(() => {});
-    }
-  };
-  useEffect(() => deleteOrphan, []); // rời /create/new khi chưa lưu → dọn bài mồ côi
   const [starting, setStarting] = useState(false); // đang tạo bài / khởi động lượt generate
   const [startError, setStartError] = useState<string | null>(null);
   const startingRef = useRef(false); // guard đồng bộ chống double-click "Tạo nội dung với AI"
@@ -98,16 +138,16 @@ export default function CreateWizard() {
   };
 
   // Nội dung đã tạo bị vô hiệu (đổi hồ sơ/chiến lược qua dialog ở mốc 1) → xóa khỏi phiên.
-  // Reset itemId để lượt generate mới tạo BÀI mới đúng nguồn (bài cũ thành nháp orphan trên BE).
+  // dropItem xóa mềm bài cũ để auto-save/lượt generate mới tạo BÀI mới đúng nguồn.
   const discardGenerated = () => {
-    deleteOrphan(); // bài cũ (chưa lưu) thành mồ côi khi đổi nguồn → xóa mềm trước khi reset
+    dropItem();
     setGens([]);
     setGenIndex(0);
     setRunsByGen({});
     setBaselines({});
-    setItemId(null);
     setStartError(null);
     setMaxReached(1);
+    resumeStepRef.current = null;
   };
 
   // Mã lỗi backend (1905/1906/1920) → thông báo rõ nghĩa, không phải lỗi chung chung.
@@ -121,6 +161,7 @@ export default function CreateWizard() {
   const handleSourceNext = (sel: SourceSelection) => {
     // Đổi trend / bộ nền tảng sau khi đã sinh nội dung → bỏ các bản cũ (nội dung không còn
     // khớp nguồn). Đổi hồ sơ/chiến lược đã qua dialog xác nhận ở SourceStep.
+    let keptGens = gens.length > 0;
     if (
       source &&
       (sel.brand.id !== source.brand.id ||
@@ -129,9 +170,17 @@ export default function CreateWizard() {
         sel.platforms.join() !== source.platforms.join())
     ) {
       discardGenerated();
+      keptGens = false;
+    } else if (!source && draft && keptGens && sel.brand.id !== draft.brandId) {
+      // Resume nhưng đổi hồ sơ khác nháp → bản khôi phục không còn khớp nguồn.
+      discardGenerated();
+      keptGens = false;
     }
     setSource(sel);
-    goStep(2);
+    // Resume: đã có nội dung khôi phục → nhảy thẳng tới bước đang dừng (3/4); còn lại vào bước 2.
+    const target = resumeStepRef.current;
+    resumeStepRef.current = null;
+    goStep(target && target >= 3 && keptGens ? target : 2);
   };
 
   const setRun = (genId: string, platform: Platform, run: PlatformRun) =>
@@ -180,16 +229,11 @@ export default function CreateWizard() {
     setStarting(true);
     setStartError(null);
     try {
-      // Tạo bài shell (DRAFT) một lần; "Tạo lại" tái dùng bài cũ.
-      let targetItemId = itemId;
-      if (!targetItemId) {
-        targetItemId = await createContentItem(
-          source.strategy.id,
-          source.trend?.kind === 'idea' ? source.trend.id : undefined,
-        );
-        setItemId(targetItemId);
-        itemIdRef.current = targetItemId; // set ngay để dọn orphan đúng kể cả khi rời trang lập tức
-      }
+      // Tạo bài shell (DRAFT) một lần (dùng chung với auto-save); "Tạo lại" tái dùng bài cũ.
+      const targetItemId = await ensureItem(
+        source.strategy.id,
+        source.trend?.kind === 'idea' ? source.trend.id : undefined,
+      );
       const prevGen = gens[genIndex] ?? null;
       const genId = `gen-${Date.now()}`;
       const gen: GenerationResult = { id: genId, note: regenNote, createdAt: new Date().toISOString(), versions: [] };
@@ -245,7 +289,7 @@ export default function CreateWizard() {
           if (!content || !target) return null;
           return {
             versionId: target.id,
-            script: [content.post.hook, content.post.body, content.post.cta].filter(Boolean).join('\n'),
+            script: content.script,
             caption: content.caption,
             hashtags: content.hashtags,
             cta: content.cta,
@@ -261,6 +305,60 @@ export default function CreateWizard() {
       setSaving(false);
     }
   };
+
+  // ===== C — auto-save trạng thái wizard (debounce ~1s) =====
+  // Đã chọn chiến lược là có bài DRAFT (ensureItem) + PATCH bước/nguồn xuống DB — reload hay
+  // đổi thiết bị vẫn "Tiếp tục" đúng chỗ. Trước khi Next, snapshot lấy từ liveSel (SourceStep
+  // chỉ báo khi USER đổi); từ mốc 2 trở đi source là nguồn chính. Lỗi nuốt ngầm.
+  const wizardSnapshot = () => {
+    const strategyId = source?.strategy.id ?? liveSel?.strategyId;
+    if (!strategyId) return null;
+    const trendId = source ? (source.trend?.kind === 'trend' ? source.trend.id : undefined) : liveSel?.trendId;
+    const ideaId = source ? (source.trend?.kind === 'idea' ? source.trend.id : undefined) : liveSel?.ideaId;
+    return {
+      strategyId,
+      ideaId,
+      state: {
+        step: Math.min(step, 4) as 1 | 2 | 3 | 4,
+        platforms: source?.platforms ?? liveSel?.platforms,
+        trendId,
+        ideaId,
+        note: (source ? source.aiNote : liveSel?.note) || undefined,
+      },
+    };
+  };
+  const snapshotRef = useRef(wizardSnapshot);
+  snapshotRef.current = wizardSnapshot;
+
+  const persistWizard = async () => {
+    if (savedRef.current) return;
+    const snap = snapshotRef.current();
+    if (!snap) return;
+    try {
+      // Đổi chiến lược sau khi bài đã tạo → bài cũ không khớp nguồn: thay bằng bài mới.
+      if (itemIdRef.current && itemStrategyRef.current && itemStrategyRef.current !== snap.strategyId) dropItem();
+      // Bài resume chưa biết chiến lược gốc (không lưu trên bài) → nhận chiến lược hiện tại.
+      if (itemIdRef.current && !itemStrategyRef.current) itemStrategyRef.current = snap.strategyId;
+      const id = await ensureItem(snap.strategyId, snap.ideaId);
+      await saveWizardState(id, snap.state);
+    } catch {
+      // Auto-save ngầm — không chặn thao tác; lần đổi kế tiếp sẽ thử lại.
+    }
+  };
+  const persistRef = useRef(persistWizard);
+  persistRef.current = persistWizard;
+
+  const autoSaveKey = JSON.stringify([
+    step,
+    source ? [source.strategy.id, source.platforms, source.trend?.id, source.aiNote] : null,
+    liveSel,
+  ]);
+  useEffect(() => {
+    const timer = setTimeout(() => { void persistRef.current(); }, 1000);
+    return () => clearTimeout(timer);
+  }, [autoSaveKey]);
+  // Rời wizard (điều hướng SPA) → flush ngay bản auto-save cuối (fire-and-forget).
+  useEffect(() => () => { void persistRef.current(); }, []);
 
   const gen = gens[genIndex] ?? null;
   // Mốc 3/4 cần đã có nội dung — thiếu thì quay về mốc tương ứng.
@@ -284,9 +382,18 @@ export default function CreateWizard() {
           <SourceStep
             value={source}
             draft={draft}
-            draftId={draftId}
-            generatedSource={gens.length > 0 && source ? { brandId: source.brand.id, strategyId: source.strategy.id } : null}
+            generatedSource={
+              gens.length > 0
+                ? source
+                  ? { brandId: source.brand.id, strategyId: source.strategy.id }
+                  : draft?.brandId
+                    ? { brandId: draft.brandId, strategyId: null } // resume: chiến lược gốc không lưu trên bài
+                    : null
+                : null
+            }
+            autoNext={!!draft && draft.step > 1}
             onDiscardGenerated={discardGenerated}
+            onSelectionChange={setLiveSel}
             onNext={handleSourceNext}
           />
         ))}

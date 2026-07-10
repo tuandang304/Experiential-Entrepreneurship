@@ -1,11 +1,17 @@
 import type { Platform } from "./brandProfile";
-import type { ContentItemResponse, ContentLifecycle, ContentVersionResponse } from "./contentGeneration";
+import type {
+  ContentItemResponse,
+  ContentLifecycle,
+  ContentVersionResponse,
+  VideoScriptResponse,
+} from "./contentGeneration";
 import {
   createContentItem as apiCreateContentItem,
   startContentGeneration,
   getContentGenerationJob,
   updateContentVersion,
   updateContentItemStatus,
+  updateWizardState,
   listContentItems,
   getContentItem,
   deleteContentItem,
@@ -13,12 +19,7 @@ import {
 import { listTrendResearchSessions, getTrendResearchSession } from "./trendResearch";
 import type { PageResponse } from "./apiClient";
 import { useAppStore } from "../store/useAppStore";
-import {
-  mockContentList,
-  mockBrandVoice,
-  placeholderImage,
-  draftListTitle,
-} from "../createData";
+import { mockBrandVoice, placeholderImage, draftListTitle } from "../createData";
 
 // ===== Lớp service THỐNG NHẤT cho màn Tạo nội dung (list + wizard) =====
 //
@@ -36,12 +37,33 @@ import {
 
 // ---- Kiểu dữ liệu dùng chung ----
 
-/** Nội dung bài viết dạng đoạn văn: mở đầu (hook) → thân bài → kêu gọi hành động. */
-export interface PostContent {
-  hook: string;
-  body: string;
-  cta: string;
+/** Một phần có mốc thời gian của kịch bản video (hook / CTA cuối) — đã chuẩn hóa cho UI. */
+export interface ScriptSection {
+  content: string;
+  /** Gợi ý cảnh quay riêng cho phần này (khung hình, b-roll, chuyển cảnh). */
+  sceneSuggestion: string;
+  /** Mốc thời gian trong video, vd "0-3s". */
+  timing: string;
 }
+
+/** Một bước đánh số trong thân bài kịch bản. */
+export interface ScriptStep {
+  index: number;
+  content: string;
+  sceneSuggestion: string;
+}
+
+/** Kịch bản quay video (FR-25): hook có timing → các bước → CTA cuối có timing. */
+export interface VideoScript {
+  hook: ScriptSection;
+  steps: ScriptStep[];
+  cta: ScriptSection;
+}
+
+const emptySection = (): ScriptSection => ({ content: "", sceneSuggestion: "", timing: "" });
+
+/** Kịch bản rỗng — dùng cho mock/khởi tạo editor. */
+export const emptyScript = (): VideoScript => ({ hook: emptySection(), steps: [], cta: emptySection() });
 
 /** Kết quả "Kiểm tra brand voice" — % phù hợp + nhận xét từng khía cạnh. */
 export interface BrandVoiceCheck {
@@ -56,7 +78,7 @@ export interface BrandVoiceCheck {
 export interface ContentVersion {
   id: string;
   platform: Platform;
-  post: PostContent;
+  script: VideoScript;
   caption: string;
   hashtags: string[];
   cta: string;
@@ -136,7 +158,7 @@ export interface GenerateImageInput {
 export interface CheckBrandVoiceInput {
   brandId: string;
   platform: Platform;
-  post: PostContent;
+  script: VideoScript;
   caption: string;
 }
 
@@ -144,7 +166,7 @@ export interface CheckBrandVoiceInput {
 export interface SaveVersionInput {
   /** Id bản nền tảng đang active trên backend (PUT target). */
   versionId: string;
-  script: string;
+  script: VideoScript;
   caption: string;
   hashtags: string[];
   cta: string;
@@ -158,12 +180,14 @@ export interface SaveContentInput {
   versions: SaveVersionInput[];
 }
 
-/** Bản nháp phiên wizard — lưu ngầm khi người dùng rời wizard giữa chừng (kể cả mốc 1). */
+/** Bản nháp phiên wizard khôi phục từ bài DRAFT (auto-save DB) — chỉ chứa id, dữ liệu fetch lại mới. */
 export interface WizardDraft {
+  /** = id bài (ContentItem) DRAFT đang dở. */
   draftId: string;
   step: 1 | 2 | 3 | 4;
   brandId?: string;
   brandName?: string;
+  /** Không lưu trên bài — SourceStep tự nạp chiến lược ACTIVE của hồ sơ. */
   strategyId?: string;
   trendId?: string;
   ideaId?: string;
@@ -173,40 +197,35 @@ export interface WizardDraft {
   note?: string;
 }
 
-export type WizardDraftInput = Omit<WizardDraft, "draftId"> & { draftId?: string };
-
 // ---- Helpers mock ----
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const lang = () => useAppStore.getState().lang;
-
-// Danh sách mock giữ trong module để Xóa/Lưu phản ánh ngay trên UI trong phiên làm việc.
-let store: ContentListItem[] | null = null;
-let storeLang: string | null = null;
-const ensureStore = (): ContentListItem[] => {
-  if (!store || storeLang !== lang()) {
-    store = mockContentList(lang());
-    storeLang = lang();
-  }
-  return store;
-};
 
 // ---- API của service ----
 
 // Thứ tự nền tảng cố định trên card (FB → IG → TH), không phụ thuộc thứ tự backend trả version.
 const PLATFORM_ORDER: Platform[] = ["FACEBOOK", "INSTAGRAM", "THREADS"];
 
+// Bước wizard hợp lệ từ backend; bài DRAFT cũ chưa có wizard_step → suy từ dữ liệu:
+// đã có bản nền tảng → bước 3 (Chỉnh sửa); chưa có → bước 1 (Chọn nguồn).
+function resumeStep(r: ContentItemResponse): 1 | 2 | 3 | 4 {
+  const s = r.wizardStep;
+  if (s === 1 || s === 2 || s === 3 || s === 4) return s;
+  return (r.versions ?? []).length > 0 ? 3 : 1;
+}
+
 // Bài (B2) → mục danh sách. Nội dung nằm ở các version (row bài thường rỗng), nên title/excerpt
 // lấy từ bản nền tảng đầu tiên; brand voice của card = điểm cao nhất trong các bản.
-// isDraft LUÔN false: nháp DRAFT thật hiển thị như bài (badge trạng thái "Nháp" tự phân biệt) —
-// KHÁC "nháp wizard" (resume) vẫn là tính năng mock riêng, không surface vào danh sách thật.
+// isDraft = bài còn DRAFT (đang dở trong wizard, auto-save) → card hiện "Tiếp tục" + bước đang dừng.
 function toContentListItem(r: ContentItemResponse): ContentListItem {
   const versions = r.versions ?? [];
   const first = versions[0];
-  const scriptLines = (first?.script ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const hook = first?.script?.hook?.content?.trim() ?? "";
   const caption = first?.formattedCaption?.trim() ?? "";
-  const title = scriptLines[0] || caption || draftListTitle(lang());
-  const excerpt = caption || scriptLines.slice(1).join(" ") || "";
+  const title = hook || caption || draftListTitle(lang());
+  const excerpt =
+    caption || (first?.script?.steps ?? []).map((s) => s?.content ?? "").filter(Boolean).join(" ") || "";
   const platforms = PLATFORM_ORDER.filter((p) => versions.some((v) => v.platformName === p));
   const scores = versions
     .map((v) => v.voiceScore)
@@ -221,7 +240,8 @@ function toContentListItem(r: ContentItemResponse): ContentListItem {
     brandId: r.brandProfileId ?? "",
     brandName: r.brandName ?? "",
     updatedAt: r.updatedAt ?? new Date().toISOString(),
-    isDraft: false,
+    isDraft: r.status === "DRAFT",
+    draftStep: r.status === "DRAFT" ? resumeStep(r) : undefined,
   };
 }
 
@@ -250,52 +270,111 @@ export async function deleteContent(id: string): Promise<void> {
   await deleteContentItem(id);
 }
 
-// Nháp wizard lưu trong module cho phiên làm việc (API thật sẽ lưu ở backend).
-const drafts = new Map<string, WizardDraft>();
-
-// TODO(api): POST /content-items/drafts (tạo) | PUT /content-items/drafts/{id} (cập nhật) —
-// lưu ngầm trạng thái wizard (bước hiện tại + brandId/strategyId/trendId) để "Tiếp tục"
-// từ danh sách quay lại đúng bước đang dở.
-export async function saveWizardDraft(input: WizardDraftInput): Promise<WizardDraft> {
-  await delay(300);
-  const draftId = input.draftId ?? `mock-draft-${Date.now()}`;
-  const draft: WizardDraft = { ...input, draftId };
-  drafts.set(draftId, draft);
-  // Upsert vào danh sách nội dung với trạng thái Nháp để người dùng thấy và "Tiếp tục".
-  const title = input.brandName ? `${draftListTitle(lang())} · ${input.brandName}` : draftListTitle(lang());
-  const item: ContentListItem = {
-    id: draftId,
-    title,
-    excerpt: '',
-    platforms: [],
-    status: 'DRAFT',
-    brandVoice: 0,
-    brandId: input.brandId ?? '',
-    brandName: input.brandName ?? '',
-    updatedAt: new Date().toISOString(),
-    isDraft: true,
-    draftStep: input.step,
-  };
-  const rest = ensureStore().filter((it) => it.id !== draftId);
-  store = [item, ...rest];
-  return draft;
+/**
+ * FR-33 — Sửa tại chỗ MỘT bản nền tảng từ màn Xem chi tiết: PUT toàn bộ nội dung của bản
+ * (script cấu trúc + caption/hashtag/CTA/media prompt). Trả về bài đã cập nhật để panel
+ * refresh cả status (bài APPROVED bị sửa được backend tự hạ về NEED_REVIEW).
+ */
+export async function saveVersionEdit(
+  itemId: string,
+  version: ContentVersion,
+): Promise<{ item: ContentListItem; versions: ContentVersion[] }> {
+  const r = await updateContentVersion(itemId, version.id, {
+    script: toScriptPayload(version.script),
+    caption: version.caption,
+    hashtags: version.hashtags.map((h) => h.replace(/^#+/, "")),
+    cta: version.cta,
+    mediaPrompt: version.mediaPrompt,
+  });
+  return { item: toContentListItem(r), versions: (r.versions ?? []).map(toContentVersion) };
 }
 
-// TODO(api): GET /content-items/drafts/{id} — trả null nếu nháp không còn.
-export async function getWizardDraft(draftId: string): Promise<WizardDraft | null> {
-  await delay(300);
-  return drafts.get(draftId) ?? null;
+/**
+ * FR-34 — Đổi trạng thái bài theo review flow (PATCH). Backend chỉ chấp nhận bước hợp lệ:
+ * DRAFT/GENERATED → NEED_REVIEW, NEED_REVIEW → APPROVED, NEED_REVIEW → GENERATED (trả về sửa).
+ */
+export async function changeContentStatus(itemId: string, status: ContentLifecycle): Promise<ContentListItem> {
+  const r = await updateContentItemStatus(itemId, status);
+  return toContentListItem(r);
+}
+
+/**
+ * C — Auto-save trạng thái wizard xuống DB (PATCH /content-items/{id}/wizard-state).
+ * Gọi ngầm (debounce phía wizard) — lỗi do caller quyết định nuốt hay báo.
+ */
+export async function saveWizardState(itemId: string, input: Omit<WizardDraft, "draftId" | "brandId" | "brandName" | "strategyId">): Promise<void> {
+  await updateWizardState(itemId, {
+    step: input.step,
+    platforms: input.platforms,
+    trendId: input.trendId,
+    ideaId: input.ideaId,
+    note: input.note,
+  });
+}
+
+/**
+ * C — Resume bài DRAFT dở từ danh sách ("Tiếp tục"): GET detail → bản nháp wizard (id đã chọn +
+ * bước đang dừng) + các bản nền tảng đã sinh (nếu có, để nhảy thẳng tới bước 2-4).
+ * Trả null nếu bài đã rời DRAFT (không còn gì để resume).
+ */
+export async function getWizardResume(itemId: string): Promise<{ draft: WizardDraft; versions: ContentVersion[] } | null> {
+  const r = await getContentItem(itemId);
+  if (r.status !== "DRAFT") return null;
+  return {
+    draft: {
+      draftId: itemId,
+      step: resumeStep(r),
+      brandId: r.brandProfileId ?? undefined,
+      brandName: r.brandName ?? undefined,
+      trendId: r.trendId ?? undefined,
+      ideaId: r.ideaId ?? undefined,
+      platforms: r.wizardPlatforms?.length ? r.wizardPlatforms : undefined,
+      note: r.wizardNote ?? undefined,
+    },
+    versions: (r.versions ?? []).map(toContentVersion),
+  };
 }
 
 // ---- Tạo nội dung: API THẬT (PA1 — mỗi nền tảng một job async, NFR-04) ----
 
-// script backend trả là các DÒNG: hook \n thân bài + gợi ý cảnh \n ... \n CTA
-// (ContentItemMapper.formatScript nối bằng '\n') → tách lại thành hook/thân/kết cho UI.
-function splitScript(script: string, fallbackCta: string): PostContent {
-  const lines = script.split("\n").map((l) => l.trim()).filter(Boolean);
-  if (lines.length === 0) return { hook: "", body: "", cta: fallbackCta };
-  if (lines.length === 1) return { hook: lines[0], body: "", cta: fallbackCta };
-  return { hook: lines[0], body: lines.slice(1, -1).join("\n"), cta: lines[lines.length - 1] };
+// script backend trả là OBJECT có cấu trúc (VideoScriptDto — bài legacy đã được backend
+// parse fallback) → chuẩn hóa field vắng/null thành chuỗi rỗng cho UI khỏi phải null-check.
+function toScript(s: VideoScriptResponse | null | undefined): VideoScript {
+  const section = (x?: { content?: string | null; sceneSuggestion?: string | null; timing?: string | null } | null): ScriptSection => ({
+    content: x?.content ?? "",
+    sceneSuggestion: x?.sceneSuggestion ?? "",
+    timing: x?.timing ?? "",
+  });
+  return {
+    hook: section(s?.hook),
+    steps: (s?.steps ?? []).map((st, i) => ({
+      index: st?.index ?? i + 1,
+      content: st?.content ?? "",
+      sceneSuggestion: st?.sceneSuggestion ?? "",
+    })),
+    cta: section(s?.cta),
+  };
+}
+
+// Chiều ngược lại khi PUT: bỏ field rỗng (backend NON_NULL, không lưu chuỗi rỗng vô nghĩa)
+// và bỏ bước không có nội dung; đánh lại index 1..n cho chắc thứ tự.
+function toScriptPayload(s: VideoScript): VideoScriptResponse {
+  const section = (x: ScriptSection) => ({
+    content: x.content.trim() || undefined,
+    sceneSuggestion: x.sceneSuggestion.trim() || undefined,
+    timing: x.timing.trim() || undefined,
+  });
+  return {
+    hook: section(s.hook),
+    steps: s.steps
+      .filter((st) => st.content.trim() || st.sceneSuggestion.trim())
+      .map((st, i) => ({
+        index: i + 1,
+        content: st.content.trim() || undefined,
+        sceneSuggestion: st.sceneSuggestion.trim() || undefined,
+      })),
+    cta: section(s.cta),
+  };
 }
 
 // Map bản nền tảng GIÀU từ backend → ContentVersion cho UI. Brand voice đọc THẬT
@@ -304,7 +383,7 @@ function toContentVersion(v: ContentVersionResponse): ContentVersion {
   return {
     id: v.id,
     platform: v.platformName,
-    post: splitScript(v.script ?? "", v.cta ?? ""),
+    script: toScript(v.script),
     caption: v.formattedCaption ?? "",
     hashtags: (v.formattedHashtags ?? []).map((h) => (h.startsWith("#") ? h : `#${h}`)),
     cta: v.cta ?? "",
@@ -384,7 +463,7 @@ export async function generateImage(input: GenerateImageInput): Promise<{ imageU
 // → BrandVoiceCheck. Backend cần bổ sung endpoint.
 export async function checkBrandVoice(input: CheckBrandVoiceInput): Promise<BrandVoiceCheck> {
   await delay(900);
-  return mockBrandVoice(lang(), (input.post.hook.length + input.caption.length) % 4);
+  return mockBrandVoice(lang(), (input.script.hook.content.length + input.caption.length) % 4);
 }
 
 /**
@@ -397,7 +476,7 @@ export async function checkBrandVoice(input: CheckBrandVoiceInput): Promise<Bran
 export async function saveContent(input: SaveContentInput): Promise<void> {
   for (const v of input.versions) {
     await updateContentVersion(input.itemId, v.versionId, {
-      script: v.script,
+      script: toScriptPayload(v.script),
       caption: v.caption,
       // Backend lưu hashtag không '#' (Python trả không '#') → cắt '#' trước khi gửi, tránh nhân đôi.
       hashtags: v.hashtags.map((h) => h.replace(/^#+/, "")),

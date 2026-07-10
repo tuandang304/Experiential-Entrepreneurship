@@ -44,16 +44,21 @@ export default function ContentCard({
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+      {/* Dòng 1: badges — tối đa 2 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
         <span style={{ background: st.bg, color: st.color, borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>{t[st.labelKey]}</span>
-        {/* Nhãn minh bạch AI */}
         {!item.isDraft && (
           <span style={{ background: '#f3edff', color: '#7c3aed', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>✨ {t[aiLabelKey(item.status)]}</span>
         )}
+      </div>
+      {/* Dòng 2: meta gọn — brand · voice % · ngày */}
+      <div style={{ fontSize: 11.5, color: '#a59fbb', display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+        <span>{item.brandName}</span>
         {item.brandVoice > 0 && (
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#16a34a' }}>{t.clBrandVoice} {item.brandVoice}%</span>
+          <><span>·</span><span style={{ fontWeight: 700, color: '#16a34a' }}>{item.brandVoice}%</span></>
         )}
-        <span style={{ marginLeft: 'auto', fontSize: 11.5, color: '#a59fbb' }}>{item.brandName} · {t.clUpdated} {updated}</span>
+        <span>·</span>
+        <span>{t.clUpdated} {updated}</span>
       </div>
 
       {/* Bản nháp: cho biết đang dừng ở mốc nào + thanh tiến trình mini 5 mốc */}

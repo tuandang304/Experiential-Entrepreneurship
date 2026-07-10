@@ -4,6 +4,7 @@ import com.aima.dto.request.ContentItemCreateRequest;
 import com.aima.dto.request.ContentItemStatusRequest;
 import com.aima.dto.request.ContentItemUpdateRequest;
 import com.aima.dto.request.ContentVersionUpdateRequest;
+import com.aima.dto.request.ContentWizardStateRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.ContentItemResponse;
 import com.aima.dto.response.PageResponse;
@@ -31,6 +32,9 @@ public interface ContentItemService {
                                                    ContentVersionUpdateRequest request);
 
     ApiResponse<ContentItemResponse> updateStatus(String email, UUID itemId, ContentItemStatusRequest request);
+
+    /** Auto-save trạng thái wizard trên bài DRAFT — để "Tiếp tục" đúng bước đang dở. */
+    ApiResponse<ContentItemResponse> updateWizardState(String email, UUID itemId, ContentWizardStateRequest request);
 
     ApiResponse<ContentItemResponse> delete(String email, UUID itemId);
 }

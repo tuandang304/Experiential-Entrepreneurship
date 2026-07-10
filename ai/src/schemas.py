@@ -118,18 +118,38 @@ class ResearchResponse(BaseModel):
 # ============================================================
 
 
+class ScriptSection(BaseModel):
+    """One timed section of the video script (hook or closing CTA)."""
+
+    content: str = Field(..., description="What the creator says/shows on camera in this section")
+    scene_suggestion: str = Field(
+        ..., description="Concrete filming direction for THIS section (framing, b-roll, transition)"
+    )
+    timing: str = Field(..., description="Time range in the video, e.g. '0-3s' or '25-30s'")
+
+
+class ScriptStep(BaseModel):
+    """One numbered step of the video body."""
+
+    index: int = Field(..., ge=1, description="1-based step number ('Bước 1', 'Bước 2', ...)")
+    content: str = Field(..., description="What the creator says/shows on camera in this step")
+    scene_suggestion: str = Field(
+        ..., description="Concrete filming direction for THIS step (framing, b-roll, transition)"
+    )
+
+
 class VideoScript(BaseModel):
     """Structured video script the USER FOLLOWS TO FILM (FR-25) — NOT the posted text.
 
-    Structure: hook -> main content broken into scenes with shot suggestions -> closing CTA.
+    Structure: timed hook -> body as numbered steps -> timed closing CTA. Every part keeps
+    its spoken content and its scene suggestion SEPARATE so the UI can render them apart.
     """
 
-    hook: str = Field(..., description="Attention-grabbing opening line the creator says/shows on camera")
-    main_content: str = Field(..., description="Scene-by-scene body of what to film/say")
-    shot_suggestions: List[str] = Field(
-        default_factory=list, description="Concrete filming directions (framing, b-roll, transitions)"
+    hook: ScriptSection = Field(..., description="Attention-grabbing opening (first seconds)")
+    steps: List[ScriptStep] = Field(
+        default_factory=list, description="Body of the video as ordered, numbered steps"
     )
-    cta: str = Field(..., description="Closing call-to-action spoken/shown at the end of the video")
+    cta: ScriptSection = Field(..., description="Closing call-to-action at the end of the video")
 
 
 class BrandVoiceCheck(BaseModel):

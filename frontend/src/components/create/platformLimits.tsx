@@ -11,6 +11,10 @@ export const PLATFORM_LIMITS: Record<Platform, { caption: number; hashtags: numb
   THREADS: { caption: 500, hashtags: 10 },
 };
 
+/** Chuỗi hashtag người dùng gõ (cách nhau bởi space/phẩy) → mảng '#tag' đã chuẩn hóa. */
+export const parseHashtags = (text: string): string[] =>
+  text.split(/[\s,]+/).map((h) => h.replace(/^#/, '').trim()).filter(Boolean).map((h) => `#${h}`);
+
 const counterStyle = (over: boolean) =>
   ({ fontSize: 11, fontWeight: 600, color: over ? '#dc2626' : '#a59fbb', marginTop: 5, textAlign: 'right' }) as const;
 

@@ -2,7 +2,10 @@ package com.aima.content;
 
 import com.aima.dto.ai.BrandVoiceCheckPayload;
 import com.aima.dto.ai.GeneratedContentResult;
+import com.aima.dto.ai.ScriptSectionPayload;
+import com.aima.dto.ai.ScriptStepPayload;
 import com.aima.dto.ai.VideoScriptPayload;
+import com.aima.dto.common.VideoScriptDto;
 import com.aima.dto.request.ContentVersionUpdateRequest;
 import com.aima.dto.response.ContentItemResponse;
 import com.aima.entity.BrandProfile;
@@ -20,7 +23,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Hợp đồng B2: kết quả /generate của Python → ContentVersion GIÀU (kèm brand-voice,
@@ -34,10 +36,17 @@ class ContentVersionMappingTest {
     private GeneratedContentResult sampleResult() {
         return GeneratedContentResult.builder()
                 .script(VideoScriptPayload.builder()
-                        .hook("Da xỉn màu, lỗ chân lông to?")
-                        .mainContent("3 bước mỗi sáng: làm sạch, dưỡng ẩm, chống nắng.")
-                        .shotSuggestions(List.of("Cận cảnh trước/sau", "Text nổi từng bước"))
-                        .cta("Theo dõi để nhận mẹo mỗi ngày!")
+                        .hook(ScriptSectionPayload.builder()
+                                .content("Da xỉn màu, lỗ chân lông to?")
+                                .sceneSuggestion("Cận cảnh da trước gương").timing("0-3s").build())
+                        .steps(List.of(
+                                ScriptStepPayload.builder().index(1)
+                                        .content("Làm sạch").sceneSuggestion("Cận cảnh rửa mặt").build(),
+                                ScriptStepPayload.builder().index(2)
+                                        .content("Dưỡng ẩm + chống nắng").sceneSuggestion("Text nổi từng bước").build()))
+                        .cta(ScriptSectionPayload.builder()
+                                .content("Theo dõi để nhận mẹo mỗi ngày!")
+                                .sceneSuggestion("Logo + nút follow").timing("25-30s").build())
                         .build())
                 .caption("Chỉ 3 bước mỗi ngày, da bạn đổi khác bất ngờ.")
                 .hashtags(List.of("skincare", "toigian"))
@@ -52,9 +61,14 @@ class ContentVersionMappingTest {
     void generatedResultMapsToRichVersion() {
         ContentVersion version = mapper.toGeneratedVersion(sampleResult());
 
-        // script flatten dạng dòng (hook \n thân \n cảnh quay... \n CTA) — khớp FE splitScript.
-        assertEquals("Da xỉn màu, lỗ chân lông to?\n3 bước mỗi sáng: làm sạch, dưỡng ẩm, chống nắng."
-                + "\nCận cảnh trước/sau\nText nổi từng bước\nTheo dõi để nhận mẹo mỗi ngày!", version.getScript());
+        // script lưu dạng JSON có cấu trúc — parse lại phải giữ đủ hook/steps/cta + timing + cảnh quay.
+        VideoScriptDto script = mapper.parseScript(version.getScript());
+        assertEquals("Da xỉn màu, lỗ chân lông to?", script.getHook().getContent());
+        assertEquals("0-3s", script.getHook().getTiming());
+        assertEquals(2, script.getSteps().size());
+        assertEquals("Cận cảnh rửa mặt", script.getSteps().get(0).getSceneSuggestion());
+        assertEquals("Theo dõi để nhận mẹo mỗi ngày!", script.getCta().getContent());
+        assertEquals("25-30s", script.getCta().getTiming());
         assertEquals("Chỉ 3 bước mỗi ngày, da bạn đổi khác bất ngờ.", version.getFormattedCaption());
         assertEquals("skincare,toigian", version.getFormattedHashtag());
         assertEquals("Theo dõi kênh nhé!", version.getCta());
@@ -103,8 +117,20 @@ class ContentVersionMappingTest {
         assertEquals("Caption đã sửa tay", version.getFormattedCaption());
         assertEquals("moi", version.getFormattedHashtag());
         // field bỏ trống giữ nguyên
-        assertTrue(version.getScript().startsWith("Da xỉn màu"));
+        assertEquals("Da xỉn màu, lỗ chân lông to?",
+                mapper.parseScript(version.getScript()).getHook().getContent());
         assertEquals("Theo dõi kênh nhé!", version.getCta());
         assertNull(version.getPlatformName(), "mapper không tự gán platform — worker gán");
+    }
+
+    @Test
+    void legacyPlainScriptParsesAsFallback() {
+        // Bài cũ lưu script dạng dòng — parse fallback: dòng đầu = hook, cuối = CTA, giữa = các bước.
+        VideoScriptDto script = mapper.parseScript("Hook cũ\nBước giữa 1\nBước giữa 2\nCTA cũ");
+        assertEquals("Hook cũ", script.getHook().getContent());
+        assertEquals(2, script.getSteps().size());
+        assertEquals("Bước giữa 1", script.getSteps().get(0).getContent());
+        assertEquals("CTA cũ", script.getCta().getContent());
+        assertNull(script.getHook().getTiming(), "bài cũ không có timing");
     }
 }

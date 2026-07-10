@@ -52,7 +52,7 @@ export default function BrandVoicePanel({
       ) : error ? (
         <div style={{ fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{error}</div>
       ) : check ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ background: '#e8f8ee', color: '#16a34a', borderRadius: 9, padding: '4px 12px', fontSize: 13, fontWeight: 800 }}>
               {t.cwVoiceMatch} ({check.score}%)

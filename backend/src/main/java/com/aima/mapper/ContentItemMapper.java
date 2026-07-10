@@ -2,21 +2,23 @@ package com.aima.mapper;
 
 import com.aima.dto.ai.GeneratedContentResult;
 import com.aima.dto.ai.VideoScriptPayload;
+import com.aima.dto.common.VideoScriptDto;
 import com.aima.dto.request.ContentItemUpdateRequest;
 import com.aima.dto.request.ContentVersionUpdateRequest;
+import com.aima.dto.request.ContentWizardStateRequest;
 import com.aima.dto.response.ContentItemResponse;
 import com.aima.dto.response.ContentVersionResponse;
 import com.aima.entity.ContentItem;
 import com.aima.entity.ContentVersion;
+import com.aima.enums.Platform;
+import com.aima.util.ScriptJson;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import org.mapstruct.NullValuePropertyMappingStrategy;
-import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,11 +27,21 @@ import java.util.stream.Collectors;
 public interface ContentItemMapper {
 
     // B2: response kèm các bản nền tảng còn hiệu lực + tên thương hiệu cho card list.
+    @Mapping(target = "script", source = "script", qualifiedByName = "parseScript")
     @Mapping(target = "hashtags", source = "hashtag", qualifiedByName = "splitHashtags")
     @Mapping(target = "versions", source = "contentVersions", qualifiedByName = "activeVersions")
     @Mapping(target = "brandProfileId", source = "brandProfile.id")
     @Mapping(target = "brandName", source = "brandProfile.brandName")
+    @Mapping(target = "ideaId", source = "contentIdea.id")
+    @Mapping(target = "wizardPlatforms", source = "wizardPlatforms", qualifiedByName = "splitWizardPlatforms")
     ContentItemResponse toResponse(ContentItem item);
+
+    // Auto-save trạng thái wizard (bài DRAFT) — partial: field null giữ nguyên; ideaId service resolve.
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "wizardStep", source = "step")
+    @Mapping(target = "wizardPlatforms", source = "platforms", qualifiedByName = "joinWizardPlatforms")
+    @Mapping(target = "wizardNote", source = "note")
+    void updateWizardState(ContentWizardStateRequest request, @MappingTarget ContentItem item);
 
     @Mapping(target = "script", source = "script", qualifiedByName = "formatScript")
     @Mapping(target = "hashtag", source = "hashtags", qualifiedByName = "joinHashtags")
@@ -46,16 +58,19 @@ public interface ContentItemMapper {
     @Mapping(target = "status", constant = "GENERATED")
     ContentVersion toGeneratedVersion(GeneratedContentResult result);
 
+    @Mapping(target = "script", source = "script", qualifiedByName = "parseScript")
     @Mapping(target = "formattedHashtags", source = "formattedHashtag", qualifiedByName = "splitHashtags")
     ContentVersionResponse toVersionResponse(ContentVersion version);
 
     // FR-33: partial update — field null giữ nguyên giá trị cũ.
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "script", source = "script", qualifiedByName = "writeScript")
     @Mapping(target = "hashtag", source = "hashtags", qualifiedByName = "joinHashtags")
     void update(ContentItemUpdateRequest request, @MappingTarget ContentItem item);
 
     // FR-33 trên bản nền tảng (B2) — cùng ngữ nghĩa partial update.
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "script", source = "script", qualifiedByName = "writeScript")
     @Mapping(target = "formattedCaption", source = "caption")
     @Mapping(target = "formattedHashtag", source = "hashtags", qualifiedByName = "joinHashtags")
     void updateVersion(ContentVersionUpdateRequest request, @MappingTarget ContentVersion version);
@@ -88,16 +103,51 @@ public interface ContentItemMapper {
         return (hashtags == null || hashtags.isEmpty()) ? null : String.join(",", hashtags);
     }
 
-    @Named("formatScript")
-    default String formatScript(VideoScriptPayload script) {
-        if (script == null) {
+    @Named("joinWizardPlatforms")
+    default String joinWizardPlatforms(List<Platform> platforms) {
+        if (platforms == null || platforms.isEmpty()) {
             return null;
         }
-        List<String> lines = new ArrayList<>();
-        if (StringUtils.hasText(script.getHook())) lines.add(script.getHook());
-        if (StringUtils.hasText(script.getMainContent())) lines.add(script.getMainContent());
-        if (script.getShotSuggestions() != null) lines.addAll(script.getShotSuggestions());
-        if (StringUtils.hasText(script.getCta())) lines.add(script.getCta());
-        return String.join("\n", lines);
+        return platforms.stream().map(Platform::name).collect(Collectors.joining(","));
+    }
+
+    /** CSV tên enum → danh sách Platform; token lạ (dữ liệu tay) bị bỏ qua. */
+    @Named("splitWizardPlatforms")
+    default List<Platform> splitWizardPlatforms(String platforms) {
+        if (platforms == null || platforms.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(platforms.split(","))
+                .map(String::trim)
+                .filter(p -> !p.isEmpty())
+                .flatMap(p -> Arrays.stream(Platform.values()).filter(v -> v.name().equalsIgnoreCase(p)))
+                .toList();
+    }
+
+    // AI payload (snake_case) → DTO hợp đồng API (camelCase); MapStruct tự sinh mapping lồng nhau.
+    VideoScriptDto toScriptDto(VideoScriptPayload script);
+
+    /** Kết quả AI → chuỗi JSON có cấu trúc lưu vào cột text `script`. */
+    @Named("formatScript")
+    default String formatScript(VideoScriptPayload script) {
+        return ScriptJson.toJson(toScriptDto(script));
+    }
+
+    /** Cột text `script` → DTO cho response (bài cũ dạng dòng được parse fallback). */
+    @Named("parseScript")
+    default VideoScriptDto parseScript(String script) {
+        return ScriptJson.parse(script);
+    }
+
+    /** DTO từ request PUT → chuỗi JSON lưu vào cột. */
+    @Named("writeScript")
+    default String writeScript(VideoScriptDto script) {
+        return ScriptJson.toJson(script);
+    }
+
+    /** Bản phẳng dễ đọc cho payload gửi AI formatter (FormatContentPayload.script). */
+    @Named("plainScript")
+    default String plainScript(String script) {
+        return ScriptJson.toPlainText(script);
     }
 }

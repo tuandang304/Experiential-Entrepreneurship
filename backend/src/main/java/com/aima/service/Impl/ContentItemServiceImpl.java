@@ -4,6 +4,7 @@ import com.aima.dto.request.ContentItemCreateRequest;
 import com.aima.dto.request.ContentItemStatusRequest;
 import com.aima.dto.request.ContentItemUpdateRequest;
 import com.aima.dto.request.ContentVersionUpdateRequest;
+import com.aima.dto.request.ContentWizardStateRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.ContentItemResponse;
 import com.aima.dto.response.PageResponse;
@@ -59,9 +60,11 @@ public class ContentItemServiceImpl implements ContentItemService {
 
     // FR-34: các bước hợp lệ của review flow — Generated → Need Review → Approved.
     // B2: bài giữ DRAFT suốt wizard (job không lật status) → user gửi duyệt từ DRAFT.
+    // "Trả về sửa": NEED_REVIEW → GENERATED (bài quay lại trạng thái AI đã tạo để sửa tiếp).
     static final Map<ContentLifecycle, Set<ContentLifecycle>> REVIEW_TRANSITIONS = Map.of(
             ContentLifecycle.NEED_REVIEW, EnumSet.of(ContentLifecycle.DRAFT, ContentLifecycle.GENERATED),
-            ContentLifecycle.APPROVED, EnumSet.of(ContentLifecycle.NEED_REVIEW));
+            ContentLifecycle.APPROVED, EnumSet.of(ContentLifecycle.NEED_REVIEW),
+            ContentLifecycle.GENERATED, EnumSet.of(ContentLifecycle.NEED_REVIEW));
 
     // FR-89: chỉ xóa được khi chưa vào pipeline (Draft/Generated); Scheduled/Posting/Posted cấm xóa.
     static final Set<ContentLifecycle> DELETABLE_STATUSES =
@@ -195,9 +198,40 @@ public class ContentItemServiceImpl implements ContentItemService {
         }
 
         item.setStatus(target);
+        // Bài đã rời DRAFT → trạng thái wizard hết ý nghĩa; dọn để danh sách không còn coi là bài dở.
+        if (target != ContentLifecycle.DRAFT) {
+            item.setWizardStep(null);
+            item.setWizardPlatforms(null);
+            item.setWizardNote(null);
+            item.setTrendId(null);
+        }
         ContentItem saved = contentItemRepository.save(item);
         ContentItemResponse response = contentItemMapper.toResponse(saved);
         return ApiResponse.success("Cập nhật trạng thái nội dung thành công", response);
+    }
+
+    // Auto-save wizard (debounce phía FE): chỉ khi bài còn DRAFT — trạng thái khác nghĩa là
+    // bài đã rời wizard, snapshot không còn giá trị resume.
+    @Override
+    public ApiResponse<ContentItemResponse> updateWizardState(String email, UUID itemId,
+                                                              ContentWizardStateRequest request) {
+        ContentItem item = ownedItem(email, itemId);
+        if (item.getStatus() != ContentLifecycle.DRAFT) {
+            throw new AppException(ErrorCode.CONTENT_ITEM_NOT_EDITABLE);
+        }
+
+        contentItemMapper.updateWizardState(request, item);
+        // Idea gắn kèm resolve "mềm" như create: id lạ/không thuộc user → bỏ qua.
+        if (request.getIdeaId() != null) {
+            contentIdeaRepository
+                    .findByIdAndTrend_ResearchSession_BrandProfile_User_IdAndDeletedAtIsNull(
+                            request.getIdeaId(), item.getBrandProfile().getUser().getId())
+                    .ifPresent(item::setContentIdea);
+        }
+
+        ContentItem saved = contentItemRepository.save(item);
+        ContentItemResponse response = contentItemMapper.toResponse(saved);
+        return ApiResponse.success("Đã lưu trạng thái wizard", response);
     }
 
     // FR-89: xóa mềm item + cascade các ContentVersion/MediaAsset còn hiệu lực (DATA_MODEL.md).

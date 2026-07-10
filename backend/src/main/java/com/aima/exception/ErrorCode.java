@@ -171,7 +171,9 @@ public enum ErrorCode {
     POST_NOT_FOUND(1946, "Không tìm thấy bài đăng", HttpStatus.NOT_FOUND),
 
     // CONTENT LIBRARY ERRORS (FR-87..FR-89)
-    CONTENT_ITEM_NOT_DELETABLE(1947, "Chỉ xóa được nội dung ở trạng thái Draft/Generated", HttpStatus.BAD_REQUEST),;
+    CONTENT_ITEM_NOT_DELETABLE(1947, "Chỉ xóa được nội dung ở trạng thái Draft/Generated", HttpStatus.BAD_REQUEST),
+    INVALID_CONTENT_SCRIPT(1948, "Kịch bản video không hợp lệ", HttpStatus.BAD_REQUEST),
+    CONTENT_WIZARD_STEP_INVALID(1949, "Bước wizard không hợp lệ (1-4)", HttpStatus.BAD_REQUEST),;
 
     private int code;
     private String message;

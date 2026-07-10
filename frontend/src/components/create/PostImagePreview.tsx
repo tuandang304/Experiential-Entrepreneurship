@@ -40,7 +40,7 @@ export default function PostImagePreview({
   const { t, brandGradient } = useApp();
 
   return (
-    <Card style={{ padding: 18 }}>
+    <Card style={{ padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
         <div style={{ fontWeight: 700, fontSize: 14.5, color: '#211c38' }}>{t.cwPreviewTitle}</div>
         {version && onGenerateImage && (
@@ -105,13 +105,13 @@ function AiBadge() {
 
 function ImageArea({ version, ratio }: { version: ContentVersion; ratio: string }) {
   const { t } = useApp();
-  return (
+  return version.imageUrl ? (
     <div style={{ aspectRatio: ratio, background: '#faf8fe', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-      {version.imageUrl ? (
-        <img src={version.imageUrl} alt={version.mediaPrompt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : (
-        <div style={{ padding: '18px 20px', textAlign: 'center', fontSize: 12, color: '#a59fbb', lineHeight: 1.55 }}>{t.cwNoImage}</div>
-      )}
+      <img src={version.imageUrl} alt={version.mediaPrompt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    </div>
+  ) : (
+    <div style={{ background: '#faf8fe', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+      <div style={{ textAlign: 'center', fontSize: 12, color: '#a59fbb', lineHeight: 1.55 }}>{t.cwNoImage}</div>
     </div>
   );
 }

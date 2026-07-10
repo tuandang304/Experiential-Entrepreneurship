@@ -1,36 +1,84 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Pencil, Save, Send, Undo2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { Card, Icon, Loader } from '../ui';
+import { Card, Icon } from '../ui';
+import type { ApiError } from '../../api/apiClient';
+import type { ContentLifecycle } from '../../api/contentGeneration';
 import {
   getContentDetail,
+  saveVersionEdit,
+  changeContentStatus,
   type ContentListItem,
   type ContentVersion,
 } from '../../api/contentCreationService';
 import type { Platform } from '../../api/brandProfile';
+import type { Dict } from '../../i18n';
 import PlatformTabs from './PlatformTabs';
-import VersionContent from './VersionContent';
+import { VersionTabs, ScriptView, ContentFieldsView, MediaPromptView, type VersionTab } from './VersionContent';
+import ScriptEditor from './ScriptEditor';
 import PostImagePreview from './PostImagePreview';
 import BrandVoicePanel from './BrandVoicePanel';
+import { CaptionCounter, HashtagCounter, parseHashtags } from './platformLimits';
+import { ContentViewSkeleton } from './CreateSkeleton';
 import { CONTENT_STATUS_META, aiLabelKey } from './statusMeta';
 
-/** Xem nội dung READ-ONLY (full-page thay grid, giống BrandProfileView) — mỗi nền tảng một version. */
-export default function ContentViewPanel({ item, onClose }: { item: ContentListItem; onClose: () => void }) {
-  const { t } = useApp();
+// FR-33: chỉ sửa được trước khi vào pipeline đăng (khớp EDITABLE_STATUSES backend).
+const EDITABLE_STATUSES: ContentLifecycle[] = ['DRAFT', 'GENERATED', 'NEED_REVIEW', 'APPROVED'];
+
+// FR-34: action đổi trạng thái theo review flow — chỉ đưa ra bước hợp lệ kế tiếp của
+// state machine (REVIEW_TRANSITIONS backend): Gửi duyệt / Duyệt / Trả về sửa.
+const statusActions = (s: ContentLifecycle): { target: ContentLifecycle; labelKey: keyof Dict; icon: typeof Send; primary: boolean }[] => {
+  if (s === 'DRAFT' || s === 'GENERATED') return [{ target: 'NEED_REVIEW', labelKey: 'cvSubmitReview', icon: Send, primary: true }];
+  if (s === 'NEED_REVIEW')
+    return [
+      { target: 'APPROVED', labelKey: 'cvApprove', icon: CheckCircle2, primary: true },
+      { target: 'GENERATED', labelKey: 'cvReturnEdit', icon: Undo2, primary: false },
+    ];
+  return [];
+};
+
+const label = { display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 8 } as const;
+const inputBase = {
+  width: '100%', border: '1.5px solid #e7e2f2', borderRadius: 12, padding: '11px 14px',
+  fontSize: 13.5, lineHeight: 1.55, color: '#241f3a', background: '#fbfaff', outline: 'none',
+} as const;
+
+/** Xem nội dung FULL-PAGE thay grid — mỗi nền tảng một version, 3 sub-tab + sửa tại chỗ + đổi trạng thái. */
+export default function ContentViewPanel({
+  item,
+  onClose,
+  onChanged,
+}: {
+  item: ContentListItem;
+  onClose: () => void;
+  /** Gọi sau mỗi thay đổi thành công (sửa/đổi trạng thái) để danh sách phía sau refresh. */
+  onChanged?: () => void;
+}) {
+  const { t, brandGradient } = useApp();
   const { isMobile, isTablet } = useBreakpoint();
   const stacked = isMobile || isTablet;
   const [load, setLoad] = useState<'loading' | 'error' | 'ok'>('loading');
   const [versions, setVersions] = useState<ContentVersion[]>([]);
   const [platform, setPlatform] = useState<Platform>(item.platforms[0]);
-  const st = CONTENT_STATUS_META[item.status];
+  const [status, setStatus] = useState<ContentLifecycle>(item.status);
+  const [tab, setTab] = useState<VersionTab>('script');
+  // Chế độ sửa: draft = bản sao đang sửa của version hiện tại (null = đang xem read-only).
+  const [draft, setDraft] = useState<ContentVersion | null>(null);
+  const [hashtagText, setHashtagText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const st = CONTENT_STATUS_META[status];
 
   useEffect(() => {
     let cancelled = false;
     getContentDetail(item.id)
-      .then(({ versions: vs }) => {
+      .then(({ item: it, versions: vs }) => {
         if (cancelled) return;
         setVersions(vs);
+        setStatus(it.status);
         setLoad('ok');
       })
       .catch(() => { if (!cancelled) setLoad('error'); });
@@ -38,33 +86,174 @@ export default function ContentViewPanel({ item, onClose }: { item: ContentListI
   }, [item.id]);
 
   const version = versions.find((v) => v.platform === platform) ?? versions[0] ?? null;
+  const shown = draft ?? version; // đang sửa thì mọi panel (voice/preview) phản ánh bản nháp
+  const editable = EDITABLE_STATUSES.includes(status) && !!version;
+
+  const startEdit = () => {
+    if (!version) return;
+    setDraft({ ...version, script: { ...version.script, hook: { ...version.script.hook }, cta: { ...version.script.cta }, steps: version.script.steps.map((s) => ({ ...s })) } });
+    setHashtagText(version.hashtags.join(' '));
+    setEditError(null);
+  };
+  const cancelEdit = () => { setDraft(null); setEditError(null); };
+
+  const saveEdit = async () => {
+    if (!draft || savingEdit) return;
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      const res = await saveVersionEdit(item.id, draft);
+      setVersions(res.versions);
+      setStatus(res.item.status); // APPROVED bị sửa → backend tự hạ về NEED_REVIEW
+      setDraft(null);
+      onChanged?.();
+    } catch (e) {
+      setEditError((e as ApiError).message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const applyStatus = async (target: ContentLifecycle) => {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    setStatusError(null);
+    try {
+      const res = await changeContentStatus(item.id, target);
+      setStatus(res.status);
+      onChanged?.();
+    } catch (e) {
+      setStatusError(`${t.cvStatusError}: ${(e as ApiError).message}`);
+    } finally {
+      setStatusBusy(false);
+    }
+  };
+
+  const editForm = draft && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {tab === 'script' && (
+        <ScriptEditor script={draft.script} onChange={(script) => setDraft({ ...draft, script })} />
+      )}
+      {tab === 'content' && (
+        <div>
+          <label style={label}>{t.cwTabCaption}</label>
+          <textarea value={draft.caption} onChange={(e) => setDraft({ ...draft, caption: e.target.value })} style={{ ...inputBase, resize: 'vertical', minHeight: 90 }} />
+          <CaptionCounter platform={draft.platform} text={draft.caption} />
+          <label style={{ ...label, marginTop: 16 }}>{t.cwTabHashtag}</label>
+          <input
+            value={hashtagText}
+            onChange={(e) => { setHashtagText(e.target.value); setDraft({ ...draft, hashtags: parseHashtags(e.target.value) }); }}
+            placeholder={t.cwHashtagHint}
+            style={inputBase}
+          />
+          <HashtagCounter platform={draft.platform} count={draft.hashtags.length} />
+          <label style={{ ...label, marginTop: 16 }}>{t.cwTabCta}</label>
+          <textarea value={draft.cta} onChange={(e) => setDraft({ ...draft, cta: e.target.value })} style={{ ...inputBase, resize: 'vertical', minHeight: 56 }} />
+        </div>
+      )}
+      {tab === 'media' && (
+        <div>
+          <label style={label}>{t.cwTabMedia}</label>
+          <textarea value={draft.mediaPrompt} onChange={(e) => setDraft({ ...draft, mediaPrompt: e.target.value })} style={{ ...inputBase, resize: 'vertical', minHeight: 90 }} />
+        </div>
+      )}
+      {editError && (
+        <div style={{ fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{t.cvEditError}: {editError}</div>
+      )}
+    </div>
+  );
+
+  // Cụm nút hành động gom chung: edit (Sửa/Hủy/Lưu) + status (Gửi duyệt/Duyệt/Trả về sửa).
+  const actionButtons = load === 'ok' && (
+    <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
+      {/* FR-33: sửa tại chỗ — nút Sửa / Hủy+Lưu */}
+      {editable && (
+        draft ? (
+          <>
+            <button
+              disabled={savingEdit}
+              onClick={cancelEdit}
+              className="btn-soft"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #ece8f6', background: '#fff', borderRadius: 10, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, color: '#574f6e', cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.6 : 1 }}
+            >
+              <Icon icon={X} size={13} stroke="#574f6e" />{t.cvEditCancel}
+            </button>
+            <button
+              disabled={savingEdit}
+              onClick={saveEdit}
+              className="btn-grad"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12.5, fontWeight: 700, color: '#fff', background: brandGradient, cursor: savingEdit ? 'not-allowed' : 'pointer', opacity: savingEdit ? 0.6 : 1 }}
+            >
+              <Icon icon={Save} size={13} stroke="#fff" />{savingEdit ? t.cvEditSaving : t.cvEditSave}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={startEdit}
+            className="btn-soft"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid #ece8f6', background: '#fff', borderRadius: 10, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, color: '#7c3aed', cursor: 'pointer' }}
+          >
+            <Icon icon={Pencil} size={13} stroke="#7c3aed" />{t.cvEdit}
+          </button>
+        )
+      )}
+      {/* FR-34: bước hợp lệ kế tiếp của review flow — ẩn khi đang sửa để tránh đổi trạng thái giữa chừng */}
+      {!draft && statusActions(status).map(({ target, labelKey, icon, primary }) => (
+        <button
+          key={target}
+          disabled={statusBusy}
+          onClick={() => applyStatus(target)}
+          className={primary ? 'btn-grad' : 'btn-soft'}
+          style={primary
+            ? { display: 'inline-flex', alignItems: 'center', gap: 7, border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 700, color: '#fff', background: brandGradient, cursor: statusBusy ? 'not-allowed' : 'pointer', opacity: statusBusy ? 0.6 : 1 }
+            : { display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #ece8f6', background: '#fff', borderRadius: 10, padding: '9px 14px', fontSize: 13, fontWeight: 700, color: '#574f6e', cursor: statusBusy ? 'not-allowed' : 'pointer', opacity: statusBusy ? 0.6 : 1 }}
+        >
+          <Icon icon={icon} size={14} stroke={primary ? '#fff' : '#574f6e'} />{t[labelKey]}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="view-pop" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div className="view-pop" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Thanh action bar cố định: Quay lại + tiêu đề + badges + nút hành động gom chung */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', margin: '-24px -24px 0', padding: '12px 24px', borderBottom: '1px solid #efeaf8', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button onClick={onClose} className="btn-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, border: '1px solid #ece8f6', background: '#fff', borderRadius: 10, padding: '9px 14px', fontSize: 13, fontWeight: 700, color: '#574f6e', cursor: 'pointer' }}>
           <Icon icon={ArrowLeft} size={15} stroke="#574f6e" />{t.bpBack}
         </button>
         <div style={{ fontFamily: "'Plus Jakarta Sans'", fontWeight: 800, fontSize: 17, color: '#211c38', minWidth: 0 }}>{item.title}</div>
         <span style={{ background: st.bg, color: st.color, borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>{t[st.labelKey]}</span>
-        <span style={{ background: '#f3edff', color: '#7c3aed', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>✨ {t[aiLabelKey(item.status)]}</span>
+        <span style={{ background: '#f3edff', color: '#7c3aed', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>✨ {t[aiLabelKey(status)]}</span>
+        {actionButtons}
       </div>
+      {statusError && (
+        <div style={{ fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{statusError}</div>
+      )}
 
       {load === 'loading' ? (
-        <Loader label={t.listLoading} />
+        <ContentViewSkeleton />
       ) : load === 'error' ? (
         <div style={{ textAlign: 'center', padding: '40px 16px', color: '#8a85a0', fontSize: 14 }}>{t.listError}</div>
-      ) : version ? (
-        <div style={{ display: 'grid', gridTemplateColumns: stacked ? '1fr' : '1.2fr .9fr', gap: 20, alignItems: 'start' }}>
+      ) : shown ? (
+        <div style={{ display: 'grid', gridTemplateColumns: stacked ? '1fr' : '1.2fr .9fr', gap: 16, alignItems: 'start' }}>
           <Card>
-            <div style={{ marginBottom: 18 }}>
-              <PlatformTabs platforms={item.platforms} value={version.platform} onChange={setPlatform} />
+            <div style={{ marginBottom: 16 }}>
+              <PlatformTabs platforms={item.platforms} value={shown.platform} onChange={(p) => { if (!draft) setPlatform(p); }} />
             </div>
-            <VersionContent version={version} />
+            <div style={{ marginBottom: 16 }}>
+              <VersionTabs value={tab} onChange={setTab} />
+            </div>
+            {draft ? editForm : (
+              <>
+                {tab === 'script' && <ScriptView version={shown} />}
+                {tab === 'content' && <ContentFieldsView version={shown} />}
+                {tab === 'media' && <MediaPromptView version={shown} />}
+              </>
+            )}
           </Card>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: stacked ? 'static' : 'sticky', top: 98 }}>
-            <BrandVoicePanel check={version.brandVoice} />
-            <PostImagePreview version={version} brandName={item.brandName} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: stacked ? 'static' : 'sticky', top: 80 }}>
+            <BrandVoicePanel check={shown.brandVoice} />
+            <PostImagePreview version={shown} brandName={item.brandName} />
           </div>
         </div>
       ) : null}

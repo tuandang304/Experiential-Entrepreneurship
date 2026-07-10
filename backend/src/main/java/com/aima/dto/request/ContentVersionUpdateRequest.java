@@ -1,5 +1,6 @@
 package com.aima.dto.request;
 
+import com.aima.dto.common.VideoScriptDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -22,8 +23,8 @@ import java.util.List;
 @Schema(name = "ContentVersionUpdateRequest", description = "Partial manual edit of one per-platform content version.")
 public class ContentVersionUpdateRequest {
 
-    @Schema(description = "Video script as newline-separated lines (hook, body/scenes, CTA).")
-    String script;
+    @Schema(description = "Structured video script (timed hook, numbered steps, timed CTA).")
+    VideoScriptDto script;
 
     @Schema(description = "Posted caption for this platform.")
     String caption;

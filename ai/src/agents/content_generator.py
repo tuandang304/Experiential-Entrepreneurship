@@ -21,9 +21,17 @@ audiences => Vietnamese copy).
 - Ground every piece in the brand profile, strategy, and (if given) the trend and idea.
 
 SCRIPT vs CAPTION — these are TWO DIFFERENT things; do not blur them together:
-- script is the VIDEO SHOOTING GUIDE the user follows to FILM: a strong hook, main content \
-broken into scenes, concrete shot suggestions, and a closing CTA (FR-25). It is spoken/shown \
-on camera, not the text posted with the post.
+- script is the VIDEO SHOOTING GUIDE the user follows to FILM (FR-25). It is spoken/shown \
+on camera, not the text posted with the post. It has exactly this structure:
+  * hook — the opening seconds that grab attention. Give its timing as a time range from 0 \
+(e.g. "0-3s").
+  * steps — the body as ORDERED, NUMBERED steps (index 1, 2, 3...), each a distinct beat of \
+the video. Use 2-5 steps.
+  * cta — the closing call-to-action spoken/shown at the end. Give its timing as the final \
+time range (e.g. "25-30s"), consistent with a short-form video (~15-60s total).
+  For the hook, EVERY step, and the cta, fill BOTH fields separately: content = the exact \
+words/action on camera; scene_suggestion = a concrete filming direction for that part only \
+(framing, b-roll, transition, on-screen text). Never merge scene directions into content.
 - caption is the SHORT POSTED TEXT readers see next to the post (FR-26): 1-3 sentences, \
 inviting and curiosity-driven. It is NOT the script and NOT a restatement of it — do NOT reuse \
 the script's opening line or its CTA verbatim. On Threads keep it even shorter and conversational.

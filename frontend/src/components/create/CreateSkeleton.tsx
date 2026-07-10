@@ -110,6 +110,79 @@ export function WizardStepSkeleton() {
   );
 }
 
+/**
+ * Skeleton màn XEM CHI TIẾT — mô phỏng đúng bố cục thật bên dưới header (header thật render
+ * ngay): trái = card với hàng tab nền tảng, hàng 3 sub-tab, các khối script (hook/bước/CTA
+ * có viền trái); phải = panel brand voice + preview bài đăng, khớp ContentViewPanel.
+ */
+export function ContentViewSkeleton() {
+  const { t } = useApp();
+  const { isMobile, isTablet } = useBreakpoint();
+  const stacked = isMobile || isTablet;
+
+  // Khối một phần kịch bản: badge + timing, 2 dòng nội dung, khối gợi ý cảnh quay.
+  const scriptBlock = (
+    <div style={{ borderLeft: '3px solid #e7e2f2', borderRadius: '0 12px 12px 0', background: '#faf8fe', padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+      <div style={{ display: 'flex', gap: 7 }}>
+        <Sk w={64} h={18} r={7} />
+        <Sk w={46} h={18} r={7} />
+      </div>
+      <Sk w="92%" h={12} />
+      <Sk w="70%" h={12} />
+      <Sk h={34} r={10} style={{ marginTop: 2 }} />
+    </div>
+  );
+
+  return (
+    <div role="status" aria-busy="true">
+      <span style={srOnly}>{t.listLoading}</span>
+      <div aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: stacked ? '1fr' : '1.2fr .9fr', gap: 20, alignItems: 'start' }}>
+        <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* hàng tab nền tảng (FB/IG/TH) */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Sk w={104} h={34} r={10} />
+            <Sk w={104} h={34} r={10} />
+            <Sk w={104} h={34} r={10} />
+          </div>
+          {/* hàng 3 sub-tab + nút Sửa */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Sk w={248} h={36} r={11} />
+            <Sk w={64} h={32} r={10} style={{ marginLeft: 'auto' }} />
+          </div>
+          {/* các khối script: hook + 2 bước + CTA */}
+          {scriptBlock}
+          {scriptBlock}
+          {scriptBlock}
+          {scriptBlock}
+        </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* panel brand voice */}
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Sk w={150} h={15} />
+            <Sk h={7} r={99} />
+            <Sk w="90%" h={12} />
+            <Sk w="75%" h={12} />
+          </Card>
+          {/* preview bài đăng */}
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Sk w={130} h={15} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Sk w={36} h={36} r="50%" />
+              <div style={{ flex: 1 }}>
+                <Sk w={110} h={12} />
+                <Sk w={70} h={10} style={{ marginTop: 5 }} />
+              </div>
+            </div>
+            <Sk w="95%" h={12} />
+            <Sk w="80%" h={12} />
+            <Sk h={180} r={14} />
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Skeleton lớp danh sách nội dung: toolbar (search + 3 filter + nút tạo) + grid 6 card. */
 export default function CreateSkeleton() {
   const { t } = useApp();

@@ -1,5 +1,6 @@
 package com.aima.dto.request;
 
+import com.aima.dto.common.VideoScriptDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -22,8 +23,8 @@ import java.util.List;
 @Schema(name = "ContentItemUpdateRequest", description = "Fields to overwrite on a content item (FR-33); omitted fields keep their value.")
 public class ContentItemUpdateRequest {
 
-    @Schema(description = "Video script as newline-separated lines.")
-    String script;
+    @Schema(description = "Structured video script (timed hook, numbered steps, timed CTA).")
+    VideoScriptDto script;
 
     @Schema(description = "Caption text.")
     String caption;

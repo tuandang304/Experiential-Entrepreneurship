@@ -23,7 +23,7 @@ export function useBrandVoiceCheck(
       const brandVoice = await checkBrandVoice({
         brandId,
         platform: version.platform,
-        post: version.post,
+        script: version.script,
         caption: version.caption,
       });
       onPatchVersion(version.id, { brandVoice });

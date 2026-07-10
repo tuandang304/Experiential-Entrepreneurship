@@ -49,7 +49,7 @@ export const STRINGS = {
     dashLoading: 'Đang tải bảng điều khiển…', dashErrTitle: 'Không tải được dữ liệu', dashErrMsg: 'Đã xảy ra lỗi khi tải bảng điều khiển. Vui lòng thử lại.',
     dashEmptyTitle: 'Chưa có gì ở đây', dashEmptyMsg: 'Kết nối một nền tảng và tạo bài đăng đầu tiên để xem hiệu suất tại đây.', dashEmptyCta: 'Tạo bài đầu tiên', recentEmpty: 'Chưa có bài đăng nào',
     needsReviewTitle: 'Cần bạn duyệt', upNextTitle: 'Sắp đăng', reviewCta: 'Duyệt', allCaughtUp: 'Bạn đã duyệt hết rồi!', nothingScheduled: 'Chưa có bài nào được lên lịch.',
-    navDashboard: 'Bảng điều khiển', navCreate: 'Tạo nội dung', navCalendar: 'Lịch đăng bài', navAnalytics: 'Phân tích',
+    navDashboard: 'Bảng điều khiển', navCreate: 'Quản lý nội dung', navCalendar: 'Lịch đăng bài', navAnalytics: 'Phân tích',
     navTrends: 'Xu hướng', navBrand: 'Hồ sơ thương hiệu', navProfile: 'Hồ sơ', navSettings: 'Cài đặt', navAdmin: 'Quản trị hệ thống',
     stTotalReach: 'Tổng tiếp cận', stEngagement: 'Tỷ lệ tương tác', stPosts: 'Bài đã đăng', stScheduled: 'Đang lên lịch',
     stPublished: 'Đã đăng', stScheduledS: 'Lên lịch', stDraft: 'Nháp', stReview: 'Chờ duyệt',
@@ -114,7 +114,7 @@ export const STRINGS = {
     clAiGenerated: 'AI tạo', clAiNeedReview: 'Cần duyệt', clAiAutoPosted: 'Đã tự đăng',
     // ===== Tạo nội dung — lớp 2: wizard 5 mốc =====
     cwTitle: 'Tạo nội dung mới', cwSub: 'AI tạo nội dung phù hợp với thương hiệu, chiến lược và xu hướng',
-    cwStep1: 'Chọn nguồn', cwStep2: 'Tạo nội dung', cwStep3: 'Chỉnh sửa', cwStep4: 'Duyệt & Lưu', cwStep5: 'Lên lịch đăng bài',
+    cwStep1: 'Lịch sử', cwStep2: 'Tạo nội dung', cwStep3: 'Chỉnh sửa', cwStep4: 'Duyệt & Lưu', cwStep5: 'Lên lịch đăng bài',
     cwStepSoon: 'Tính năng đang phát triển',
     cwBack: 'Quay lại', cwNext: 'Tiếp tục', cwBackToList: 'Về danh sách',
     // mốc 1 — chọn nguồn
@@ -158,8 +158,17 @@ export const STRINGS = {
     cwVersion: 'Bản', cwAiLabel: 'AI tạo', cwStepWord: 'Bước',
     cwOptimizedPer: 'Đã tối ưu riêng cho từng nền tảng', cwVersionNote: 'Ghi chú bản này',
     cwTabPost: 'Nội dung bài viết', cwTabCaption: 'Caption', cwTabHashtag: 'Hashtag', cwTabCta: 'CTA', cwTabMedia: 'Media prompt',
+    cwTabScript: 'Script video', cwTabContent: 'Nội dung',
     cwHook: 'Mở đầu (Hook)', cwBody: 'Thân bài', cwEndCta: 'Kết bài (CTA)',
+    cwScene: 'Gợi ý cảnh quay', cwTiming: 'Mốc thời gian', cwTimingPh: 'VD: 0-3s',
+    cwAddStep: 'Thêm bước', cwRemoveStep: 'Xóa bước',
+    cwCopy: 'Sao chép', cwCopied: 'Đã chép',
     cwCharUnit: 'ký tự', cwHashtagUnit: 'hashtag',
+    // màn Xem chi tiết — sửa tại chỗ + đổi trạng thái (review flow)
+    cvEdit: 'Sửa', cvEditCancel: 'Hủy', cvEditSave: 'Lưu thay đổi', cvEditSaving: 'Đang lưu...',
+    cvEditError: 'Lưu thay đổi thất bại',
+    cvSubmitReview: 'Gửi duyệt', cvApprove: 'Duyệt', cvReturnEdit: 'Trả về sửa',
+    cvStatusError: 'Đổi trạng thái thất bại',
     // panel brand voice + preview ảnh
     cwVoiceTitle: 'Kiểm tra brand voice', cwVoiceMatch: 'Phù hợp', cwVoiceTone: 'Giọng điệu', cwVoiceWording: 'Ngôn từ', cwVoiceMessage: 'Thông điệp',
     cwVoiceChecking: 'Đang kiểm tra...', cwVoiceRecheck: 'Kiểm tra lại', cwVoiceError: 'Kiểm tra brand voice thất bại',
@@ -444,7 +453,7 @@ export const STRINGS = {
     dashLoading: 'Loading your dashboard…', dashErrTitle: 'Couldn’t load your dashboard', dashErrMsg: 'Something went wrong while loading your dashboard. Please try again.',
     dashEmptyTitle: 'Nothing here yet', dashEmptyMsg: 'Connect a platform and create your first post to see your performance here.', dashEmptyCta: 'Create your first post', recentEmpty: 'No posts yet',
     needsReviewTitle: 'Needs your review', upNextTitle: 'Up next', reviewCta: 'Review', allCaughtUp: 'You’re all caught up!', nothingScheduled: 'Nothing scheduled yet.',
-    navDashboard: 'Dashboard', navCreate: 'Create', navCalendar: 'Calendar', navAnalytics: 'Analytics',
+    navDashboard: 'Dashboard', navCreate: 'Content', navCalendar: 'Calendar', navAnalytics: 'Analytics',
     navTrends: 'Trends', navBrand: 'Brand profile', navProfile: 'Profile', navSettings: 'Settings', navAdmin: 'Administration',
     stTotalReach: 'Total reach', stEngagement: 'Engagement rate', stPosts: 'Posts published', stScheduled: 'Scheduled',
     stPublished: 'Published', stScheduledS: 'Scheduled', stDraft: 'Draft', stReview: 'In review',
@@ -506,7 +515,7 @@ export const STRINGS = {
     clAiGenerated: 'AI generated', clAiNeedReview: 'Needs review', clAiAutoPosted: 'Auto-posted',
     // ===== Create content — layer 2: 5-step wizard =====
     cwTitle: 'Create new content', cwSub: 'AI creates content that fits your brand, strategy and trends',
-    cwStep1: 'Choose source', cwStep2: 'Generate', cwStep3: 'Edit', cwStep4: 'Review & Save', cwStep5: 'Schedule',
+    cwStep1: 'History', cwStep2: 'Generate', cwStep3: 'Edit', cwStep4: 'Review & Save', cwStep5: 'Schedule',
     cwStepSoon: 'Feature in development',
     cwBack: 'Back', cwNext: 'Continue', cwBackToList: 'Back to list',
     // step 1 — choose source
@@ -550,8 +559,17 @@ export const STRINGS = {
     cwVersion: 'Version', cwAiLabel: 'AI generated', cwStepWord: 'Step',
     cwOptimizedPer: 'Optimized per platform', cwVersionNote: 'Note for this version',
     cwTabPost: 'Post content', cwTabCaption: 'Caption', cwTabHashtag: 'Hashtags', cwTabCta: 'CTA', cwTabMedia: 'Media prompt',
+    cwTabScript: 'Video script', cwTabContent: 'Content',
     cwHook: 'Hook', cwBody: 'Body', cwEndCta: 'Closing (CTA)',
+    cwScene: 'Scene suggestion', cwTiming: 'Timing', cwTimingPh: 'e.g. 0-3s',
+    cwAddStep: 'Add step', cwRemoveStep: 'Remove step',
+    cwCopy: 'Copy', cwCopied: 'Copied',
     cwCharUnit: 'characters', cwHashtagUnit: 'hashtags',
+    // detail view — inline edit + status change (review flow)
+    cvEdit: 'Edit', cvEditCancel: 'Cancel', cvEditSave: 'Save changes', cvEditSaving: 'Saving...',
+    cvEditError: 'Failed to save changes',
+    cvSubmitReview: 'Submit for review', cvApprove: 'Approve', cvReturnEdit: 'Return for edits',
+    cvStatusError: 'Failed to update status',
     // brand voice panel + image preview
     cwVoiceTitle: 'Brand voice check', cwVoiceMatch: 'Match', cwVoiceTone: 'Tone', cwVoiceWording: 'Wording', cwVoiceMessage: 'Message',
     cwVoiceChecking: 'Checking...', cwVoiceRecheck: 'Re-check', cwVoiceError: 'Brand voice check failed',

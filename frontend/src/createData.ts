@@ -6,7 +6,7 @@ import type {
   ContentListItem,
   ContentVersion,
   GenerationResult,
-  PostContent,
+  VideoScript,
 } from './api/contentCreationService';
 
 // ===== Mock data màn Tạo nội dung (list-first + wizard) =====
@@ -95,30 +95,42 @@ export const draftListTitle = (lang: Lang): string =>
 
 // ===== Mốc 2 — nội dung AI sinh ra (mỗi nền tảng một ContentVersion) =====
 
-function mockPost(lang: Lang, platform: Platform, v: number): PostContent {
+function mockScript(lang: Lang, platform: Platform, v: number): VideoScript {
   const shorter = platform === 'THREADS';
   return {
-    hook: P(
-      lang,
-      v === 0 ? 'Bạn mất 5 giờ mỗi tuần chỉ để nghĩ xem hôm nay đăng gì?' : 'Đăng đều mỗi ngày mà tương tác vẫn giậm chân tại chỗ?',
-      v === 0 ? 'Spending 5 hours a week just deciding what to post?' : 'Posting daily but engagement is stuck?',
-    ),
-    body: shorter
-      ? P(
-          lang,
-          'Vấn đề không nằm ở việc bạn thiếu ý tưởng — mà ở chỗ chưa có quy trình. Thiết lập thương hiệu một lần, để AI nghiên cứu xu hướng và viết bản nháp, bạn chỉ duyệt và tinh chỉnh.',
-          'The problem isn’t a lack of ideas — it’s the lack of a workflow. Set up your brand once, let AI research trends and draft posts; you just review and polish.',
-        )
-      : P(
-          lang,
-          'Vấn đề không nằm ở việc bạn thiếu ý tưởng — mà ở chỗ chưa có quy trình.\n\nBước 1: Thiết lập hồ sơ thương hiệu một lần để AI hiểu giọng điệu của bạn.\nBước 2: AI quét xu hướng ngành và viết bản nháp cho từng nền tảng.\nBước 3: Bạn duyệt, tinh chỉnh và để hệ thống đăng đúng khung giờ vàng.\n\nKiên trì 30 ngày — kênh của bạn sẽ tự vận hành với nội dung đều đặn, đúng chất thương hiệu.',
-          'The problem isn’t a lack of ideas — it’s the lack of a workflow.\n\nStep 1: Set up your brand profile once so AI learns your voice.\nStep 2: AI scans industry trends and drafts posts for each platform.\nStep 3: You review, polish, and let the system publish at prime time.\n\nStick with it for 30 days — your channel runs itself with consistent, on-brand content.',
-        ),
-    cta: P(
-      lang,
-      'Theo dõi để nhận thêm mẹo content marketing mỗi ngày!',
-      'Follow for more content marketing tips every day!',
-    ),
+    hook: {
+      content: P(
+        lang,
+        v === 0 ? 'Bạn mất 5 giờ mỗi tuần chỉ để nghĩ xem hôm nay đăng gì?' : 'Đăng đều mỗi ngày mà tương tác vẫn giậm chân tại chỗ?',
+        v === 0 ? 'Spending 5 hours a week just deciding what to post?' : 'Posting daily but engagement is stuck?',
+      ),
+      sceneSuggestion: P(lang, 'Cận cảnh gương mặt nhìn thẳng ống kính, text nổi câu hỏi.', 'Close-up facing the camera, question as on-screen text.'),
+      timing: '0-3s',
+    },
+    steps: [
+      {
+        index: 1,
+        content: P(lang, 'Thiết lập hồ sơ thương hiệu một lần để AI hiểu giọng điệu của bạn.', 'Set up your brand profile once so AI learns your voice.'),
+        sceneSuggestion: P(lang, 'Quay màn hình dashboard AIMA, zoom vào phần hồ sơ.', 'Screen recording of the AIMA dashboard, zoom on the profile.'),
+      },
+      {
+        index: 2,
+        content: P(lang, 'AI quét xu hướng ngành và viết bản nháp cho từng nền tảng.', 'AI scans industry trends and drafts posts for each platform.'),
+        sceneSuggestion: P(lang, 'B-roll gõ phím + overlay danh sách trend chạy nhanh.', 'Typing b-roll + fast-scrolling trend list overlay.'),
+      },
+      ...(shorter
+        ? []
+        : [{
+            index: 3,
+            content: P(lang, 'Bạn duyệt, tinh chỉnh và để hệ thống đăng đúng khung giờ vàng.', 'You review, polish, and let the system publish at prime time.'),
+            sceneSuggestion: P(lang, 'Quay tay bấm nút Duyệt trên điện thoại, cắt cảnh nhanh.', 'Hand tapping Approve on a phone, quick cuts.'),
+          }]),
+    ],
+    cta: {
+      content: P(lang, 'Theo dõi để nhận thêm mẹo content marketing mỗi ngày!', 'Follow for more content marketing tips every day!'),
+      sceneSuggestion: P(lang, 'Logo AIMA + nút follow phóng to, nhạc chốt.', 'AIMA logo + enlarged follow button, closing beat.'),
+      timing: shorter ? '12-15s' : '25-30s',
+    },
   };
 }
 
@@ -169,7 +181,7 @@ export function mockGeneration(lang: Lang, platforms: Platform[], versionIndex: 
   const versions: ContentVersion[] = platforms.map((platform) => ({
     id: `mock-version-${++mockVersionSeq}`,
     platform,
-    post: mockPost(lang, platform, versionIndex % 2),
+    script: mockScript(lang, platform, versionIndex % 2),
     caption: mockCaption(lang, platform, versionIndex % 2),
     hashtags: MOCK_HASHTAGS[platform],
     cta: P(lang, 'Dùng thử AIMA miễn phí — link ở bio!', 'Try AIMA for free — link in bio!'),

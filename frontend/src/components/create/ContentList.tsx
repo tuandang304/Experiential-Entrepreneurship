@@ -103,6 +103,11 @@ export default function ContentList({
 
   const closeDelete = () => { setDeleting(null); setDelError(null); };
 
+  // Xem chi tiết mở dạng FULL-PAGE thay grid (cùng pattern BrandProfileList). Check TRƯỚC
+  // loading: panel gọi refresh() sau khi sửa/đổi trạng thái — list nền tải lại không được
+  // che panel bằng skeleton (panel giữ nguyên, danh sách tươi khi quay lại).
+  if (viewing) return <ContentViewPanel item={viewing} onClose={() => setViewing(null)} onChanged={refresh} />;
+
   if (load === 'loading') return <CreateSkeleton />;
   if (load === 'error')
     return (
@@ -111,9 +116,6 @@ export default function ContentList({
         <button onClick={refresh} className="btn-grad" style={{ border: 'none', borderRadius: 10, padding: '9px 18px', fontWeight: 700, fontSize: 13, color: '#fff', background: brandGradient, cursor: 'pointer' }}>{t.retry}</button>
       </div>
     );
-
-  // Xem read-only mở dạng FULL-PAGE thay grid (cùng pattern BrandProfileList).
-  if (viewing) return <ContentViewPanel item={viewing} onClose={() => setViewing(null)} />;
 
   const items = data?.content ?? [];
   const total = data?.totalElements ?? 0;

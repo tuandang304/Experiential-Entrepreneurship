@@ -35,6 +35,8 @@ public interface ContentFormattingMapper {
 
     // ===== Entity → AI payload =====
 
+    // script trong cột là JSON có cấu trúc → gửi AI formatter bản phẳng dễ đọc.
+    @Mapping(target = "script", source = "script", qualifiedByName = "plainScript")
     @Mapping(target = "hashtags", source = "hashtag", qualifiedByName = "splitHashtags")
     FormatContentPayload toFormatContentPayload(ContentItem item);
 
@@ -48,6 +50,7 @@ public interface ContentFormattingMapper {
 
     // ===== Entity → response =====
 
+    @Mapping(target = "script", source = "script", qualifiedByName = "parseScript")
     @Mapping(target = "formattedHashtags", source = "formattedHashtag", qualifiedByName = "splitHashtags")
     ContentVersionResponse toContentVersionResponse(ContentVersion version);
 

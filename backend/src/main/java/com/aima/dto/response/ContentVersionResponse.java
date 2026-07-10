@@ -1,5 +1,6 @@
 package com.aima.dto.response;
 
+import com.aima.dto.common.VideoScriptDto;
 import com.aima.enums.ContentLifecycle;
 import com.aima.enums.Platform;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -39,8 +40,8 @@ public class ContentVersionResponse {
 
     // ===== Bản giàu (B2) — luồng generate điền; luồng format trả null =====
 
-    @Schema(description = "Video script (hook, body/scenes, CTA) as newline-separated lines.")
-    String script;
+    @Schema(description = "Structured video script (timed hook, numbered steps, timed CTA).")
+    VideoScriptDto script;
 
     @Schema(description = "Call-to-action for this platform (FR-28).")
     String cta;

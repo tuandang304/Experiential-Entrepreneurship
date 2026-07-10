@@ -41,7 +41,7 @@ public class ContentVersion extends BaseEntity {
 
     // ===== Bản giàu theo nền tảng (B2) — luồng generate điền; luồng format để null =====
 
-    /** Kịch bản quay dạng dòng (hook \n thân/cảnh \n CTA — cùng format ContentItem.script). */
+    /** Kịch bản quay dạng chuỗi JSON có cấu trúc (hook/steps/cta — cùng format ContentItem.script). */
     @Column(name = "script", columnDefinition = "text")
     String script;
 

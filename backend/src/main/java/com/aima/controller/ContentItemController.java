@@ -5,6 +5,7 @@ import com.aima.dto.request.ContentItemCreateRequest;
 import com.aima.dto.request.ContentItemStatusRequest;
 import com.aima.dto.request.ContentItemUpdateRequest;
 import com.aima.dto.request.ContentVersionUpdateRequest;
+import com.aima.dto.request.ContentWizardStateRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.ContentFormattingJobResponse;
 import com.aima.dto.response.ContentItemResponse;
@@ -115,9 +116,22 @@ public class ContentItemController {
         return contentItemService.updateVersion(principal.getUsername(), itemId, versionId, request);
     }
 
+    // Auto-save trạng thái wizard (bài DRAFT) — FE debounce ~1s, "Tiếp tục" resume đúng bước.
+    @PatchMapping("/{itemId}/wizard-state")
+    @Operation(summary = "Auto-save wizard progress on a DRAFT item",
+            description = "Stores the wizard step (1-4), picked platforms, attached trend/idea and AI note so the "
+                    + "user can resume the draft at the right step; only allowed while the item is DRAFT. "
+                    + "Fields are cleared automatically when the item leaves DRAFT.")
+    public ApiResponse<ContentItemResponse> updateWizardState(@AuthenticationPrincipal UserDetails principal,
+                                                              @PathVariable UUID itemId,
+                                                              @Valid @RequestBody ContentWizardStateRequest request) {
+        return contentItemService.updateWizardState(principal.getUsername(), itemId, request);
+    }
+
     @PatchMapping("/{itemId}/status")
     @Operation(summary = "Review flow status change (FR-34)",
-            description = "Allowed transitions: GENERATED→NEED_REVIEW (submit for review), NEED_REVIEW→APPROVED (approve).")
+            description = "Allowed transitions: DRAFT/GENERATED→NEED_REVIEW (submit for review), NEED_REVIEW→APPROVED "
+                    + "(approve), NEED_REVIEW→GENERATED (return for edits).")
     public ApiResponse<ContentItemResponse> updateStatus(@AuthenticationPrincipal UserDetails principal,
                                                          @PathVariable UUID itemId,
                                                          @Valid @RequestBody ContentItemStatusRequest request) {

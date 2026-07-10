@@ -1,6 +1,8 @@
 package com.aima.dto.response;
 
+import com.aima.dto.common.VideoScriptDto;
 import com.aima.enums.ContentLifecycle;
+import com.aima.enums.Platform;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,8 +26,8 @@ public class ContentItemResponse {
     @Schema(description = "Unique content item identifier.")
     UUID id;
 
-    @Schema(description = "Video script (hook, main content, shot suggestions, CTA) as newline-separated lines.")
-    String script;
+    @Schema(description = "Structured video script (timed hook, numbered steps, timed CTA).")
+    VideoScriptDto script;
 
     @Schema(description = "Generated caption (FR-26).")
     String caption;
@@ -52,6 +54,23 @@ public class ContentItemResponse {
 
     @Schema(description = "Owning brand profile's display name (for list cards).")
     String brandName;
+
+    @Schema(description = "Attached content-idea id (set at create/wizard time; null if none).")
+    UUID ideaId;
+
+    // ===== Trạng thái wizard (auto-save/resume) — chỉ có nghĩa khi DRAFT, null sau khi rời DRAFT =====
+
+    @Schema(description = "Wizard step the draft stopped at (1-4); null when not a wizard draft.")
+    Integer wizardStep;
+
+    @Schema(description = "Platforms picked in the wizard for this item.")
+    List<Platform> wizardPlatforms;
+
+    @Schema(description = "Extra user note for the AI from the wizard's source step.")
+    String wizardNote;
+
+    @Schema(description = "Attached trend id chosen in the wizard (soft reference).")
+    UUID trendId;
 
     @Schema(description = "Last update time.")
     LocalDateTime updatedAt;

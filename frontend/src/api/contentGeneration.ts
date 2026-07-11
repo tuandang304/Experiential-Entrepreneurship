@@ -139,6 +139,54 @@ export async function getContentGenerationJob(jobId: string): Promise<ContentGen
   return data.result;
 }
 
+// ---- Tạo lại từng phần kịch bản (async job; patch in-place đúng nhánh, FE poll về merge) ----
+
+export type RegenSectionName = "HOOK" | "BODY" | "CTA";
+export type RegenFieldName = "CONTENT" | "SCENE";
+
+/** Fragment CHỈ chứa phần vừa tạo lại — FE dùng section/field để merge đúng nhánh. */
+export interface ScriptPartPatchResponse {
+  section: RegenSectionName;
+  field: RegenFieldName;
+  stepIndex: number | null;
+  /** HOOK/CTA: nội dung hoặc gợi ý cảnh quay mới (tùy field). */
+  text: string | null;
+  /** HOOK/CTA + field=CONTENT: mốc thời gian mới (nếu AI đổi). */
+  timing: string | null;
+  /** BODY: các bước đã tạo lại. */
+  steps: { index: number; text: string }[] | null;
+}
+
+export interface ScriptRegenJob {
+  id: string;
+  status: GenerationJobStatus;
+  errorMessage: string | null;
+  /** Present khi SUCCESS. */
+  patch: ScriptPartPatchResponse | null;
+}
+
+export interface RegeneratePartInput {
+  section: RegenSectionName;
+  field: RegenFieldName;
+  /** Chỉ dùng khi section=BODY: bước cần tạo lại (1-based); bỏ trống = tất cả bước. */
+  stepIndex?: number;
+}
+
+// POST /content-items/{itemId}/versions/{versionId}/regenerate-part
+export async function startRegeneratePart(itemId: string, versionId: string, input: RegeneratePartInput): Promise<ScriptRegenJob> {
+  const { data } = await client.post<ApiResponse<ScriptRegenJob>>(
+    `/content-items/${itemId}/versions/${versionId}/regenerate-part`,
+    input,
+  );
+  return data.result;
+}
+
+// GET /content-items/regen-jobs/{jobId}
+export async function getRegenJob(jobId: string): Promise<ScriptRegenJob> {
+  const { data } = await client.get<ApiResponse<ScriptRegenJob>>(`/content-items/regen-jobs/${jobId}`);
+  return data.result;
+}
+
 // FR-33: chỉnh sửa thủ công MỘT bản nền tảng — partial update, field bỏ qua giữ nguyên.
 export interface ContentVersionUpdateInput {
   script?: VideoScriptResponse;

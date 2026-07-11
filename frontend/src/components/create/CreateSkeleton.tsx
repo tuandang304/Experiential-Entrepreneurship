@@ -132,7 +132,7 @@ export function ContentViewSkeleton() {
   const { isMobile, isTablet } = useBreakpoint();
   const stacked = isMobile || isTablet;
 
-  // Khối một phần kịch bản (khớp ScriptBlock 2 cột): badge + timing, trái nội dung / phải gợi ý cảnh quay.
+  // Khối một phần kịch bản (khớp ScriptSections 2 cột): badge + timing, trái nội dung / phải gợi ý cảnh quay.
   const scriptBlock = (
     <div style={{ border: '1px solid #ece7f6', borderRadius: 14, background: '#faf8fe', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 7 }}>

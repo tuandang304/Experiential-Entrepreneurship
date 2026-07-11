@@ -17,12 +17,15 @@ export default function Modal({
   onClose,
   children,
   maxWidth = 460,
+  animateScale = false,
 }: {
   title: string;
   subtitle?: string;
   onClose: () => void;
   children: ReactNode;
   maxWidth?: number;
+  /** true → overlay fade + panel scale nhẹ (thay cho slide-up view-pop mặc định). */
+  animateScale?: boolean;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +73,7 @@ export default function Modal({
   return createPortal(
     <div
       onMouseDown={onClose}
+      className={animateScale ? 'modal-fade-in' : undefined}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(26,18,48,.5)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
@@ -82,7 +86,7 @@ export default function Modal({
         aria-modal="true"
         aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
-        className="view-pop"
+        className={animateScale ? 'modal-scale-in' : 'view-pop'}
         style={{
           width: '100%', maxWidth, background: '#fff', borderRadius: 20,
           boxShadow: '0 40px 80px -30px rgba(60,30,110,.55)', padding: 26, position: 'relative',

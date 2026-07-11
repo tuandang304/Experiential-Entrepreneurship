@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import SlideOver from '../brand/SlideOver';
+import Modal from '../Modal';
 import type { ContentSort } from '../../api/contentCreationService';
 
 export interface ContentFilters {
@@ -22,8 +22,8 @@ const select = {
 } as const;
 
 /**
- * Drawer "Bộ lọc" (trượt phải, tái dùng SlideOver): gom nền tảng / thương hiệu / sắp xếp.
- * Chỉnh trong drawer là BẢN NHÁP cục bộ — chỉ query khi bấm "Áp dụng" (không reload mỗi
+ * "Bộ lọc" dạng modal căn giữa (tái dùng Modal dùng chung): gom nền tảng / thương hiệu / sắp xếp.
+ * Chỉnh trong modal là BẢN NHÁP cục bộ — chỉ query khi bấm "Áp dụng" (không reload mỗi
  * lần đổi một dropdown). Trạng thái KHÔNG nằm ở đây — đã có tabs nhanh trên bảng.
  */
 export default function ContentFilterDrawer({
@@ -49,30 +49,7 @@ export default function ContentFilterDrawer({
   );
 
   return (
-    <SlideOver
-      title={t.clFilterTitle}
-      subtitle={t.clFilterSub}
-      width={400}
-      onClose={onClose}
-      footer={
-        <>
-          <button
-            onClick={() => setDraft(DEFAULT_FILTERS)}
-            className="btn-soft"
-            style={{ border: '1px solid #ece8f6', background: '#fff', borderRadius: 11, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, color: '#574f6e', cursor: 'pointer' }}
-          >
-            {t.clFilterReset}
-          </button>
-          <button
-            onClick={() => onApply(draft)}
-            className="btn-grad"
-            style={{ flex: 1, border: 'none', borderRadius: 11, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, color: '#fff', background: brandGradient, cursor: 'pointer' }}
-          >
-            {t.clFilterApply}
-          </button>
-        </>
-      }
-    >
+    <Modal title={t.clFilterTitle} subtitle={t.clFilterSub} maxWidth={520} onClose={onClose} animateScale>
       {field(
         t.clFilterPlatform,
         <select value={draft.platform} onChange={(e) => setDraft({ ...draft, platform: e.target.value })} style={select}>
@@ -98,6 +75,24 @@ export default function ContentFilterDrawer({
           ))}
         </select>,
       )}
-    </SlideOver>
+
+      {/* Nút hành động: Đặt lại (trái) + Áp dụng (phải) — chỉ lọc khi bấm Áp dụng */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+        <button
+          onClick={() => setDraft(DEFAULT_FILTERS)}
+          className="btn-soft"
+          style={{ border: '1px solid #ece8f6', background: '#fff', borderRadius: 11, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, color: '#574f6e', cursor: 'pointer' }}
+        >
+          {t.clFilterReset}
+        </button>
+        <button
+          onClick={() => onApply(draft)}
+          className="btn-grad"
+          style={{ flex: 1, border: 'none', borderRadius: 11, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, color: '#fff', background: brandGradient, cursor: 'pointer' }}
+        >
+          {t.clFilterApply}
+        </button>
+      </div>
+    </Modal>
   );
 }

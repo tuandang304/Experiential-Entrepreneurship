@@ -11,7 +11,13 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from ..agents import content_generator, optimizer, platform_formatter, trend_research
+from ..agents import (
+    content_generator,
+    content_regenerator,
+    optimizer,
+    platform_formatter,
+    trend_research,
+)
 from ..config import get_settings
 from ..schemas import (
     AnalyzeRequest,
@@ -24,6 +30,8 @@ from ..schemas import (
     GoldenHourResponse,
     OptimizeRequest,
     OptimizeResponse,
+    RegeneratePartRequest,
+    RegeneratePartResult,
     ResearchRequest,
     ResearchResponse,
 )
@@ -66,6 +74,12 @@ def generate(req: GenerateRequest) -> ContentItem:
 def format_versions(req: FormatRequest) -> FormatResponse:
     """FR-40, FR-42, FR-44, Threads, FR-46 — one version per platform."""
     return _run("platform formatting", platform_formatter.format_content, req)
+
+
+@router.post("/regenerate-part", response_model=RegeneratePartResult)
+def regenerate_part(req: RegeneratePartRequest) -> RegeneratePartResult:
+    """Regenerate ONE part of a video script (hook/body/cta × content/scene) — FR-32."""
+    return _run("partial regeneration", content_regenerator.regenerate_part, req)
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)

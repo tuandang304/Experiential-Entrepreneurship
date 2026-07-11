@@ -4,6 +4,8 @@ import com.aima.dto.ai.BrandProfileInputPayload;
 import com.aima.dto.ai.ContentIdeaPayload;
 import com.aima.dto.ai.ContentStrategyInputPayload;
 import com.aima.dto.ai.TrendPayload;
+import com.aima.dto.ai.VideoScriptPayload;
+import com.aima.dto.common.VideoScriptDto;
 import com.aima.entity.BrandProfile;
 import com.aima.entity.ContentIdea;
 import com.aima.entity.ContentStrategy;
@@ -36,6 +38,11 @@ public interface AiContentMapper {
     @Mapping(target = "contentStyle", source = "contentStyle", qualifiedByName = "joinComma")
     @Mapping(target = "ctaType", source = "ctaTypes", qualifiedByName = "joinComma")
     ContentStrategyInputPayload toStrategyPayload(ContentStrategy strategy);
+
+    // Script hiện tại (đã parse từ JSON) → payload gửi AI làm ngữ cảnh khi tạo lại từng phần.
+    // hook/cta (ScriptSectionDto→ScriptSectionPayload) và steps (ScriptStepDto→ScriptStepPayload)
+    // auto-map nhờ trùng tên field (content/sceneSuggestion/timing, index).
+    VideoScriptPayload toVideoScriptPayload(VideoScriptDto script);
 
     // ===== Trend/idea entity → payload gửi Python (ai/src/schemas.py yêu cầu
     // relevance/relevance_score/description/suitability_level NON-NULL, list không được null) =====

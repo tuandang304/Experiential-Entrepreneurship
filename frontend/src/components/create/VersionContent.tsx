@@ -3,7 +3,7 @@ import { Copy, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Icon } from '../ui';
 import type { ContentVersion } from '../../api/contentCreationService';
-import ScriptBlock from './ScriptBlock';
+import ScriptSections from './ScriptSections';
 import { CaptionCounter, HashtagCounter } from './platformLimits';
 
 const sectionLabel = { fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 8 } as const;
@@ -43,19 +43,10 @@ export function VersionTabs({ value, onChange }: { value: VersionTab; onChange: 
   );
 }
 
-/** Tab Script video (read-only): hook có timing → các bước đánh số → CTA cuối có timing (FR-25).
- *  Dùng chung khung ScriptBlock 2 cột (nội dung | gợi ý cảnh quay) với editor — tuyệt đối nhất quán. */
+/** Tab Script video (read-only): 3 section (Mở đầu · Nội dung chính · Kết bài) trên timeline dọc,
+ *  mỗi section 2 cột (nội dung | gợi ý cảnh quay). Dùng CHUNG ScriptSections với màn sửa — nhất quán. */
 export function ScriptView({ version }: { version: ContentVersion }) {
-  const { hook, steps, cta } = version.script;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <ScriptBlock variant="hook" section={hook} />
-      {steps.map((step) => (
-        <ScriptBlock key={step.index} variant="step" index={step.index} section={{ ...step, timing: '' }} />
-      ))}
-      <ScriptBlock variant="cta" section={cta} />
-    </div>
-  );
+  return <ScriptSections script={version.script} />;
 }
 
 /** Tab Nội dung (read-only): caption + hashtag + CTA gộp CÙNG tab, kèm bộ đếm giới hạn nền tảng. */

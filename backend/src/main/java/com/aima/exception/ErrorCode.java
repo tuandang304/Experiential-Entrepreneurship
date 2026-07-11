@@ -173,7 +173,13 @@ public enum ErrorCode {
     // CONTENT LIBRARY ERRORS (FR-87..FR-89)
     CONTENT_ITEM_NOT_DELETABLE(1947, "Chỉ xóa được nội dung ở trạng thái Draft/Generated", HttpStatus.BAD_REQUEST),
     INVALID_CONTENT_SCRIPT(1948, "Kịch bản video không hợp lệ", HttpStatus.BAD_REQUEST),
-    CONTENT_WIZARD_STEP_INVALID(1949, "Bước wizard không hợp lệ (1-4)", HttpStatus.BAD_REQUEST),;
+    CONTENT_WIZARD_STEP_INVALID(1949, "Bước wizard không hợp lệ (1-4)", HttpStatus.BAD_REQUEST),
+
+    // PARTIAL SCRIPT REGENERATION ERRORS (tạo lại từng phần kịch bản)
+    REGEN_SECTION_REQUIRED(1950, "Thiếu phần cần tạo lại (hook/body/cta)", HttpStatus.BAD_REQUEST),
+    REGEN_FIELD_REQUIRED(1951, "Thiếu loại nội dung cần tạo lại (content/scene)", HttpStatus.BAD_REQUEST),
+    CONTENT_REGENERATION_JOB_NOT_FOUND(1952, "Không tìm thấy tác vụ tạo lại", HttpStatus.NOT_FOUND),
+    REGEN_STEP_NOT_FOUND(1953, "Không tìm thấy bước cần tạo lại trong kịch bản", HttpStatus.BAD_REQUEST),;
 
     private int code;
     private String message;

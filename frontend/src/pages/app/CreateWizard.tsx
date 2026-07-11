@@ -415,7 +415,7 @@ export default function CreateWizard() {
         />
       )}
       {effectiveStep === 3 && source && gen && (
-        <EditStep source={source} gen={gen} baselines={baselines} onPatchVersion={patchVersion} onBack={() => goStep(2)} onNext={() => goStep(4)} />
+        <EditStep source={source} gen={gen} itemId={itemId} baselines={baselines} onPatchVersion={patchVersion} onBack={() => goStep(2)} onNext={() => goStep(4)} />
       )}
       {effectiveStep === 4 && source && gen && (
         <ReviewStep

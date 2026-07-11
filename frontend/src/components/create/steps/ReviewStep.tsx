@@ -7,7 +7,7 @@ import type { ContentVersion, GenerationResult } from '../../../api/contentCreat
 import type { SourceSelection } from './SourceStep';
 import { TONE_COLORS } from '../../../statusTokens';
 import StepLayout from '../StepLayout';
-import SourceContextChip from '../SourceContextChip';
+import SourceInfoCard, { sourceToInfo } from '../SourceInfoCard';
 import PlatformTabs from '../PlatformTabs';
 import VersionContent from '../VersionContent';
 import PostImagePreview from '../PostImagePreview';
@@ -73,7 +73,7 @@ export default function ReviewStep({
 
   const side = (
     <>
-      <SourceContextChip source={source} />
+      <SourceInfoCard info={sourceToInfo(source)} />
       {/* Xác nhận cuối: brand voice của bản sẽ lưu (cảnh báo nếu điểm tụt sau chỉnh sửa) */}
       <BrandVoicePanel
         check={version.brandVoice}

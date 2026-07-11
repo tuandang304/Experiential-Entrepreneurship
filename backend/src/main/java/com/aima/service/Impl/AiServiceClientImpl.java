@@ -7,6 +7,8 @@ import com.aima.dto.ai.GenerateContentPayload;
 import com.aima.dto.ai.GeneratedContentResult;
 import com.aima.dto.ai.GoldenHourPayload;
 import com.aima.dto.ai.GoldenHourResultPayload;
+import com.aima.dto.ai.RegeneratePartPayload;
+import com.aima.dto.ai.RegeneratePartResultPayload;
 import com.aima.dto.ai.ResearchPayload;
 import com.aima.dto.ai.ResearchResultPayload;
 import com.aima.exception.AppException;
@@ -103,6 +105,24 @@ public class AiServiceClientImpl implements AiServiceClient {
             throw new AppException(ErrorCode.AI_SERVICE_ERROR);
         } catch (Exception e) {
             log.warn("[AiService] POST /golden-hours thất bại: {}", e.getMessage());
+            throw new AppException(ErrorCode.AI_SERVICE_ERROR);
+        }
+    }
+
+    @Override
+    public RegeneratePartResultPayload regeneratePart(RegeneratePartPayload payload) {
+        try {
+            return webClient.post()
+                    .uri("/regenerate-part")
+                    .bodyValue(payload)
+                    .retrieve()
+                    .bodyToMono(RegeneratePartResultPayload.class)
+                    .block(Duration.ofSeconds(properties.timeoutSeconds()));
+        } catch (WebClientResponseException e) {
+            log.warn("[AiService] POST /regenerate-part lỗi {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new AppException(ErrorCode.AI_SERVICE_ERROR);
+        } catch (Exception e) {
+            log.warn("[AiService] POST /regenerate-part thất bại: {}", e.getMessage());
             throw new AppException(ErrorCode.AI_SERVICE_ERROR);
         }
     }

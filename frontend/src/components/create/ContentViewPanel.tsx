@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Pencil, Save, Send, Undo2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { Card, Icon } from '../ui';
+import { Card, Icon, cardStyle } from '../ui';
 import type { ApiError } from '../../api/apiClient';
 import type { ContentLifecycle } from '../../api/contentGeneration';
 import {
   getContentDetail,
   saveVersionEdit,
   changeContentStatus,
+  emptyScript,
   type ContentListItem,
   type ContentVersion,
 } from '../../api/contentCreationService';
-import type { Platform } from '../../api/brandProfile';
+import { useScriptRegen } from './useScriptRegen';
+import { listAllBrandProfiles, type Platform } from '../../api/brandProfile';
 import type { Dict } from '../../i18n';
 import PlatformTabs from './PlatformTabs';
 import { VersionTabs, ScriptView, ContentFieldsView, MediaPromptView, type VersionTab } from './VersionContent';
-import ScriptEditor from './ScriptEditor';
+import ScriptSections from './ScriptSections';
+import SourceInfoCard, { type SourceInfoData } from './SourceInfoCard';
 import PostImagePreview from './PostImagePreview';
 import BrandVoicePanel from './BrandVoicePanel';
 import { CaptionCounter, HashtagCounter, parseHashtags } from './platformLimits';
@@ -81,7 +84,24 @@ export default function ContentViewPanel({
   const [editError, setEditError] = useState<string | null>(null);
   const [statusBusy, setStatusBusy] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  // Thông tin nguồn (rút gọn) cho màn xem: brand + nền tảng có sẵn từ item; ngành hàng/logo
+  // enrich best-effort từ hồ sơ thương hiệu (chi tiết này không mang strategy/trend nên các
+  // dòng đó bị ẩn — SourceInfoCard tự ẩn dòng thiếu dữ liệu).
+  const [srcInfo, setSrcInfo] = useState<SourceInfoData>({ brandName: item.brandName, platforms: item.platforms });
   const st = CONTENT_STATUS_META[status];
+
+  useEffect(() => {
+    let cancelled = false;
+    listAllBrandProfiles()
+      .then((bs) => {
+        if (cancelled) return;
+        const b = bs.find((x) => x.id === item.brandId);
+        if (b) setSrcInfo({ brandName: b.brandName, logoUrl: b.logoUrl, industry: b.industry, platforms: item.platforms });
+      })
+      .catch(() => { /* best-effort: giữ brandName + nền tảng từ item */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +125,10 @@ export default function ContentViewPanel({
   const version = versions.find((v) => v.platform === platform) ?? versions[0] ?? null;
   const shown = draft ?? version; // đang sửa thì mọi panel (voice/preview) phản ánh bản nháp
   const editable = EDITABLE_STATUSES.includes(status) && !!version;
+  // Tạo lại từng phần kịch bản (chỉ khi đang sửa bản nháp) — patch merge vào draft mới nhất.
+  const regen = useScriptRegen(item.id, draft?.id, draft?.script ?? emptyScript(), (s) =>
+    setDraft((d) => (d ? { ...d, script: s } : d)),
+  );
 
   const startEdit = () => {
     if (!version) return;
@@ -149,7 +173,20 @@ export default function ContentViewPanel({
   const editForm = draft && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {tab === 'script' && (
-        <ScriptEditor script={draft.script} onChange={(script) => setDraft({ ...draft, script })} />
+        <>
+          <ScriptSections
+            script={draft.script}
+            editable
+            onChange={(script) => setDraft({ ...draft, script })}
+            onRegenerateSection={regen.onRegenerateSection}
+            onRegenerateScene={regen.onRegenerateScene}
+            onRegenerateStep={regen.onRegenerateStep}
+            regenerating={regen.regenerating}
+          />
+          {regen.error && (
+            <div style={{ fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{t.cvEditError}: {regen.error}</div>
+          )}
+        </>
       )}
       {tab === 'content' && (
         <div>
@@ -235,9 +272,9 @@ export default function ContentViewPanel({
 
   return (
     <div className="view-pop" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Header sticky 2 TẦNG: tầng 1 quay lại + breadcrumb (nhỏ, mờ); tầng 2 tiêu đề +
-          badge cạnh/dưới tiêu đề, cụm nút hành động neo phải — tiêu đề dài không phá layout. */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,.92)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', margin: '-24px -24px 0', padding: '10px 24px 12px', borderBottom: '1px solid #efeaf8', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Header 2 TẦNG là MỘT CARD riêng (cùng token với các card khác: bo góc 20, bóng nhẹ),
+          sticky đầu trang, tách khỏi vùng nội dung bởi gap của container — không dính liền. */}
+      <div style={{ ...cardStyle, position: 'sticky', top: 8, zIndex: 20, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <button onClick={onClose} className="btn-soft" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none', border: '1px solid #ece8f6', background: '#fff', borderRadius: 9, padding: '6px 11px', fontSize: 12.5, fontWeight: 700, color: '#574f6e', cursor: 'pointer' }}>
             <Icon icon={ArrowLeft} size={14} stroke="#574f6e" />{t.bpBack}
@@ -287,6 +324,8 @@ export default function ContentViewPanel({
             )}
           </Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: stacked ? 'static' : 'sticky', top: 80 }}>
+            {/* Thông tin nguồn (rút gọn) — mặc định thu gọn vì đây là màn xem/duyệt */}
+            <SourceInfoCard info={srcInfo} defaultOpen={false} />
             <BrandVoicePanel check={shown.brandVoice} />
             <PostImagePreview version={shown} brandName={item.brandName} />
           </div>

@@ -6,6 +6,8 @@ import com.aima.dto.ai.GenerateContentPayload;
 import com.aima.dto.ai.GeneratedContentResult;
 import com.aima.dto.ai.GoldenHourPayload;
 import com.aima.dto.ai.GoldenHourResultPayload;
+import com.aima.dto.ai.RegeneratePartPayload;
+import com.aima.dto.ai.RegeneratePartResultPayload;
 import com.aima.dto.ai.ResearchPayload;
 import com.aima.dto.ai.ResearchResultPayload;
 
@@ -25,4 +27,7 @@ public interface AiServiceClient {
 
     /** POST /golden-hours — FR-48 (mặc định theo nền tảng cho tới khi có ≥10 bài đã phân tích). */
     GoldenHourResultPayload goldenHours(GoldenHourPayload payload);
+
+    /** POST /regenerate-part — tạo lại MỘT phần kịch bản (hook/body/cta × content/scene). */
+    RegeneratePartResultPayload regeneratePart(RegeneratePartPayload payload);
 }

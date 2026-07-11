@@ -48,6 +48,17 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean(name = "contentRegenerationExecutor")
+    public Executor contentRegenerationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(5);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("content-regen-");
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "trendResearchExecutor")
     public Executor trendResearchExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

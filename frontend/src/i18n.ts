@@ -125,7 +125,7 @@ export const STRINGS = {
     clBulkReviewDone: 'Đã gửi duyệt các mục đã chọn.',
     // ===== Tạo nội dung — lớp 2: wizard 5 mốc =====
     cwTitle: 'Tạo nội dung mới', cwSub: 'AI tạo nội dung phù hợp với thương hiệu, chiến lược và xu hướng',
-    cwStep1: 'Lịch sử', cwStep2: 'Tạo nội dung', cwStep3: 'Chỉnh sửa', cwStep4: 'Duyệt & Lưu', cwStep5: 'Lên lịch đăng bài',
+    cwStep1: 'Chọn nguồn', cwStep2: 'Tạo nội dung', cwStep3: 'Chỉnh sửa', cwStep4: 'Duyệt & Lưu', cwStep5: 'Lên lịch đăng bài',
     cwStepSoon: 'Tính năng đang phát triển',
     cwBack: 'Quay lại', cwNext: 'Tiếp tục', cwBackToList: 'Về danh sách',
     // mốc 1 — chọn nguồn
@@ -175,6 +175,9 @@ export const STRINGS = {
     cwScene: 'Gợi ý cảnh quay', cwTiming: 'Mốc thời gian', cwTimingPh: 'VD: 0-3s',
     cwAddStep: 'Thêm bước', cwRemoveStep: 'Xóa bước',
     cwExpand: 'Mở rộng để sửa', cwCollapse: 'Thu gọn', cwEmptySection: '(Chưa có nội dung)',
+    cwSectionMain: 'Nội dung chính', cwSceneRegen: 'Tạo lại cảnh quay', cwRegenStep: 'Tạo lại bước này',
+    cwSrcInfoTitle: 'Thông tin nguồn', cwSrcTrendIdea: 'Trend / Ý tưởng',
+    cwSrcInfoExpand: 'Mở rộng thông tin nguồn', cwSrcInfoCollapse: 'Thu gọn thông tin nguồn',
     cwCopy: 'Sao chép', cwCopied: 'Đã chép',
     cwCharUnit: 'ký tự', cwHashtagUnit: 'hashtag',
     // màn Xem chi tiết — sửa tại chỗ + đổi trạng thái (review flow)
@@ -541,7 +544,7 @@ export const STRINGS = {
     clBulkReviewDone: 'Selected items were submitted for review.',
     // ===== Create content — layer 2: 5-step wizard =====
     cwTitle: 'Create new content', cwSub: 'AI creates content that fits your brand, strategy and trends',
-    cwStep1: 'History', cwStep2: 'Generate', cwStep3: 'Edit', cwStep4: 'Review & Save', cwStep5: 'Schedule',
+    cwStep1: 'Select source', cwStep2: 'Generate', cwStep3: 'Edit', cwStep4: 'Review & Save', cwStep5: 'Schedule',
     cwStepSoon: 'Feature in development',
     cwBack: 'Back', cwNext: 'Continue', cwBackToList: 'Back to list',
     // step 1 — choose source
@@ -591,6 +594,9 @@ export const STRINGS = {
     cwScene: 'Scene suggestion', cwTiming: 'Timing', cwTimingPh: 'e.g. 0-3s',
     cwAddStep: 'Add step', cwRemoveStep: 'Remove step',
     cwExpand: 'Expand to edit', cwCollapse: 'Collapse', cwEmptySection: '(No content yet)',
+    cwSectionMain: 'Main content', cwSceneRegen: 'Regenerate scene', cwRegenStep: 'Regenerate this step',
+    cwSrcInfoTitle: 'Source info', cwSrcTrendIdea: 'Trend / Idea',
+    cwSrcInfoExpand: 'Expand source info', cwSrcInfoCollapse: 'Collapse source info',
     cwCopy: 'Copy', cwCopied: 'Copied',
     cwCharUnit: 'characters', cwHashtagUnit: 'hashtags',
     // detail view — inline edit + status change (review flow)

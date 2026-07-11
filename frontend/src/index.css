@@ -74,6 +74,35 @@ button {
 .view-pop {
   animation: pop 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+/* Modal mở dịu: overlay fade, panel fade + scale nhẹ (dùng qua Modal animateScale). */
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.modal-fade-in {
+  animation: modal-overlay-in 0.2s ease both;
+}
+.modal-scale-in {
+  animation: modal-scale-in 0.22s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+/* Nút "Tạo lại" của từng bước trong Script video: chỉ hiện khi hover hàng bước (desktop). */
+.step-regen {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.step-row:hover .step-regen,
+.step-row:focus-within .step-regen {
+  opacity: 1;
+}
+@media (hover: none) {
+  .step-regen {
+    opacity: 1;
+  }
+}
 .gradtext {
   background: var(--brand, linear-gradient(135deg, #22d3ee, #3b82f6, #8b5cf6));
   -webkit-background-clip: text;

@@ -15,6 +15,9 @@ import {
   listContentItems,
   getContentItem,
   deleteContentItem,
+  startRegeneratePart,
+  getRegenJob,
+  type RegenSectionName,
 } from "./contentGeneration";
 import { listTrendResearchSessions, getTrendResearchSession } from "./trendResearch";
 import type { PageResponse } from "./apiClient";
@@ -431,6 +434,83 @@ export async function generateVersion(input: GenerateVersionInput): Promise<Cont
     throw new Error(job.errorMessage ?? "AI_SERVICE_ERROR");
   }
   return toContentVersion(job.contentVersion);
+}
+
+// ---- Tạo lại từng phần kịch bản (async job; patch in-place đúng nhánh, poll rồi merge) ----
+
+/** Phần kịch bản (FE-facing, chữ thường). */
+export type RegenSection = "hook" | "body" | "cta";
+/** Nhánh dữ liệu: nội dung nói (+timing) hoặc gợi ý cảnh quay. */
+export type RegenField = "content" | "scene";
+
+/** Fragment CHỈ chứa phần vừa tạo lại — dùng applyScriptPatch để merge vào script cục bộ. */
+export interface ScriptPatch {
+  section: RegenSection;
+  field: RegenField;
+  stepIndex: number | null;
+  text: string | null;
+  timing: string | null;
+  steps: { index: number; text: string }[] | null;
+}
+
+const SECTION_TO_API: Record<RegenSection, RegenSectionName> = { hook: "HOOK", body: "BODY", cta: "CTA" };
+
+/**
+ * Tạo lại MỘT phần kịch bản (hook/body/cta × content/scene, tùy chọn 1 bước) — start job rồi
+ * poll tới SUCCESS/FAILED. Trả về CHỈ fragment đã tạo lại; backend đã patch in-place version.
+ * Không đụng các phần khác (giữ chỉnh sửa tay của người dùng ở nhánh khác).
+ */
+export async function regeneratePart(
+  itemId: string,
+  versionId: string,
+  section: RegenSection,
+  field: RegenField,
+  stepIndex?: number,
+): Promise<ScriptPatch> {
+  let job = await startRegeneratePart(itemId, versionId, {
+    section: SECTION_TO_API[section],
+    field: field === "content" ? "CONTENT" : "SCENE",
+    stepIndex,
+  });
+  while (job.status === "PENDING" || job.status === "RUNNING") {
+    await delay(1500);
+    job = await getRegenJob(job.id);
+  }
+  if (job.status !== "SUCCESS" || !job.patch) {
+    throw new Error(job.errorMessage ?? "AI_SERVICE_ERROR");
+  }
+  const p = job.patch;
+  return {
+    section: p.section.toLowerCase() as RegenSection,
+    field: p.field.toLowerCase() as RegenField,
+    stepIndex: p.stepIndex,
+    text: p.text,
+    timing: p.timing,
+    steps: p.steps,
+  };
+}
+
+/** Merge fragment tạo lại vào script — CHỈ ghi đè nhánh tương ứng, các phần khác giữ nguyên. */
+export function applyScriptPatch(script: VideoScript, patch: ScriptPatch): VideoScript {
+  if (patch.section === "hook" || patch.section === "cta") {
+    const key = patch.section;
+    const sec = { ...script[key] };
+    if (patch.field === "content") {
+      if (patch.text != null) sec.content = patch.text;
+      if (patch.timing != null) sec.timing = patch.timing;
+    } else if (patch.text != null) {
+      sec.sceneSuggestion = patch.text;
+    }
+    return { ...script, [key]: sec };
+  }
+  // body: áp theo index từng bước; bước không có trong patch giữ nguyên.
+  const patched = patch.steps ?? [];
+  const steps = script.steps.map((s) => {
+    const hit = patched.find((x) => x.index === s.index);
+    if (!hit) return s;
+    return patch.field === "content" ? { ...s, content: hit.text } : { ...s, sceneSuggestion: hit.text };
+  });
+  return { ...script, steps };
 }
 
 /**

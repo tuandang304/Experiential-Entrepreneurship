@@ -208,6 +208,51 @@ class ContentItem(BaseModel):
 
 
 # ============================================================
+# Partial script regeneration (tạo lại từng phần kịch bản)
+# ============================================================
+
+
+class RegeneratePartRequest(BaseModel):
+    """Regenerate ONE part of an existing video script, leaving the rest untouched.
+
+    section: which part — "hook" | "body" | "cta".
+    field:   which branch — "content" (spoken text, +timing for hook/cta) | "scene" (filming direction).
+    step_index: only for section="body" — regenerate just that 1-based step; None = all steps.
+    current_script is passed for consistency/context; only the requested branch is returned.
+    """
+
+    brand_profile: BrandProfileInput
+    platform: str
+    section: str = Field(..., description='"hook" | "body" | "cta"')
+    field: str = Field(..., description='"content" | "scene"')
+    step_index: Optional[int] = Field(default=None, ge=1)
+    current_script: VideoScript
+
+
+class RegeneratedSection(BaseModel):
+    """Regenerated hook/CTA fragment — only the requested field is filled."""
+
+    content: Optional[str] = None
+    scene_suggestion: Optional[str] = None
+    timing: Optional[str] = None
+
+
+class RegeneratedStep(BaseModel):
+    """Regenerated body step — only the requested field is filled."""
+
+    index: int = Field(..., ge=1)
+    content: Optional[str] = None
+    scene_suggestion: Optional[str] = None
+
+
+class RegeneratePartResult(BaseModel):
+    """Response contains ONLY the regenerated part: `section` for hook/cta, `steps` for body."""
+
+    section: Optional[RegeneratedSection] = None
+    steps: List[RegeneratedStep] = Field(default_factory=list)
+
+
+# ============================================================
 # Platform Formatting (FR-40, FR-42, FR-44, Threads, FR-46)
 # ============================================================
 

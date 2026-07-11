@@ -12,7 +12,7 @@ import type { ApiError } from '../../../api/apiClient';
 import type { SourceSelection } from './SourceStep';
 import { TONE_COLORS } from '../../../statusTokens';
 import StepLayout from '../StepLayout';
-import SourceContextChip from '../SourceContextChip';
+import SourceInfoCard, { sourceToInfo } from '../SourceInfoCard';
 import PlatformTabs, { type PlatformRunStatus } from '../PlatformTabs';
 import VersionContent from '../VersionContent';
 import BrandVoicePanel from '../BrandVoicePanel';
@@ -224,7 +224,7 @@ export default function GenerateStep({
   // Cột phải — chip ngữ cảnh nguồn + brand voice + preview của TAB đang chọn.
   const side = (
     <>
-      <SourceContextChip source={source} />
+      <SourceInfoCard info={sourceToInfo(source)} />
       <BrandVoicePanel
         check={version?.brandVoice ?? null}
         busy={voice.busy}

@@ -5,13 +5,14 @@ import { Card, Icon } from '../../ui';
 import type { ContentVersion, GenerationResult } from '../../../api/contentCreationService';
 import type { SourceSelection } from './SourceStep';
 import StepLayout from '../StepLayout';
-import SourceContextChip from '../SourceContextChip';
+import SourceInfoCard, { sourceToInfo } from '../SourceInfoCard';
 import PlatformTabs from '../PlatformTabs';
-import ScriptEditor from '../ScriptEditor';
+import ScriptSections from '../ScriptSections';
 import PostImagePreview from '../PostImagePreview';
 import BrandVoicePanel from '../BrandVoicePanel';
 import { CaptionCounter, HashtagCounter, parseHashtags } from '../platformLimits';
 import { useBrandVoiceCheck } from '../useBrandVoiceCheck';
+import { useScriptRegen } from '../useScriptRegen';
 
 const label = { display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '.04em', color: '#a59fbb', marginBottom: 8 } as const;
 const inputBase = {
@@ -27,6 +28,7 @@ const inputBase = {
 export default function EditStep({
   source,
   gen,
+  itemId,
   baselines,
   onPatchVersion,
   onBack,
@@ -34,6 +36,8 @@ export default function EditStep({
 }: {
   source: SourceSelection;
   gen: GenerationResult;
+  /** Bài (ContentItem) đang tạo — cần cho API tạo lại từng phần. */
+  itemId: string | null;
   /** Điểm brand voice lúc AI sinh từng version (versionId → %) để so sánh sau khi sửa. */
   baselines: Record<string, number>;
   onPatchVersion: (versionId: string, patch: Partial<ContentVersion>) => void;
@@ -47,6 +51,8 @@ export default function EditStep({
   const voice = useBrandVoiceCheck(source.brand.id, onPatchVersion);
   const version = gen.versions.find((v) => v.platform === platform) ?? gen.versions[0];
   const hashtagText = hashtagDrafts[version.id] ?? version.hashtags.join(' ');
+  // Tạo lại từng phần kịch bản cho bản nền tảng đang xem — patch merge vào version mới nhất.
+  const regen = useScriptRegen(itemId, version.id, version.script, (s) => onPatchVersion(version.id, { script: s }));
 
   const area = (value: string, onChange: (v: string) => void, minHeight = 70) => (
     <textarea value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputBase, resize: 'vertical', minHeight }} />
@@ -62,9 +68,20 @@ export default function EditStep({
       </div>
 
       <label style={label}>{t.cwTabScript}</label>
-      {/* Accordion từng phần (thu gọn mặc định — thường chỉ sửa vài bước); trạng thái mở/đóng
-          giữ theo TỪNG bản nền tảng (stateKey) — chuyển tab Instagram/Facebook/Threads không mất. */}
-      <ScriptEditor script={version.script} onChange={(script) => onPatchVersion(version.id, { script })} collapsible stateKey={version.id} />
+      {/* 3 section trên timeline dọc, mỗi section 2 cột (nội dung | gợi ý cảnh quay) luôn hiện —
+          panel phụ trợ bên phải đã sticky nên trang dài vẫn thao tác gọn. */}
+      <ScriptSections
+        script={version.script}
+        editable
+        onChange={(script) => onPatchVersion(version.id, { script })}
+        onRegenerateSection={regen.onRegenerateSection}
+        onRegenerateScene={regen.onRegenerateScene}
+        onRegenerateStep={regen.onRegenerateStep}
+        regenerating={regen.regenerating}
+      />
+      {regen.error && (
+        <div style={{ marginTop: 8, fontSize: 12.5, color: '#d1435b', background: '#fdf1f3', borderRadius: 10, padding: '10px 12px' }}>{regen.error}</div>
+      )}
 
       <label style={{ ...label, marginTop: 16 }}>{t.cwTabCaption}</label>
       {area(version.caption, (v) => onPatchVersion(version.id, { caption: v }), 90)}
@@ -92,7 +109,7 @@ export default function EditStep({
 
   const side = (
     <>
-      <SourceContextChip source={source} />
+      <SourceInfoCard info={sourceToInfo(source)} />
       <BrandVoicePanel
         check={version.brandVoice}
         busy={voice.busy}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useApp } from "./context/AppContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
@@ -7,30 +7,41 @@ import GuestRoute from "./auth/GuestRoute";
 import AppShell from "./components/AppShell";
 import ShareButton from "./components/ShareButton";
 
-import LandingPage from "./pages/LandingPage";
-import PricingPage from "./pages/PricingPage";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/app/Dashboard.tsx";
-import Create from "./pages/app/Create.tsx";
-import CreateWizard from "./pages/app/CreateWizard.tsx";
-import Calendar from "./pages/app/Calendar.tsx";
-import Analytics from "./pages/app/Analytics.tsx";
-import Trends from "./pages/app/Trends.tsx";
-import Brand from "./pages/app/Brand.tsx";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import AdminOverview from "./pages/admin/Overview";
-import AdminUsers from "./pages/admin/Users";
-import AdminPosts from "./pages/admin/Posts";
-import AdminSystem from "./pages/admin/SystemStatus";
-import AdminLogs from "./pages/admin/Logs";
-import AdminApiVersions from "./pages/admin/ApiVersions";
-import AdminRevenue from "./pages/admin/Revenue";
+// Code-splitting theo route (hiệu năng tải trang): mỗi trang một chunk, tải khi vào route —
+// landing không kéo theo app/admin và ngược lại. Chỉ shell/route-guard ở chunk chính.
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const PricingPage = lazy(() => import("./pages/PricingPage"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Dashboard = lazy(() => import("./pages/app/Dashboard.tsx"));
+const Create = lazy(() => import("./pages/app/Create.tsx"));
+const CreateWizard = lazy(() => import("./pages/app/CreateWizard.tsx"));
+const Calendar = lazy(() => import("./pages/app/Calendar.tsx"));
+const Analytics = lazy(() => import("./pages/app/Analytics.tsx"));
+const Trends = lazy(() => import("./pages/app/Trends.tsx"));
+const Brand = lazy(() => import("./pages/app/Brand.tsx"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const AdminOverview = lazy(() => import("./pages/admin/Overview"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const AdminPosts = lazy(() => import("./pages/admin/Posts"));
+const AdminSystem = lazy(() => import("./pages/admin/SystemStatus"));
+const AdminLogs = lazy(() => import("./pages/admin/Logs"));
+const AdminApiVersions = lazy(() => import("./pages/admin/ApiVersions"));
+const AdminRevenue = lazy(() => import("./pages/admin/Revenue"));
 
 // Backend-driven flows kept from the original app (real URLs the server redirects to).
-import GoogleCallbackPage from "./pages/GoogleCallbackPage";
-import CompleteProfilePage from "./pages/CompleteProfilePage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+const GoogleCallbackPage = lazy(() => import("./pages/GoogleCallbackPage"));
+const CompleteProfilePage = lazy(() => import("./pages/CompleteProfilePage"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
+
+// Fallback khi chunk trang đang tải — dùng .loader sẵn có (index.css), căn giữa viewport.
+function PageLoader() {
+  return (
+    <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <span className="loader" aria-label="Loading" />
+    </div>
+  );
+}
 
 // Authenticated app shell — sidebar + topbar wrap every signed-in page.
 function AppLayout() {
@@ -68,6 +79,7 @@ export default function App() {
 
   return (
     <div>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
@@ -103,6 +115,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
 
       {/* Nút chia sẻ nổi — hiển thị trên mọi trang */}
       <ShareButton />

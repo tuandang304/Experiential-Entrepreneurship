@@ -32,10 +32,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * FR-47..FR-51: lịch đăng bài cho một ContentVersion đã định dạng lên một tài khoản
@@ -59,6 +63,10 @@ public class PostScheduleServiceImpl implements PostScheduleService {
     // Item còn bản khác đang trong pipeline đăng thì không hạ trạng thái item khi hủy lịch.
     static final List<ScheduleStatus> PIPELINE_STATUSES =
             List.of(ScheduleStatus.SCHEDULED, ScheduleStatus.ON_HOLD, ScheduleStatus.POSTING, ScheduleStatus.POSTED);
+
+    // Cache khung giờ vàng (xem suggestGoldenHours).
+    static final Duration GOLDEN_HOURS_TTL = Duration.ofHours(1);
+    Map<Platform, CachedGoldenHours> goldenHoursCache = new ConcurrentHashMap<>();
 
     PostScheduleRepository postScheduleRepository;
     ContentVersionRepository contentVersionRepository;
@@ -180,12 +188,26 @@ public class PostScheduleServiceImpl implements PostScheduleService {
 
     // FR-48: không mở transaction — gọi HTTP sang AI service (rule #24), chưa có dữ liệu analytics
     // (FR-59) nên AI trả khung giờ mặc định theo nền tảng (data_driven = false).
+    //
+    // Hiệu năng: kết quả hiện là MẶC ĐỊNH theo nền tảng → cache in-process 1h mỗi nền tảng
+    // (mẫu cache thủ công như PlatformVersionServiceImpl), tránh một round-trip AI service
+    // mỗi lần user mở modal lên lịch. Khi nào payload gửi kèm `posts` (nhánh data-driven
+    // của FR-48) thì bỏ hoặc thu ngắn cache này.
     @Override
     public ApiResponse<GoldenHourResponse> suggestGoldenHours(Platform platform) {
+        CachedGoldenHours cached = goldenHoursCache.get(platform);
+        if (cached != null && cached.expiresAt().isAfter(Instant.now())) {
+            return ApiResponse.success("Lấy gợi ý khung giờ vàng thành công", cached.response());
+        }
+
         GoldenHourPayload payload = postScheduleMapper.toGoldenHourPayload(platform);
         GoldenHourResultPayload result = aiServiceClient.goldenHours(payload);
         GoldenHourResponse response = postScheduleMapper.toGoldenHourResponse(result);
+        goldenHoursCache.put(platform, new CachedGoldenHours(response, Instant.now().plus(GOLDEN_HOURS_TTL)));
         return ApiResponse.success("Lấy gợi ý khung giờ vàng thành công", response);
+    }
+
+    private record CachedGoldenHours(GoldenHourResponse response, Instant expiresAt) {
     }
 
     private List<PostSchedule> findSchedules(UUID userId, ScheduleStatus status, Platform platform) {

@@ -2,6 +2,11 @@ server:
   port: ${SERVER_PORT}
   servlet:
     context-path: ${CONTEXT_PATH}
+  # Nén response JSON (danh sách content item/analytics khá nặng) — giảm thời gian tải trên mạng chậm.
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript
+    min-response-size: 2KB
 
 spring:
   application:
@@ -31,10 +36,17 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+    # Tắt Open-Session-In-View: mọi service đã build DTO TRONG @Transactional (rule #22),
+    # nên giữ connection DB suốt lúc serialize JSON chỉ lãng phí pool (hikari chỉ có 5 kết nối,
+    # DB remote) — trả connection ngay khi transaction xong để các request song song không phải chờ.
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        # DB remote (sslmode=require): mỗi lazy-load là một round-trip mạng. Batch các lazy load
+        # thành query IN (...) theo lô 20 — danh sách N bài không còn bắn N query versions/accounts.
+        default_batch_fetch_size: 20
         jdbc:
           time_zone: ${APP_TIMEZONE:UTC}
 

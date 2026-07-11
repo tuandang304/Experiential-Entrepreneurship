@@ -47,6 +47,10 @@ public class SecurityConfig {
             // Meta OAuth callback: nền tảng redirect về (không có cookie auth) — userId lấy qua state.
             "/connections/*/callback",
 
+            // Meta webhook (vi phạm/gỡ bài sau khi đăng): xác thực bằng verify token (GET)
+            // + chữ ký X-Hub-Signature-256 (POST), không có cookie auth.
+            "/webhooks/meta",
+
             "/oauth2/**",
             "/login/oauth2/**",
 

@@ -192,7 +192,10 @@ public enum ErrorCode {
     // ADMIN ERRORS (FR-80..FR-84)
     USER_STATUS_REQUIRED(1970, "Thiếu trạng thái tài khoản (ACTIVE/LOCKED)", HttpStatus.BAD_REQUEST),
     INVALID_USER_STATUS(1971, "Trạng thái không hợp lệ — chỉ đổi được sang ACTIVE hoặc LOCKED", HttpStatus.BAD_REQUEST),
-    ADMIN_PROTECTED(1972, "Không thể khóa/xóa tài khoản quản trị", HttpStatus.BAD_REQUEST),;
+    ADMIN_PROTECTED(1972, "Không thể khóa/xóa tài khoản quản trị", HttpStatus.BAD_REQUEST),
+
+    // WEBHOOK ERRORS
+    WEBHOOK_VERIFY_FAILED(1973, "Xác thực webhook thất bại", HttpStatus.FORBIDDEN),;
 
     private int code;
     private String message;

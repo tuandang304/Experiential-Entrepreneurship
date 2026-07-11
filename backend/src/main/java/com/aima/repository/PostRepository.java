@@ -47,4 +47,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     long countByStatusAndPublishedAtAfterAndDeletedAtIsNull(PostStatus status, LocalDateTime after);
 
     long countByStatusAndUpdatedAtAfterAndDeletedAtIsNull(PostStatus status, LocalDateTime after);
+
+    // Webhook vi phạm sau khi đăng: tra bài theo id trên nền tảng.
+    Optional<Post> findByPlatformPostIdAndDeletedAtIsNull(String platformPostId);
 }

@@ -149,21 +149,36 @@ export function timeAgo(lang: Lang, iso: string | null): string {
 export const daysSinceLogin = (iso: string | null): number =>
   iso ? Math.floor((Date.now() - new Date(iso.replace(' ', 'T')).getTime()) / 86_400_000) : Infinity;
 
-// PATCH /admin/users/{id}/lock | /unlock
-// Guard phía "server" mock: tài khoản ADMIN không thể bị khoá (SEC — bảo vệ quản trị).
+// PATCH /users/{id}/status (ADMIN, FR-80) — BE bảo vệ tài khoản ADMIN (mã 1972 → 'ADMIN_PROTECTED'
+// để giữ nguyên cách các trang admin xử lý lỗi).
 export async function setUserLocked(id: string, locked: boolean): Promise<{ id: string; status: UserStatus }> {
-  const u = users().find((x) => x.id === id);
-  if (u?.role === 'ADMIN') return Promise.reject(new Error('ADMIN_PROTECTED'));
-  if (u) u.status = locked ? 'LOCKED' : 'ACTIVE';
-  return delay({ id, status: locked ? 'LOCKED' : 'ACTIVE' });
+  try {
+    const { data } = await client.patch<ApiResponse<BeUserResponse>>(`/users/${id}/status`, {
+      status: locked ? 'LOCKED' : 'ACTIVE',
+    });
+    const u = users().find((x) => x.id === id);
+    if (u) u.status = data.result.status;
+    return { id, status: data.result.status };
+  } catch (e) {
+    if ((e as ApiError).code === ERR_ADMIN_PROTECTED) throw new Error('ADMIN_PROTECTED');
+    throw e;
+  }
 }
 
-// PATCH /admin/users/lock-bulk { ids, locked } — tự loại trừ ADMIN, trả về số bị bỏ qua.
+// Khóa/mở hàng loạt = lặp PATCH /users/{id}/status; ADMIN bị BE từ chối → đếm vào skippedAdmins.
 export async function setUsersLocked(ids: string[], locked: boolean): Promise<{ updated: string[]; skippedAdmins: number }> {
-  const targets = users().filter((u) => ids.includes(u.id));
-  const eligible = targets.filter((u) => u.role !== 'ADMIN');
-  eligible.forEach((u) => { u.status = locked ? 'LOCKED' : 'ACTIVE'; });
-  return delay({ updated: eligible.map((u) => u.id), skippedAdmins: targets.length - eligible.length });
+  const updated: string[] = [];
+  let skippedAdmins = 0;
+  for (const id of ids) {
+    try {
+      await setUserLocked(id, locked);
+      updated.push(id);
+    } catch (e) {
+      if ((e as Error).message === 'ADMIN_PROTECTED') skippedAdmins += 1;
+      else throw e;
+    }
+  }
+  return { updated, skippedAdmins };
 }
 
 // DELETE /admin/users/{id} — guard: ADMIN không thể bị xoá.
@@ -220,16 +235,41 @@ export interface AdminPostProblem {
   date: string;
 }
 
+// BE thật: shape AdminFailedPostResponse (GET /admin/posts/failed).
+interface BeFailedPost {
+  id: string;
+  platformName: 'FACEBOOK' | 'INSTAGRAM' | 'THREADS';
+  accountName: string | null;
+  ownerEmail: string | null;
+  caption: string | null;
+  errorType: 'TEMPORARY' | 'PERMANENT' | 'POLICY_VIOLATION' | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  failedAt: string | null;
+}
+
+const BE_PLATFORM_TAG: Record<BeFailedPost['platformName'], 'FB' | 'IG' | 'TH'> =
+  { FACEBOOK: 'FB', INSTAGRAM: 'IG', THREADS: 'TH' };
+
+// GET /admin/posts/failed (ADMIN, FR-82/FR-83) — vi phạm chính sách = 'rejected', còn lại 'system'.
 export async function getPostProblems(lang: Lang): Promise<AdminPostProblem[]> {
-  const rows: AdminPostProblem[] = [
-    { id: 'p01', user: 'Lan Phương', platform: 'FB', kind: 'rejected', reason: P(lang, 'Vi phạm chính sách quảng cáo', 'Ad policy violation'), platformError: 'GraphAPI #368: Temporarily blocked for policies violations', content: P(lang, 'Giảm giá 50% toàn bộ khoá học...', '50% off all courses...'), date: '2026-06-22 09:14' },
-    { id: 'p02', user: 'David Chen', platform: 'IG', kind: 'rejected', reason: P(lang, 'Nội dung bị gắn cờ bản quyền', 'Flagged for copyright'), platformError: 'IG Media #2207026: Copyrighted audio detected', content: P(lang, 'Reel nhạc nền trending...', 'Reel with trending audio...'), date: '2026-06-22 08:02' },
-    { id: 'p03', user: 'Mai Chi', platform: 'TH', kind: 'system', reason: P(lang, 'Hết thời gian chờ khi gọi API', 'API call timeout'), platformError: 'ETIMEDOUT: upstream did not respond within 30s', content: P(lang, 'Thread: 5 mẹo marketing...', 'Thread: 5 marketing tips...'), date: '2026-06-21 20:41' },
-    { id: 'p04', user: 'Hoàng Long', platform: 'FB', kind: 'system', reason: P(lang, 'Định dạng media không hợp lệ', 'Invalid media format'), platformError: 'GraphAPI #324: Missing or invalid image file', content: P(lang, 'Bài viết kèm ảnh sản phẩm...', 'Post with product image...'), date: '2026-06-21 16:25' },
-    { id: 'p05', user: 'Quang Huy', platform: 'IG', kind: 'rejected', reason: P(lang, 'Tài khoản bị hạn chế đăng bài', 'Account restricted from posting'), platformError: 'IG #190: This account is restricted', content: P(lang, 'Carousel ra mắt bộ sưu tập...', 'Carousel: new collection launch...'), date: '2026-06-21 11:08' },
-    { id: 'p06', user: 'Diệu Linh', platform: 'TH', kind: 'system', reason: P(lang, 'Lỗi máy chủ nội bộ', 'Internal server error'), platformError: 'HTTP 500: scheduler worker crashed', content: P(lang, 'Thread: hậu trường thương hiệu...', 'Thread: brand behind-the-scenes...'), date: '2026-06-20 22:13' },
-  ];
-  return delay(rows);
+  const { data } = await client.get<ApiResponse<PageResponse<BeFailedPost>>>('/admin/posts/failed', {
+    params: { size: 50 },
+  });
+  return data.result.content.map((p) => ({
+    id: p.id,
+    user: p.ownerEmail ?? '—',
+    platform: BE_PLATFORM_TAG[p.platformName] ?? 'FB',
+    kind: p.errorType === 'POLICY_VIOLATION' ? 'rejected' : 'system',
+    reason: p.errorType === 'POLICY_VIOLATION'
+      ? P(lang, 'Nền tảng từ chối do vi phạm chính sách', 'Rejected by the platform for policy violation')
+      : p.errorType === 'TEMPORARY'
+        ? P(lang, 'Lỗi tạm thời — đã hết lượt thử lại', 'Temporary error — retries exhausted')
+        : P(lang, 'Lỗi đăng bài vĩnh viễn', 'Permanent publishing error'),
+    platformError: `${p.errorCode ?? '—'}: ${p.errorMessage ?? ''}`.trim(),
+    content: p.caption ?? '',
+    date: beDateTime(p.failedAt) ?? '—',
+  }));
 }
 
 // ===== Trạng thái hệ thống (FR-81) — GET /admin/system/status =====
@@ -240,21 +280,46 @@ export interface SystemStatus {
   alerts: { id: string; tone: Tone; level: string; message: string; time: string }[];
 }
 
+// BE thật: shape AdminSystemStatusResponse (GET /admin/system).
+interface BeSystemStatus {
+  services: { name: string; status: 'UP' | 'DOWN'; detail: string | null }[];
+  totalUsers: number;
+  activeConnections: number;
+  postedLast24h: number;
+  failedLast24h: number;
+  pendingSchedules: number;
+  alerts: { id: string; level: LogLevel; module: string; message: string; createdAt: string }[];
+}
+
+const SERVICE_LABEL = (lang: Lang): Record<string, string> => ({
+  database: P(lang, 'Cơ sở dữ liệu (PostgreSQL)', 'Database (PostgreSQL)'),
+  redis: 'Redis',
+  aiService: P(lang, 'Bộ máy AI (AI service)', 'AI engine (AI service)'),
+});
+
+// GET /admin/system (ADMIN, FR-81). BE không đo % tải theo giờ → `load` trả rỗng
+// (trang System ẩn chart khi không có dữ liệu); các counter vận hành đưa vào alerts dạng INFO.
 export async function getSystemStatus(lang: Lang): Promise<SystemStatus> {
-  return delay({
-    services: [
-      { name: P(lang, 'Cơ sở dữ liệu (PostgreSQL)', 'Database (PostgreSQL)'), status: 'operational', uptime: '99.98%' },
-      { name: P(lang, 'API nền tảng (Facebook)', 'Platform API (Facebook)'), status: 'operational', uptime: '99.92%' },
-      { name: P(lang, 'API nền tảng (Instagram)', 'Platform API (Instagram)'), status: 'degraded', uptime: '98.40%' },
-      { name: P(lang, 'API nền tảng (Threads)', 'Platform API (Threads)'), status: 'operational', uptime: '99.81%' },
-      { name: P(lang, 'Hàng đợi tác vụ', 'Job queue'), status: 'operational', uptime: '99.95%' },
-      { name: P(lang, 'Bộ máy AI', 'AI engine'), status: 'operational', uptime: '99.70%' },
-    ],
-    load: [32, 28, 24, 22, 26, 30, 44, 58, 67, 72, 70, 64, 60, 66, 74, 82, 88, 79, 71, 63, 55, 48, 40, 35],
+  const { data } = await client.get<ApiResponse<BeSystemStatus>>('/admin/system');
+  const s = data.result;
+  const counters = P(lang,
+    `${s.totalUsers} người dùng · ${s.activeConnections} kết nối ACTIVE · 24h qua: ${s.postedLast24h} bài đăng thành công, ${s.failedLast24h} thất bại · ${s.pendingSchedules} lịch đang chờ`,
+    `${s.totalUsers} users · ${s.activeConnections} ACTIVE connections · last 24h: ${s.postedLast24h} posts published, ${s.failedLast24h} failed · ${s.pendingSchedules} schedules pending`);
+  return {
+    services: s.services.map((sv) => ({
+      name: SERVICE_LABEL(lang)[sv.name] ?? sv.name,
+      status: sv.status === 'UP' ? 'operational' : 'down',
+      uptime: sv.status === 'UP' ? P(lang, 'Hoạt động', 'Operational') : (sv.detail ?? 'DOWN'),
+    })),
+    load: [],
     alerts: [
-      { id: 'a1', tone: 'warning', level: 'WARN', message: P(lang, 'Instagram API phản hồi chậm (>2s) trong 15 phút qua', 'Instagram API latency high (>2s) for the last 15 min'), time: '2026-06-23 10:12' },
+      { id: 'counters', tone: 'info', level: 'INFO', message: counters, time: '' },
+      ...s.alerts.map((a) => ({
+        id: a.id, tone: logLevelTone(a.level), level: a.level,
+        message: `[${a.module}] ${a.message}`, time: beDateTime(a.createdAt) ?? '',
+      })),
     ],
-  });
+  };
 }
 
 // ===== Log hệ thống (FR-84) — GET /admin/logs =====
@@ -270,22 +335,19 @@ export interface SystemLog {
 export const logLevelTone = (level: LogLevel): Tone =>
   level === 'ERROR' ? 'danger' : level === 'WARN' ? 'warning' : level === 'INFO' ? 'info' : 'neutral';
 
+// GET /admin/logs (ADMIN, FR-84) — nguồn: bảng system_logs (FR-74); trang Logs lọc
+// level/ngày client-side trên trang mới nhất.
 export async function getSystemLogs(): Promise<SystemLog[]> {
-  const rows: SystemLog[] = [
-    { id: 'l01', time: '2026-06-23 10:12:04', level: 'WARN', module: 'platform.instagram', message: 'Rate limit approaching: 480/500 calls in current window' },
-    { id: 'l02', time: '2026-06-23 09:48:31', level: 'ERROR', module: 'scheduler.worker', message: 'Job #88213 failed: ETIMEDOUT calling Threads publish endpoint' },
-    { id: 'l03', time: '2026-06-23 09:05:17', level: 'INFO', module: 'auth.session', message: 'User u09 signed in from 113.161.* (Chrome/Win)' },
-    { id: 'l04', time: '2026-06-23 08:22:50', level: 'ERROR', module: 'platform.facebook', message: 'GraphAPI #324 invalid media for post #44021' },
-    { id: 'l05', time: '2026-06-22 23:41:09', level: 'DEBUG', module: 'ai.generate', message: 'Prompt tokens=1820 completion=642 latency=3.1s' },
-    { id: 'l06', time: '2026-06-22 20:41:33', level: 'WARN', module: 'queue.retry', message: 'Post #43980 scheduled retry 2/3 in 15m (temporary error)' },
-    { id: 'l07', time: '2026-06-22 18:30:02', level: 'INFO', module: 'billing.invoice', message: 'Invoice INV-2026-0612 paid by customer u04' },
-    { id: 'l08', time: '2026-06-22 14:10:55', level: 'ERROR', module: 'db.pool', message: 'Connection pool exhausted (20/20), 3 queries queued' },
-    { id: 'l09', time: '2026-06-21 11:08:12', level: 'WARN', module: 'platform.instagram', message: 'Account u10 restricted — posting blocked by platform' },
-    { id: 'l10', time: '2026-06-21 07:55:44', level: 'INFO', module: 'analytics.collector', message: 'Collected 7d metrics for 142 posts' },
-    { id: 'l11', time: '2026-06-20 22:13:20', level: 'ERROR', module: 'scheduler.worker', message: 'HTTP 500 worker crashed, auto-restarted in 4s' },
-    { id: 'l12', time: '2026-06-20 16:02:38', level: 'DEBUG', module: 'cache.redis', message: 'Cache miss ratio 12.4% over last hour' },
-  ];
-  return delay(rows);
+  const { data } = await client.get<ApiResponse<PageResponse<{
+    id: string; level: LogLevel; module: string; message: string; detail: string | null; createdAt: string;
+  }>>>('/admin/logs', { params: { size: 100 } });
+  return data.result.content.map((l) => ({
+    id: l.id,
+    time: (l.createdAt ?? '').slice(0, 19).replace('T', ' '),
+    level: l.level,
+    module: l.module,
+    message: l.message,
+  }));
 }
 
 // ===== Version API nền tảng — GET /admin/platform-versions =====

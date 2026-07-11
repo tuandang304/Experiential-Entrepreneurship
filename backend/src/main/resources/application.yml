@@ -113,6 +113,9 @@ meta:
   threads-base-url: ${META_THREADS_BASE_URL:https://graph.threads.net}
   # Bật appsecret_proof cho mọi request Meta (bắt buộc ở production).
   app-secret-proof-enabled: ${META_APP_SECRET_PROOF_ENABLED:false}
+  # Webhook nhận thông báo vi phạm/gỡ bài sau khi đăng (đăng ký URL /webhooks/meta trên Meta App).
+  webhook:
+    verify-token: ${META_WEBHOOK_VERIFY_TOKEN:}
 
 # Cấu hình gọi AI service (Python/FastAPI) để tạo nội dung (FR-24..FR-30).
 ai-service:

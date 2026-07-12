@@ -33,7 +33,7 @@ class MetaApiClientImplTest {
         MetaProperties props = new MetaProperties(
                 new MetaProperties.App("fbid", "fbsecret", "http://localhost/cb", "scope"),
                 new MetaProperties.App("thid", "thsecret", "http://localhost/thcb", "thscope"),
-                base, base, false);
+                base, base, false, new MetaProperties.Webhook("verify-token"));
 
         PlatformVersionService versionService = mock(PlatformVersionService.class);
         lenient().when(versionService.getCurrentVersion(Platform.FACEBOOK)).thenReturn("v25.0");

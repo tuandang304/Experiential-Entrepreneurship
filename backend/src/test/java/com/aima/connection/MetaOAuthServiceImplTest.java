@@ -50,7 +50,8 @@ class MetaOAuthServiceImplTest {
         MetaProperties props = new MetaProperties(
                 new MetaProperties.App("fbid", "fbsecret", "http://localhost/cb", "pages_show_list,instagram_basic"),
                 new MetaProperties.App("thid", "thsecret", "http://localhost/thcb", "threads_basic"),
-                "https://graph.facebook.com", "https://graph.threads.net", false);
+                "https://graph.facebook.com", "https://graph.threads.net", false,
+                new MetaProperties.Webhook("verify-token"));
         AimaProperties aima = new AimaProperties(
                 new AimaProperties.Encryption("key"),
                 new AimaProperties.OAuth(10, "http://fe/success", "http://fe/error"));

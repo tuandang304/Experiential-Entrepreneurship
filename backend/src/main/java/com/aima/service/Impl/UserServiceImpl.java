@@ -221,6 +221,25 @@ public class UserServiceImpl implements UserService {
         return ApiResponse.success("Đã gửi email đặt lại mật khẩu");
     }
 
+    // FR-80: admin xóa CỨNG tài khoản (khác xóa mềm). Cascade toàn bộ dữ liệu liên quan qua JPA
+    // (User → brandProfiles/platformAccounts/notifications → content/version/schedule/post/analytics/job…).
+    // Áp dụng được cho cả tài khoản đang PENDING_DELETE (admin xóa luôn không cần đợi hết 30 ngày).
+    @Override
+    public ApiResponse<String> deleteUser(String adminEmail, UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        // Tài khoản ADMIN được bảo vệ (cũng chặn admin tự xóa chính mình vì self luôn là ADMIN).
+        if (user.getRole() != null && "ADMIN".equals(user.getRole().getRoleName())) {
+            throw new AppException(ErrorCode.ADMIN_PROTECTED);
+        }
+
+        String email = user.getEmail();
+        userRepository.delete(user);
+        log.info("[Admin] {} XÓA CỨNG tài khoản {} ({}) + toàn bộ dữ liệu liên quan", adminEmail, userId, email);
+        return ApiResponse.success("Đã xóa tài khoản và toàn bộ dữ liệu liên quan");
+    }
+
     // Ghi audit: liệt kê các trường được admin thay đổi (giá trị nhạy cảm không log).
     private String describeChanges(AdminUpdateUserRequest r) {
         List<String> f = new ArrayList<>();
@@ -502,6 +521,7 @@ public class UserServiceImpl implements UserService {
         LocalDateTime deletionDate = now.plusDays(ACCOUNT_DELETION_GRACE_DAYS);
         user.setStatus(UserStatus.PENDING_DELETE);
         user.setDeletionDate(deletionDate);
+        user.setDeletionWarningSentAt(null); // yêu cầu mới → reset cờ cảnh báo 7 ngày
         userRepository.save(user);
 
         DeleteAccountResponse deleteAccountResponse = userMapper.toDeleteAccountResponse(user,
@@ -521,6 +541,7 @@ public class UserServiceImpl implements UserService {
 
         user.setStatus(UserStatus.ACTIVE);
         user.setDeletionDate(null);
+        user.setDeletionWarningSentAt(null); // khôi phục → xoá cờ cảnh báo để lần xóa sau lại cảnh báo
         userRepository.save(user);
 
         DeleteAccountResponse deleteAccountResponse = userMapper.toDeleteAccountResponse(user, null,

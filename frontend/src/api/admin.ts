@@ -37,6 +37,8 @@ export interface AdminUserRow {
   lastLoginAt: string | null;
   /** Số kênh MXH đã kết nối — chỉ có khi lấy chi tiết (GET /users/{id}). */
   connectedChannels?: number;
+  /** Hạn xóa vĩnh viễn (ISO) — chỉ có khi status = PENDING_DELETE. */
+  deletionDate?: string;
 }
 
 // Mã lỗi guard phía BE (đồng bộ ErrorCode) — UI xử lý theo code.
@@ -62,6 +64,7 @@ interface BeUser {
   avatarUrl: string | null;
   createdAt: string | null;
   lastActiveAt: string | null;
+  deletionDate: string | null;
   connectedChannels: number | null;
   role: { roleName: UserRole } | null;
 }
@@ -82,6 +85,7 @@ const toRow = (u: BeUser): AdminUserRow => ({
   createdAt: (u.createdAt ?? '').slice(0, 10),
   lastLoginAt: beDateTime(u.lastActiveAt),
   connectedChannels: u.connectedChannels ?? undefined,
+  deletionDate: u.deletionDate ?? undefined,
 });
 
 export interface UserQuery {
@@ -190,6 +194,16 @@ export async function setUserLocked(id: string, locked: boolean): Promise<{ id: 
 // POST /users/{id}/reset-password — BE gửi OTP đặt lại mật khẩu tới email user (admin không thấy mật khẩu).
 export async function adminResetPassword(id: string): Promise<void> {
   await client.post<ApiResponse<string>>(`/users/${id}/reset-password`);
+}
+
+// DELETE /users/{id} — xóa CỨNG tài khoản + cascade toàn bộ dữ liệu liên quan (ADMIN được BE bảo vệ → 1972).
+export async function deleteAdminUser(id: string): Promise<void> {
+  try {
+    await client.delete<ApiResponse<string>>(`/users/${id}`);
+  } catch (e) {
+    if ((e as ApiError).code === ADMIN_ERR.ADMIN_PROTECTED) throw new Error('ADMIN_PROTECTED');
+    throw e;
+  }
 }
 
 export const userStatusMeta = (lang: Lang, s: UserStatus): { tone: Tone; label: string } =>

@@ -121,6 +121,20 @@ public class AccountController {
         return userService.resetUserPassword(principal.getUsername(), userId);
     }
 
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Admin hard-deletes a user (FR-80)",
+            description = "Permanently deletes the account and cascades all related data (brand profiles, content, " +
+                    "schedules, posts, connections, notifications, async jobs). Works even for PENDING_DELETE accounts. " +
+                    "ADMIN accounts are protected. Restricted to ADMIN."
+    )
+    public ApiResponse<String> deleteUser(
+            @AuthenticationPrincipal UserDetails principal,
+            @PathVariable UUID userId) {
+        return userService.deleteUser(principal.getUsername(), userId);
+    }
+
     @PatchMapping("/{userId}/status")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(

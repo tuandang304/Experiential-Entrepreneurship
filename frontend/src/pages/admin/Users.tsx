@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Users as UsersIcon, UserCheck, Lock, Unlock, Eye, UserPlus,
+  Users as UsersIcon, UserCheck, Lock, Unlock, Eye, UserPlus, Trash2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../auth/AuthContext';
@@ -18,13 +18,13 @@ import { validEmail } from '../../validations/authValidation';
 import { phoneOk } from '../../validations/profileValidation';
 import EditUserModal from './EditUserModal';
 import {
-  getAdminUsers, getUserStats, createAdminUser, setUserLocked, userStatusMeta, userPlanMeta, timeAgo,
+  getAdminUsers, getUserStats, createAdminUser, setUserLocked, deleteAdminUser, userStatusMeta, userPlanMeta, timeAgo,
   type AdminUserRow, type UserRole, type UserPlan, type UserStatus, type UserStats,
 } from '../../api/admin';
 
 const PAGE_SIZE = 8;
 
-type ConfirmState = { kind: 'lock' | 'unlock'; user: AdminUserRow };
+type ConfirmState = { kind: 'lock' | 'unlock' | 'delete'; user: AdminUserRow };
 
 export default function Users() {
   const { t, lang, brandGradient } = useApp();
@@ -103,7 +103,7 @@ export default function Users() {
     const acts: RowAction[] = [
       { key: 'detail', label: t.detail, icon: <Eye size={16} strokeWidth={1.8} />, onClick: () => setSelected(u) },
     ];
-    if (u.role === 'ADMIN') return acts;
+    if (u.role === 'ADMIN') return acts; // ADMIN được bảo vệ: không khoá/xoá
     if (u.status === 'ACTIVE' || u.status === 'LOCKED') {
       const locked = u.status === 'LOCKED';
       acts.push({
@@ -114,6 +114,14 @@ export default function Users() {
         danger: !locked,
       });
     }
+    // Xóa cứng — cho mọi USER (kể cả đang chờ xóa: admin xóa luôn không cần đợi hết hạn).
+    acts.push({
+      key: 'delete',
+      label: t.usrHardDelete,
+      icon: <Trash2 size={16} strokeWidth={1.8} />,
+      onClick: () => setConfirm({ kind: 'delete', user: u }),
+      danger: true,
+    });
     return acts;
   };
 
@@ -121,6 +129,21 @@ export default function Users() {
     if (!confirm) return;
     setBusy(true);
     const u = confirm.user;
+    const done = () => { setBusy(false); setConfirm(null); };
+
+    if (confirm.kind === 'delete') {
+      deleteAdminUser(u.id)
+        .then(() => {
+          setSelected((s) => (s && s.id === u.id ? null : s));
+          showToast('success', `${t.usrHardDeleted}: ${u.name}`);
+          fetchUsers();
+          fetchStats();
+        })
+        .catch(() => showToast('error', t.usrHardDeleteFail))
+        .finally(done);
+      return;
+    }
+
     setUserLocked(u.id, confirm.kind === 'lock')
       .then((res) => {
         setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, status: res.status } : x)));
@@ -128,7 +151,7 @@ export default function Users() {
         fetchStats();
       })
       .catch(() => showToast('error', t.usrNoLockAdmin))
-      .finally(() => { setBusy(false); setConfirm(null); });
+      .finally(done);
   };
 
   const toolbar = (
@@ -245,10 +268,10 @@ export default function Users() {
       {/* Khoá / mở khoá */}
       {confirm && (
         <ConfirmDialog
-          title={confirm.kind === 'lock' ? t.usrLockTitle : t.usrUnlockTitle}
-          message={confirm.kind === 'lock' ? t.usrLockMsg : t.usrUnlockMsg}
-          confirmLabel={confirm.kind === 'lock' ? t.usrLock : t.usrUnlock}
-          variant={confirm.kind === 'lock' ? 'danger' : 'warning'}
+          title={confirm.kind === 'delete' ? t.usrHardDeleteTitle : confirm.kind === 'lock' ? t.usrLockTitle : t.usrUnlockTitle}
+          message={confirm.kind === 'delete' ? t.usrHardDeleteMsg : confirm.kind === 'lock' ? t.usrLockMsg : t.usrUnlockMsg}
+          confirmLabel={confirm.kind === 'delete' ? t.usrHardDelete : confirm.kind === 'lock' ? t.usrLock : t.usrUnlock}
+          variant={confirm.kind === 'unlock' ? 'warning' : 'danger'}
           busy={busy}
           onConfirm={runConfirm}
           onClose={() => setConfirm(null)}

@@ -39,6 +39,9 @@ public class UserResponse {
     @Schema(description = "Account status.", example = "ACTIVE", allowableValues = {"ACTIVE", "LOCKED", "PENDING_DELETE"})
     String status;
 
+    @Schema(description = "Hạn xóa vĩnh viễn (chỉ có khi status = PENDING_DELETE).", example = "2026-08-11T00:00:00")
+    LocalDateTime deletionDate;
+
     @Schema(description = "Gói dịch vụ.", example = "FREE", allowableValues = {"FREE", "PLUS", "PRO"})
     String plan;
 

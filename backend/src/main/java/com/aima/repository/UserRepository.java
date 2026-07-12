@@ -43,4 +43,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long countByDeletedAtIsNull();
     long countByStatusAndDeletedAtIsNull(UserStatus status);
     long countByCreatedAtGreaterThanEqualAndDeletedAtIsNull(LocalDateTime from);
+
+    // Cảnh báo "còn ≤ 7 ngày trước khi xóa": PENDING_DELETE, chưa gửi cảnh báo, hạn xóa trong (now, threshold].
+    @Query("""
+            select u from User u
+            where u.status = :status
+              and u.deletionWarningSentAt is null
+              and u.deletionDate is not null
+              and u.deletionDate > :now
+              and u.deletionDate <= :threshold
+            """)
+    List<User> findUsersToWarnOfDeletion(@Param("status") UserStatus status,
+                                         @Param("now") LocalDateTime now,
+                                         @Param("threshold") LocalDateTime threshold);
 }

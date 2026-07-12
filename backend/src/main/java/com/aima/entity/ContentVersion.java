@@ -6,6 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Platform-specific version of a {@link ContentItem} (BR-04: content is tailored
  * per platform). Bản GIÀU (B2): mỗi nền tảng mang trọn script/caption/hashtag/CTA/
@@ -73,4 +76,10 @@ public class ContentVersion extends BaseEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     PostSchedule postSchedule;
+
+    // Purge: job tạo-lại tham chiếu version — cascade để xóa cứng không vi phạm khóa ngoại.
+    @OneToMany(mappedBy = "contentVersion", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    List<ContentRegenerationJob> regenerationJobs = new ArrayList<>();
 }

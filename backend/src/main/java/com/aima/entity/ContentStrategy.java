@@ -87,4 +87,15 @@ public class ContentStrategy extends BaseEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     List<StrategyAdjustment> strategyAdjustments = new ArrayList<>();
+
+    // Purge: job async tham chiếu strategy — cascade để xóa cứng không vi phạm khóa ngoại.
+    @OneToMany(mappedBy = "contentStrategy", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    List<ContentGenerationJob> generationJobs = new ArrayList<>();
+
+    @OneToMany(mappedBy = "contentStrategy", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    List<StrategyOptimizationJob> optimizationJobs = new ArrayList<>();
 }

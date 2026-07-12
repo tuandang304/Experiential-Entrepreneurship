@@ -64,6 +64,10 @@ public class User extends BaseEntity {
     @Column(name = "deletion_date")
     LocalDateTime deletionDate;
 
+    // Đã gửi email cảnh báo "còn 7 ngày trước khi xóa" chưa (tránh gửi lặp mỗi ngày).
+    @Column(name = "deletion_warning_sent_at")
+    LocalDateTime deletionWarningSentAt;
+
     @Column(name = "avatar_url", length = 500)
     String avatarUrl;
 
@@ -88,4 +92,12 @@ public class User extends BaseEntity {
     @EqualsAndHashCode.Exclude
     @Builder.Default
     List<PlatformAccount> platformAccounts = new ArrayList<>();
+
+    // Thông báo in-app tham chiếu user trực tiếp (không đi qua brand) — phải cascade để
+    // xóa cứng tài khoản không vi phạm khóa ngoại.
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    List<Notification> notifications = new ArrayList<>();
 }

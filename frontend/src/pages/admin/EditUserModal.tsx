@@ -115,6 +115,11 @@ export default function EditUserModal({ user, currentAdminId, onClose, onSaved, 
     ? { tone: 'info', label: 'Google' }
     : { tone: 'neutral', label: 'Email' };
 
+  // Trạng thái chờ xóa: hiển thị cho admin biết + còn bao nhiêu ngày trước khi xóa vĩnh viễn.
+  const pendingDays = user.status === 'PENDING_DELETE' && user.deletionDate
+    ? Math.max(0, Math.ceil((new Date(user.deletionDate).getTime() - Date.now()) / 86400000))
+    : null;
+
   return (
     <Modal title={t.usrDetailTitle} onClose={onClose} maxWidth={560}>
       {/* Header */}
@@ -125,6 +130,20 @@ export default function EditUserModal({ user, currentAdminId, onClose, onSaved, 
           <div style={{ fontSize: 13, color: '#8a85a0' }}>{user.email}</div>
         </div>
       </div>
+
+      {/* Banner tài khoản đang chờ xóa */}
+      {user.status === 'PENDING_DELETE' && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#fdf0dc', border: '1px solid #f7dca6', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
+          <span style={{ fontSize: 16, lineHeight: 1.3 }}>⚠</span>
+          <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+            <b>{t.usrPendingTitle}</b>
+            {pendingDays !== null && <> · {t.usrPendingLeft} <b>{pendingDays}</b> {t.usrPendingDaysUnit}</>}
+            {user.deletionDate && (
+              <div style={{ marginTop: 2 }}>{t.usrPendingOn}: {user.deletionDate.slice(0, 16).replace('T', ' ')}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid #efeaf8', marginBottom: 16 }}>

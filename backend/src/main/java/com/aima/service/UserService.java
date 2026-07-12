@@ -24,6 +24,8 @@ public interface UserService {
     ApiResponse<UserResponse> updateUser(String adminEmail, UUID userId, AdminUpdateUserRequest request);
     /** FR-80: admin kích hoạt gửi email đặt lại mật khẩu (OTP) cho người dùng. */
     ApiResponse<String> resetUserPassword(String adminEmail, UUID userId);
+    /** FR-80: admin xóa CỨNG tài khoản + toàn bộ dữ liệu liên quan (cascade). Không áp dụng cho ADMIN. */
+    ApiResponse<String> deleteUser(String adminEmail, UUID userId);
     /** FR-80: admin khóa/mở khóa tài khoản; không áp dụng lên tài khoản ADMIN. */
     ApiResponse<UserResponse> updateUserStatus(String adminEmail, UUID userId, UserStatusUpdateRequest request);
     ApiResponse<MeResponse> getCurrentUser(String email);

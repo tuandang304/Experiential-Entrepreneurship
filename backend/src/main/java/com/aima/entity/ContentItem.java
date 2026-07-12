@@ -81,4 +81,10 @@ public class ContentItem extends BaseEntity {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     List<MediaAsset> mediaAssets = new ArrayList<>();
+
+    // Purge: job định dạng tham chiếu item — cascade để xóa cứng không vi phạm khóa ngoại.
+    @OneToMany(mappedBy = "contentItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    List<ContentFormattingJob> formattingJobs = new ArrayList<>();
 }

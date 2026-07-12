@@ -43,12 +43,53 @@ function PageLoader() {
   );
 }
 
+// Tải trước chunk các trang cùng khu vực khi trình duyệt rảnh — click sidebar
+// không phải chờ tải chunk (đường dẫn lặp lại với lazy() ở trên; lệch nhau chỉ
+// làm mất prefetch của trang đó, trang vẫn lazy-load bình thường).
+function usePrefetchOnIdle(imports: ReadonlyArray<() => Promise<unknown>>) {
+  useEffect(() => {
+    const idle: (cb: () => void) => void =
+      "requestIdleCallback" in window
+        ? (cb) => window.requestIdleCallback(cb)
+        : (cb) => window.setTimeout(cb, 1500);
+    idle(() => imports.forEach((f) => f().catch(() => undefined)));
+  }, [imports]);
+}
+
+const APP_PAGE_IMPORTS = [
+  () => import("./pages/app/Dashboard.tsx"),
+  () => import("./pages/app/Create.tsx"),
+  () => import("./pages/app/CreateWizard.tsx"),
+  () => import("./pages/app/Calendar.tsx"),
+  () => import("./pages/app/Analytics.tsx"),
+  () => import("./pages/app/Trends.tsx"),
+  () => import("./pages/app/Brand.tsx"),
+  () => import("./pages/Profile"),
+  () => import("./pages/Settings"),
+] as const;
+
+const ADMIN_PAGE_IMPORTS = [
+  () => import("./pages/admin/Overview"),
+  () => import("./pages/admin/Users"),
+  () => import("./pages/admin/Posts"),
+  () => import("./pages/admin/SystemStatus"),
+  () => import("./pages/admin/Logs"),
+  () => import("./pages/admin/ApiVersions"),
+  () => import("./pages/admin/Revenue"),
+] as const;
+
 // Authenticated app shell — sidebar + topbar wrap every signed-in page.
+// Suspense nằm TRONG shell: khi chunk trang đang tải, chỉ vùng nội dung hiện
+// loader; sidebar/topbar giữ nguyên (không unmount rồi remount cả khung —
+// nguyên nhân logo/avatar nháy lại và cảm giác giật khi bấm sidebar).
 function AppLayout() {
+  usePrefetchOnIdle(APP_PAGE_IMPORTS);
   return (
     <ProtectedRoute>
       <AppShell>
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </AppShell>
     </ProtectedRoute>
   );
@@ -56,11 +97,14 @@ function AppLayout() {
 
 // Khu vực Quản trị hệ thống — giao diện riêng (sidebar admin), chỉ ADMIN.
 function AdminLayout() {
+  usePrefetchOnIdle(ADMIN_PAGE_IMPORTS);
   return (
     <ProtectedRoute>
       <AdminRoute>
         <AppShell variant="admin">
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </AppShell>
       </AdminRoute>
     </ProtectedRoute>

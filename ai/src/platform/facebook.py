@@ -100,6 +100,10 @@ class FacebookTrendAnalyzer:
             "nên", "thì", "mà", "như", "cũng", "chỉ", "còn", "hơn", "sau", "trước", "khi", "lúc", "nơi", "này",
             "nào", "ai", "gì", "sao", "quá", "rất", "nhiều", "ít", "đại", "tiểu", "tự", "bị", "được", "bởi",
             "cả", "chưa", "hết", "chứ", "rồi", "nữa", "nhé", "nha", "ạ", "ơi", "đây", "đấy", "thôi", "vẫn",
+            # Vietnamese pronouns / fillers common in social posts & comments
+            "em", "anh", "chị", "mình", "bạn", "mọi", "người", "không", "luôn", "lắm", "vậy", "ngay",
+            "cùng", "về", "theo", "từ", "tới", "vừa", "mới", "đừng", "hãy", "nếu", "xin", "á",
+            "mua", "dùng", "cách", "nhất", "nay", "hôm", "nàng", "ấy", "gọi", "hỏi", "biết",
         }
 
     def _make_request(
@@ -451,16 +455,35 @@ class FacebookTrendAnalyzer:
                 {"hashtag": tag, "count": count}
                 for tag, count in hashtag_counts.most_common(top_n)
             ],
-            "top_keywords": [
-                {"keyword": word, "count": count}
-                for word, count in keyword_counts.most_common(top_n)
-            ],
+            "top_keywords": self._select_top_keywords(keyword_counts, top_n),
             "most_engaging_content": post_performance[:top_n]
         }
 
+    def _select_top_keywords(self, keyword_counts: Counter, top_n: int) -> List[Dict[str, Any]]:
+        """
+        Pick the top keyword terms, preferring compound bigrams over the lone
+        syllables they contain ("dưỡng da" beats listing "dưỡng" and "da" separately),
+        so Vietnamese keyword lists read as real phrases instead of fragments.
+        """
+        # Bigrams need at least 2 occurrences to count as a recurring phrase
+        bigrams = [
+            (term, count) for term, count in keyword_counts.most_common()
+            if " " in term and count >= 2
+        ][:top_n]
+        covered = {word for term, _ in bigrams for word in term.split()}
+        unigrams = [
+            (term, count) for term, count in keyword_counts.most_common()
+            if " " not in term and term not in covered
+        ]
+        merged = sorted(bigrams + unigrams, key=lambda item: -item[1])[:top_n]
+        return [{"keyword": term, "count": count} for term, count in merged]
+
     def _tokenize_and_clean(self, text: str) -> List[str]:
         """
-        Helper to tokenize text, remove special characters, hashtags, and filter out stop words.
+        Helper to tokenize text into countable keyword terms: unigrams plus adjacent
+        bigrams. Vietnamese words are mostly two-syllable compounds ("dưỡng da",
+        "chống nắng"), so lone syllables make poor keywords — bigrams carry the
+        actual trending phrases while unigrams still cover single-word terms.
         """
         # Remove URLs
         text = re.sub(r"https?://\S+|www\.\S+", "", text)
@@ -470,14 +493,22 @@ class FacebookTrendAnalyzer:
         text = text.lower()
         # Keep letters, numbers, and space (supports Vietnamese characters)
         text = re.sub(r"[^\w\s\dàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]", " ", text)
-        
+
         words = text.split()
-        # Filter stop words and short/number-only words
-        cleaned_words = [
-            word for word in words
-            if word not in self.stop_words and len(word) > 2 and not word.isdigit()
-        ]
-        return cleaned_words
+
+        def usable(word: str) -> bool:
+            return word not in self.stop_words and len(word) >= 2 and not word.isdigit()
+
+        # Unigrams: filter stop words and short/number-only words
+        terms = [word for word in words if usable(word) and len(word) > 2]
+        # Bigrams: adjacent non-stop-word pairs; 2-char syllables ("da", "áo") are
+        # allowed here since they only matter as part of a compound
+        terms.extend(
+            f"{first} {second}"
+            for first, second in zip(words, words[1:])
+            if usable(first) and usable(second)
+        )
+        return terms
 
     # ==========================================
     # MOCK DATA GENERATORS (Development support)

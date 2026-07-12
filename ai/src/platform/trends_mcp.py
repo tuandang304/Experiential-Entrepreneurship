@@ -19,9 +19,11 @@ Data sources & credentials:
   RAPIDAPI_KEY; fallback yt-dlp (đường cũ — YouTube đã gỡ /feed/trending giữa 2025
   nên gần như luôn fail) rồi mock. Comment vẫn qua youtube-comment-downloader (free).
 - TikTok: RapidAPI "tiktok-best-experience" — trending toàn cầu hoặc theo region.
-- Instagram: (a) bài theo HASHTAG thương hiệu qua RapidAPI "instagram-scraper-api2"
-  (hashtag tiếng Việt → nội dung VN tự nhiên); (b) Reels trends tuần parsed from
-  Later.com's public weekly roundup.
+- Instagram: (a) bài theo HASHTAG thương hiệu qua RapidAPI — host CHỌN ĐƯỢC bằng
+  INSTAGRAM_RAPIDAPI_HOST (các API scraper IG trên RapidAPI chết/đổi chủ thường
+  xuyên; xem INSTAGRAM_HASHTAG_API_PRESETS để biết các host hỗ trợ sẵn). Hashtag
+  tiếng Việt → nội dung VN tự nhiên. (b) Reels trends tuần parsed from Later.com's
+  public weekly roundup.
 - Threads: keyword search qua API CHÍNH THỨC của Meta (graph.threads.net
   /keyword_search) — cần THREADS_ACCESS_TOKEN (long-lived user token, quyền
   threads_keyword_search). Miễn phí, không cần scraper.
@@ -46,6 +48,19 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+# Các API hashtag-search Instagram trên RapidAPI đã hỗ trợ sẵn, key theo host.
+# Value = (path, tên query param). Đổi nguồn = subscribe API đó trên RapidAPI rồi đặt
+# INSTAGRAM_RAPIDAPI_HOST; host ngoài danh sách thì khai báo thêm
+# INSTAGRAM_RAPIDAPI_PATH / INSTAGRAM_RAPIDAPI_PARAM. Response được parse đệ quy
+# (_extract_instagram_medias) nên khác cấu trúc bọc ngoài vẫn chạy.
+INSTAGRAM_HASHTAG_API_PRESETS: Dict[str, tuple] = {
+    "instagram-social-api.p.rapidapi.com": ("/v1/hashtag", "hashtag"),
+    "real-time-instagram-scraper-api1.p.rapidapi.com": ("/v2/hashtag_media", "hashtag"),
+    "instagram-scraper-stable-api.p.rapidapi.com": ("/search_hashtag.php", "hashtag"),
+    "instagram-looter2.p.rapidapi.com": ("/hashtag", "tag"),
+    "instagram-scraper-api2.p.rapidapi.com": ("/v1/hashtag", "hashtag"),  # nguồn cũ
+}
 
 
 class TrendsMCPConnector:
@@ -80,8 +95,13 @@ class TrendsMCPConnector:
         # Host yt-api có thể thay bằng API YouTube khác trên RapidAPI mà không sửa code.
         self.youtube_api_host = os.getenv("YOUTUBE_RAPIDAPI_HOST", "yt-api.p.rapidapi.com")
         self.instagram_api_host = os.getenv(
-            "INSTAGRAM_RAPIDAPI_HOST", "instagram-scraper-api2.p.rapidapi.com"
+            "INSTAGRAM_RAPIDAPI_HOST", "instagram-social-api.p.rapidapi.com"
         )
+        ig_preset = INSTAGRAM_HASHTAG_API_PRESETS.get(
+            self.instagram_api_host, ("/v1/hashtag", "hashtag")
+        )
+        self.instagram_api_path = os.getenv("INSTAGRAM_RAPIDAPI_PATH") or ig_preset[0]
+        self.instagram_api_param = os.getenv("INSTAGRAM_RAPIDAPI_PARAM") or ig_preset[1]
         # Threads dùng API chính thức của Meta — token long-lived của một tài khoản đã kết nối.
         threads_token = (os.getenv("THREADS_ACCESS_TOKEN") or "").strip()
         if threads_token.startswith("your_"):
@@ -388,9 +408,10 @@ class TrendsMCPConnector:
 
     def fetch_instagram_hashtag(self, keyword: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
-        Lấy bài Instagram theo HASHTAG (RapidAPI "instagram-scraper-api2":
-        GET /v1/hashtag?hashtag=...). Hashtag lấy từ từ khóa thương hiệu — tiếng Việt
-        thì nội dung trả về tự nhiên là thị trường VN (FR-20).
+        Lấy bài Instagram theo HASHTAG qua RapidAPI — host/endpoint cấu hình được
+        (INSTAGRAM_RAPIDAPI_HOST + INSTAGRAM_HASHTAG_API_PRESETS). Hashtag lấy từ
+        từ khóa thương hiệu — tiếng Việt thì nội dung trả về tự nhiên là thị trường
+        VN (FR-20).
 
         Nguồn phụ như fetch_youtube_search: thiếu key / lỗi / chưa subscribe → trả []
         (không mock), research vẫn chạy với các nguồn khác.
@@ -402,17 +423,23 @@ class TrendsMCPConnector:
         if not tag:
             return []
         try:
-            data = self._rapidapi_get(self.instagram_api_host, "/v1/hashtag", {"hashtag": tag})
-            payload = data.get("data") if isinstance(data.get("data"), dict) else data
-            items = payload.get("items") or payload.get("medias") or []
-
+            data = self._rapidapi_get(
+                self.instagram_api_host,
+                self.instagram_api_path,
+                {self.instagram_api_param: tag},
+            )
             normalized: List[Dict[str, Any]] = []
-            for m in items:
+            seen_ids: set = set()
+            for m in self._extract_instagram_medias(data):
                 caption = m.get("caption")
                 text = caption.get("text", "") if isinstance(caption, dict) else str(caption or "")
                 code = m.get("code") or m.get("shortcode") or ""
+                media_id = str(m.get("id") or m.get("pk") or code)
+                if not media_id or media_id in seen_ids or not text:
+                    continue
+                seen_ids.add(media_id)
                 normalized.append({
-                    "id": f"ig_{m.get('id') or code}",
+                    "id": f"ig_{media_id}",
                     "text": text,
                     "url": f"https://www.instagram.com/p/{code}/" if code else "",
                     "likes_count": self._to_int(m.get("like_count")),
@@ -429,6 +456,31 @@ class TrendsMCPConnector:
         except Exception as e:
             logger.error(f"RapidAPI Instagram hashtag failed for '{keyword}': {e}")
             return []
+
+    @classmethod
+    def _extract_instagram_medias(cls, node: Any, out: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+        """
+        Gom đệ quy các media object Instagram trong một response RapidAPI bất kỳ.
+
+        Các API scraper IG đều proxy shape private-API của Instagram (media có
+        like_count/comment_count + caption/code) nhưng bọc ngoài mỗi API một kiểu
+        (data.items / medias / sections[].layout_content...). Duyệt cây tìm dict
+        "trông như media" giúp đổi host mà không phải viết parser mới.
+        """
+        if out is None:
+            out = []
+        if isinstance(node, dict):
+            has_engagement = "like_count" in node or "comment_count" in node
+            has_content = any(k in node for k in ("caption", "code", "shortcode"))
+            if has_engagement and has_content:
+                out.append(node)
+                return out  # không lặp vào trong media (vd carousel_media) — tránh trùng
+            for value in node.values():
+                cls._extract_instagram_medias(value, out)
+        elif isinstance(node, list):
+            for value in node:
+                cls._extract_instagram_medias(value, out)
+        return out
 
     # ==========================================
     # Threads keyword search (official Meta API)

@@ -23,15 +23,24 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmail(String email);
     List<User> findAllByStatusAndDeletionDateLessThanEqual(UserStatus status, LocalDateTime now);
 
-    // FR-80: admin tìm user theo tên/email + lọc trạng thái (q rỗng / status null = bỏ qua —
+    // FR-80: admin tìm user theo tên/email + lọc trạng thái/vai trò/gói (tham số rỗng/null = bỏ qua —
     // native query + CAST cùng mẫu ContentItemRepository.search).
     @Query(value = """
             select u.* from users u
+            join roles r on r.id = u.role_id
             where u.deleted_at is null
               and (CAST(:q as varchar) = '' or lower(u.full_name) like lower(concat('%', CAST(:q as varchar), '%'))
                    or lower(u.email) like lower(concat('%', CAST(:q as varchar), '%')))
               and (CAST(:status as varchar) is null or u.status = CAST(:status as varchar))
+              and (CAST(:role as varchar) is null or r.role_name = CAST(:role as varchar))
+              and (CAST(:plan as varchar) is null or u.plan = CAST(:plan as varchar))
             order by u.created_at desc
             """, nativeQuery = true)
-    Page<User> search(@Param("q") String q, @Param("status") String status, Pageable pageable);
+    Page<User> search(@Param("q") String q, @Param("status") String status,
+                      @Param("role") String role, @Param("plan") String plan, Pageable pageable);
+
+    // FR-80: số liệu stat card cho trang Quản trị người dùng.
+    long countByDeletedAtIsNull();
+    long countByStatusAndDeletedAtIsNull(UserStatus status);
+    long countByCreatedAtGreaterThanEqualAndDeletedAtIsNull(LocalDateTime from);
 }

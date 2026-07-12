@@ -2,19 +2,28 @@ package com.aima.service;
 
 import com.aima.dto.request.*;
 import com.aima.dto.response.ApiResponse;
+import com.aima.enums.UserPlan;
 import com.aima.enums.UserStatus;
 import com.aima.dto.response.DeleteAccountResponse;
 import com.aima.dto.response.MeResponse;
 import com.aima.dto.response.PageResponse;
 import com.aima.dto.response.UserResponse;
+import com.aima.dto.response.UserStatsResponse;
 import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
 public interface UserService {
     ApiResponse<UserResponse> registerUser(UserRegisterRequest request);
-    ApiResponse<PageResponse<UserResponse>> getAllUsers(String q, UserStatus status, Pageable pageable);
+    ApiResponse<PageResponse<UserResponse>> getAllUsers(String q, UserStatus status, String role, UserPlan plan, Pageable pageable);
+    ApiResponse<UserStatsResponse> getUserStats();
     ApiResponse<UserResponse> getUserById(UUID userId);
+    /** FR-80: admin tạo tài khoản thủ công (mặc định gói FREE). */
+    ApiResponse<UserResponse> createUser(String adminEmail, AdminCreateUserRequest request);
+    /** FR-80: admin cập nhật hồ sơ/gói/vai trò/trạng thái người dùng (partial). */
+    ApiResponse<UserResponse> updateUser(String adminEmail, UUID userId, AdminUpdateUserRequest request);
+    /** FR-80: admin kích hoạt gửi email đặt lại mật khẩu (OTP) cho người dùng. */
+    ApiResponse<String> resetUserPassword(String adminEmail, UUID userId);
     /** FR-80: admin khóa/mở khóa tài khoản; không áp dụng lên tài khoản ADMIN. */
     ApiResponse<UserResponse> updateUserStatus(String adminEmail, UUID userId, UserStatusUpdateRequest request);
     ApiResponse<MeResponse> getCurrentUser(String email);

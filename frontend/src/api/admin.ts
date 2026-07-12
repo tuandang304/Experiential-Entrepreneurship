@@ -2,11 +2,11 @@ import type { Lang } from '../types';
 import type { Tone } from '../components/admin/StatusBadge';
 import client, { type ApiError, type ApiResponse, type PageResponse } from './apiClient';
 
-// 2026-07-11: users (list/lock/unlock), bài thất bại (FR-82/83), system status (FR-81) và
-// logs (FR-84) đã nối BE thật — GIỮ NGUYÊN chữ ký hàm nên các trang admin không phải đổi.
-// Còn MOCK: tạo/sửa/xóa user thủ công (chưa có endpoint BE) và Revenue (chưa có billing BE).
+// 2026-07-12: Quản lý người dùng (FR-80) nối BE thật hoàn toàn — list/stats/detail/create/update/
+// đổi gói/khoá-mở/đặt lại mật khẩu. Lọc/tìm/phân trang server-side. Các module khác (bài lỗi,
+// system status, logs) đã nối BE từ trước. Còn MOCK: platform versions & Revenue (chưa có billing BE).
 
-// Giả lập độ trễ mạng để các trang thể hiện đúng trạng thái loading.
+// Giả lập độ trễ mạng cho các module còn mock (Revenue / platform versions).
 const delay = <T>(value: T, ms = 450): Promise<T> => new Promise((r) => setTimeout(() => r(value), ms));
 
 const P = (lang: Lang, vi: string, en: string) => (lang === 'en' ? en : vi);
@@ -14,122 +14,191 @@ const initials = (name: string) => name.trim().split(/\s+/).map((w) => w[0]).sli
 
 export const formatVND = (n: number) => n.toLocaleString('vi-VN') + '₫';
 
-// ===== Quản lý người dùng (FR-80) — GET /admin/users =====
+// ===== Quản lý người dùng (FR-80) =====
 export type UserRole = 'USER' | 'ADMIN';
-// PENDING_ACTIVATION: tài khoản vừa tạo, chờ user kích hoạt qua email mời (chưa đăng nhập lần nào).
-export type UserStatus = 'ACTIVE' | 'LOCKED' | 'PENDING_ACTIVATION' | 'PENDING_DELETE';
-export type UserPlan = 'free' | 'plus' | 'pro';
+// Khớp enum BE (UserStatus): ACTIVE / LOCKED / PENDING_DELETE.
+export type UserStatus = 'ACTIVE' | 'LOCKED' | 'PENDING_DELETE';
+export type UserPlan = 'FREE' | 'PLUS' | 'PRO';
+export type AuthProvider = 'EMAIL' | 'GOOGLE';
+
 export interface AdminUserRow {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: UserRole;
   status: UserStatus;
-  createdAt: string;
-  initials: string;
   plan: UserPlan;
-  channelsUsed: number;
-  channelsLimit: number;
-  tokenUsagePercent: number;
+  authProvider: AuthProvider;
+  avatarUrl?: string;
+  initials: string;
+  createdAt: string; // 'YYYY-MM-DD'
   /** 'YYYY-MM-DD HH:mm' — null = chưa đăng nhập lần nào. */
   lastLoginAt: string | null;
-  /** SĐT (tuỳ chọn) — undefined nếu người dùng chưa cung cấp. */
-  phone?: string;
+  /** Số kênh MXH đã kết nối — chỉ có khi lấy chi tiết (GET /users/{id}). */
+  connectedChannels?: number;
 }
 
-/** Giới hạn kênh kết nối theo gói (mock, khớp quyền lợi gói). */
-export const PLAN_LIMITS: Record<UserPlan, number> = { free: 1, plus: 2, pro: 4 };
+// Mã lỗi guard phía BE (đồng bộ ErrorCode) — UI xử lý theo code.
+export const ADMIN_ERR = {
+  ADMIN_PROTECTED: 1972,
+  CANNOT_DEMOTE_SELF: 1974,
+  EMAIL_LOCKED_GOOGLE: 1975,
+  GOOGLE_NO_PASSWORD: 1976,
+  EMAIL_EXISTED: 1003,
+} as const;
+const ERR_USER_LIST_EMPTY = 1018;
 
-const USERS_RAW: [string, string, string, UserRole, UserStatus, string, UserPlan, number, number, string | null, string | null][] = [
-  // [id, tên, email, vai trò, trạng thái, ngày tạo, gói, kênh đang dùng, % token, đăng nhập gần nhất, SĐT]
-  ['u01', 'Lan Phương', 'lan.phuong@gmail.com', 'USER', 'ACTIVE', '2026-01-12', 'pro', 3, 62, '2026-07-02 09:15', '0901234567'],
-  ['u02', 'Minh Tuấn', 'tuan.minh@aima.io', 'ADMIN', 'ACTIVE', '2025-11-03', 'pro', 4, 45, '2026-07-02 07:40', '0902345001'],
-  ['u03', 'Thu Hà', 'ha.thu@brandco.vn', 'USER', 'LOCKED', '2026-02-28', 'free', 1, 96, '2026-05-19 14:02', '0903120945'],
-  ['u04', 'David Chen', 'david.chen@startup.co', 'USER', 'ACTIVE', '2026-03-15', 'plus', 2, 88, '2026-07-01 22:10', null],
-  ['u05', 'Ngọc Anh', 'anh.ngoc@gmail.com', 'USER', 'PENDING_DELETE', '2026-06-18', 'free', 0, 5, '2026-05-25 08:00', '0905667788'],
-  ['u06', 'Hoàng Long', 'long.hoang@smes.vn', 'USER', 'ACTIVE', '2026-04-02', 'plus', 1, 73, '2026-06-30 18:45', '0906778899'],
-  ['u07', 'Mai Chi', 'chi.mai@creator.vn', 'USER', 'ACTIVE', '2026-05-21', 'pro', 2, 91, '2026-07-02 06:05', '0907889900'],
-  ['u08', 'Bảo Nam', 'nam.bao@gmail.com', 'USER', 'LOCKED', '2026-01-30', 'free', 1, 34, '2026-04-27 10:30', '0908990011'],
-  ['u09', 'Sophie Tran', 'sophie@agency.co', 'ADMIN', 'ACTIVE', '2025-12-09', 'pro', 3, 28, '2026-07-01 16:20', null],
-  ['u10', 'Quang Huy', 'huy.quang@shop.vn', 'USER', 'ACTIVE', '2026-06-01', 'plus', 2, 79, '2026-06-29 21:00', '0910112233'],
-  ['u11', 'Diệu Linh', 'linh.dieu@gmail.com', 'USER', 'ACTIVE', '2026-03-26', 'free', 1, 55, '2026-06-28 12:40', '0911223344'],
-  ['u12', 'Trung Kiên', 'kien.trung@biz.vn', 'USER', 'PENDING_DELETE', '2026-05-08', 'free', 0, 12, '2026-05-30 09:25', '0912334455'],
-  ['u13', 'Khánh Vy', 'vy.khanh@studio.vn', 'USER', 'PENDING_ACTIVATION', '2026-07-01', 'plus', 0, 0, null, '0913445566'],
-  ['u14', 'Tuấn Anh', 'anh.tuan@freelance.vn', 'USER', 'ACTIVE', '2026-07-02', 'free', 0, 0, null, null],
-];
-
-// Trạng thái mock giữ trong module để lock/xoá/tạo phản ánh qua các lần getAdminUsers
-// trong cùng phiên (mô phỏng DB) — reload trang sẽ seed lại.
-let USERS: AdminUserRow[] | null = null;
-const seedUsers = (): AdminUserRow[] =>
-  USERS_RAW.map((u) => ({
-    id: u[0], name: u[1], email: u[2], role: u[3], status: u[4], createdAt: u[5], initials: initials(u[1]),
-    plan: u[6], channelsUsed: u[7], channelsLimit: PLAN_LIMITS[u[6]], tokenUsagePercent: u[8], lastLoginAt: u[9],
-    phone: u[10] ?? undefined,
-  }));
-const users = (): AdminUserRow[] => (USERS ??= seedUsers());
-
-// ==== BE thật: shape UserResponse của backend (GET /users, admin) ====
-interface BeUserResponse {
+// Shape UserResponse của backend (GET /users, admin).
+interface BeUser {
   id: string;
   username: string | null;
   fullName: string | null;
   email: string;
   phone: string | null;
   status: UserStatus;
+  plan: UserPlan | null;
+  provider: AuthProvider | null;
   avatarUrl: string | null;
   createdAt: string | null;
   lastActiveAt: string | null;
+  connectedChannels: number | null;
   role: { roleName: UserRole } | null;
 }
 
-const ERR_USER_LIST_EMPTY = 1018;
-const ERR_ADMIN_PROTECTED = 1972;
-
 const beDateTime = (iso: string | null): string | null => (iso ? iso.slice(0, 16).replace('T', ' ') : null);
 
-// Gói/kênh/token là khái niệm billing chưa có ở BE — hiển thị mặc định Free/0.
-const toAdminRow = (u: BeUserResponse): AdminUserRow => ({
+const toRow = (u: BeUser): AdminUserRow => ({
   id: u.id,
   name: u.fullName || u.email,
   email: u.email,
+  phone: u.phone ?? undefined,
   role: u.role?.roleName === 'ADMIN' ? 'ADMIN' : 'USER',
   status: u.status,
-  createdAt: (u.createdAt ?? '').slice(0, 10),
+  plan: u.plan ?? 'FREE',
+  authProvider: u.provider === 'GOOGLE' ? 'GOOGLE' : 'EMAIL',
+  avatarUrl: u.avatarUrl ?? undefined,
   initials: initials(u.fullName || u.email),
-  plan: 'free',
-  channelsUsed: 0,
-  channelsLimit: PLAN_LIMITS.free,
-  tokenUsagePercent: 0,
+  createdAt: (u.createdAt ?? '').slice(0, 10),
   lastLoginAt: beDateTime(u.lastActiveAt),
-  phone: u.phone ?? undefined,
+  connectedChannels: u.connectedChannels ?? undefined,
 });
 
-// GET /users (ADMIN, FR-80) — trang admin lọc/tìm client-side nên lấy một trang lớn.
-export async function getAdminUsers(): Promise<AdminUserRow[]> {
+export interface UserQuery {
+  page: number; // 0-based (Spring Pageable)
+  size: number;
+  q?: string;
+  role?: UserRole;
+  status?: UserStatus;
+  plan?: UserPlan;
+  sort?: string; // vd 'createdAt,desc'
+}
+export interface UsersPage { rows: AdminUserRow[]; total: number; pageCount: number; page: number; }
+
+// GET /users — phân trang + lọc server-side (FR-80).
+export async function getAdminUsers(query: UserQuery): Promise<UsersPage> {
   try {
-    const { data } = await client.get<ApiResponse<PageResponse<BeUserResponse>>>('/users', {
-      params: { size: 200 },
+    const { data } = await client.get<ApiResponse<PageResponse<BeUser>>>('/users', {
+      params: {
+        page: query.page,
+        size: query.size,
+        sort: query.sort ?? 'createdAt,desc',
+        q: query.q?.trim() || undefined,
+        role: query.role,
+        status: query.status,
+        plan: query.plan,
+      },
     });
-    USERS = data.result.content.map(toAdminRow);
-    return USERS.map((u) => ({ ...u }));
+    const p = data.result;
+    return { rows: p.content.map(toRow), total: p.totalElements, pageCount: p.totalPages, page: p.page };
   } catch (e) {
-    if ((e as ApiError).code === ERR_USER_LIST_EMPTY) {
-      USERS = [];
-      return [];
-    }
+    // BE trả 1018 khi kết quả rỗng (kể cả khi lọc không khớp) → coi như trang rỗng.
+    if ((e as ApiError).code === ERR_USER_LIST_EMPTY) return { rows: [], total: 0, pageCount: 0, page: 0 };
     throw e;
   }
+}
+
+export interface UserStats { total: number; active: number; locked: number; newThisMonth: number; }
+
+// GET /users/stats — 4 số cho stat card (server-side nên không tính từ mảng client).
+export async function getUserStats(): Promise<UserStats> {
+  const { data } = await client.get<ApiResponse<UserStats>>('/users/stats');
+  return data.result;
+}
+
+// GET /users/{id} — chi tiết (kèm connectedChannels).
+export async function getAdminUser(id: string): Promise<AdminUserRow> {
+  const { data } = await client.get<ApiResponse<BeUser>>(`/users/${id}`);
+  return toRow(data.result);
+}
+
+export interface AdminUserPatch {
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: UserRole;
+  plan?: UserPlan;
+  status?: UserStatus;
+  avatarUrl?: string;
+}
+
+// PATCH /users/{id} — admin cập nhật (partial). Đổi gói riêng cũng đi qua đây.
+export async function updateAdminUser(id: string, patch: AdminUserPatch): Promise<AdminUserRow> {
+  const { data } = await client.patch<ApiResponse<BeUser>>(`/users/${id}`, {
+    fullName: patch.name,
+    email: patch.email,
+    phone: patch.phone,
+    role: patch.role,
+    plan: patch.plan,
+    status: patch.status,
+    avatarUrl: patch.avatarUrl,
+  });
+  return toRow(data.result);
+}
+
+// Đổi gói (dùng chung endpoint partial) — tách hàm để confirm + audit rõ ràng.
+export const changeUserPlan = (id: string, plan: UserPlan) => updateAdminUser(id, { plan });
+
+// POST /users — admin tạo tài khoản thủ công (mặc định FREE).
+export async function createAdminUser(input: {
+  name: string; email: string; password: string; phone?: string; role: UserRole; plan: UserPlan;
+}): Promise<AdminUserRow> {
+  const { data } = await client.post<ApiResponse<BeUser>>('/users', {
+    fullName: input.name,
+    email: input.email,
+    password: input.password,
+    phone: input.phone,
+    role: input.role,
+    plan: input.plan,
+  });
+  return toRow(data.result);
+}
+
+// PATCH /users/{id}/status — khoá/mở khoá (ADMIN được BE bảo vệ → mã 1972).
+export async function setUserLocked(id: string, locked: boolean): Promise<{ id: string; status: UserStatus }> {
+  try {
+    const { data } = await client.patch<ApiResponse<BeUser>>(`/users/${id}/status`, {
+      status: locked ? 'LOCKED' : 'ACTIVE',
+    });
+    return { id, status: data.result.status };
+  } catch (e) {
+    if ((e as ApiError).code === ADMIN_ERR.ADMIN_PROTECTED) throw new Error('ADMIN_PROTECTED');
+    throw e;
+  }
+}
+
+// POST /users/{id}/reset-password — BE gửi OTP đặt lại mật khẩu tới email user (admin không thấy mật khẩu).
+export async function adminResetPassword(id: string): Promise<void> {
+  await client.post<ApiResponse<string>>(`/users/${id}/reset-password`);
 }
 
 export const userStatusMeta = (lang: Lang, s: UserStatus): { tone: Tone; label: string } =>
   s === 'ACTIVE' ? { tone: 'success', label: P(lang, 'Hoạt động', 'Active') }
   : s === 'LOCKED' ? { tone: 'danger', label: P(lang, 'Đã khoá', 'Locked') }
-  : s === 'PENDING_ACTIVATION' ? { tone: 'info', label: P(lang, 'Chờ kích hoạt', 'Pending activation') }
   : { tone: 'warning', label: P(lang, 'Chờ xoá', 'Pending deletion') };
 
 export const userPlanMeta = (p: UserPlan): { tone: Tone; label: string } =>
-  p === 'free' ? { tone: 'neutral', label: 'Free' } : p === 'plus' ? { tone: 'info', label: 'Plus' } : { tone: 'purple', label: 'Pro' };
+  p === 'FREE' ? { tone: 'neutral', label: 'Free' } : p === 'PLUS' ? { tone: 'info', label: 'Plus' } : { tone: 'purple', label: 'Pro' };
 
 /** Thời gian tương đối cho "Lần đăng nhập gần nhất". */
 export function timeAgo(lang: Lang, iso: string | null): string {
@@ -143,83 +212,6 @@ export function timeAgo(lang: Lang, iso: string | null): string {
   if (days < 30) return P(lang, `${days} ngày trước`, `${days}d ago`);
   const months = Math.round(days / 30);
   return P(lang, `${months} tháng trước`, `${months}mo ago`);
-}
-
-/** Số ngày kể từ lần đăng nhập cuối (Infinity nếu chưa từng đăng nhập). */
-export const daysSinceLogin = (iso: string | null): number =>
-  iso ? Math.floor((Date.now() - new Date(iso.replace(' ', 'T')).getTime()) / 86_400_000) : Infinity;
-
-// PATCH /users/{id}/status (ADMIN, FR-80) — BE bảo vệ tài khoản ADMIN (mã 1972 → 'ADMIN_PROTECTED'
-// để giữ nguyên cách các trang admin xử lý lỗi).
-export async function setUserLocked(id: string, locked: boolean): Promise<{ id: string; status: UserStatus }> {
-  try {
-    const { data } = await client.patch<ApiResponse<BeUserResponse>>(`/users/${id}/status`, {
-      status: locked ? 'LOCKED' : 'ACTIVE',
-    });
-    const u = users().find((x) => x.id === id);
-    if (u) u.status = data.result.status;
-    return { id, status: data.result.status };
-  } catch (e) {
-    if ((e as ApiError).code === ERR_ADMIN_PROTECTED) throw new Error('ADMIN_PROTECTED');
-    throw e;
-  }
-}
-
-// Khóa/mở hàng loạt = lặp PATCH /users/{id}/status; ADMIN bị BE từ chối → đếm vào skippedAdmins.
-export async function setUsersLocked(ids: string[], locked: boolean): Promise<{ updated: string[]; skippedAdmins: number }> {
-  const updated: string[] = [];
-  let skippedAdmins = 0;
-  for (const id of ids) {
-    try {
-      await setUserLocked(id, locked);
-      updated.push(id);
-    } catch (e) {
-      if ((e as Error).message === 'ADMIN_PROTECTED') skippedAdmins += 1;
-      else throw e;
-    }
-  }
-  return { updated, skippedAdmins };
-}
-
-// DELETE /admin/users/{id} — guard: ADMIN không thể bị xoá.
-export async function deleteAdminUser(id: string): Promise<{ id: string }> {
-  const u = users().find((x) => x.id === id);
-  if (u?.role === 'ADMIN') return Promise.reject(new Error('ADMIN_PROTECTED'));
-  USERS = users().filter((x) => x.id !== id);
-  return delay({ id });
-}
-
-// POST /admin/users — tạo user thủ công (mock: thêm vào đầu danh sách).
-// status: ACTIVE (đặt mật khẩu thủ công) | PENDING_ACTIVATION (gửi email mời kích hoạt).
-export async function createAdminUser(input: {
-  name: string; email: string; role: UserRole; plan: UserPlan; phone?: string; status?: UserStatus;
-}): Promise<AdminUserRow> {
-  const row: AdminUserRow = {
-    id: 'u' + Date.now().toString(36),
-    name: input.name, email: input.email, role: input.role, status: input.status ?? 'ACTIVE',
-    createdAt: new Date().toISOString().slice(0, 10), initials: initials(input.name),
-    plan: input.plan, channelsUsed: 0, channelsLimit: PLAN_LIMITS[input.plan], tokenUsagePercent: 0, lastLoginAt: null,
-    phone: input.phone,
-  };
-  users().unshift(row);
-  return delay({ ...row });
-}
-
-// PATCH /admin/users/{id} — cập nhật thông tin tài khoản (mock). Đổi gói → cập nhật lại giới hạn kênh.
-export async function updateAdminUser(id: string, patch: {
-  name: string; email: string; phone?: string; role: UserRole; plan: UserPlan; status: UserStatus;
-}): Promise<AdminUserRow> {
-  const u = users().find((x) => x.id === id);
-  if (!u) return Promise.reject(new Error('NOT_FOUND'));
-  u.name = patch.name;
-  u.email = patch.email;
-  u.phone = patch.phone;
-  u.role = patch.role;
-  u.plan = patch.plan;
-  u.channelsLimit = PLAN_LIMITS[patch.plan];
-  u.status = patch.status;
-  u.initials = initials(patch.name);
-  return delay({ ...u });
 }
 
 // ===== Bài đăng lỗi & bị từ chối (FR-82 + FR-83) — GET /admin/posts/problems =====

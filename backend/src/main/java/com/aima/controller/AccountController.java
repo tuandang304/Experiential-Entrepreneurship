@@ -2,9 +2,11 @@ package com.aima.controller;
 
 import com.aima.dto.request.*;
 import com.aima.dto.response.ApiResponse;
+import com.aima.enums.UserPlan;
 import com.aima.enums.UserStatus;
 import com.aima.dto.response.DeleteAccountResponse;
 import com.aima.dto.response.MeResponse;
+import com.aima.dto.response.UserStatsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -57,14 +59,66 @@ public class AccountController {
     @Operation(
             summary = "List all users (paginated, FR-80)",
             description = "Returns user accounts in pages, newest first; optional q searches name/email, " +
-                    "status filters by account status. Restricted to ADMIN."
+                    "status/role/plan filter the result. Restricted to ADMIN."
     )
     public ApiResponse<PageResponse<UserResponse>> getAllUsers(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UserStatus status,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) UserPlan plan,
             @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        return userService.getAllUsers(q, status, pageable);
+        return userService.getAllUsers(q, status, role, plan, pageable);
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "User statistics for the admin dashboard (FR-80)",
+            description = "Returns total / active / locked / new-this-month counts for the stat cards. Restricted to ADMIN."
+    )
+    public ApiResponse<UserStatsResponse> getUserStats() {
+        return userService.getUserStats();
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Admin creates a user (FR-80)",
+            description = "Creates a user with an admin-set password, role (default USER) and plan (default FREE). " +
+                    "Rejects a duplicate email. Restricted to ADMIN."
+    )
+    public ApiResponse<UserResponse> createUser(
+            @AuthenticationPrincipal UserDetails principal,
+            @Valid @RequestBody AdminCreateUserRequest request) {
+        return userService.createUser(principal.getUsername(), request);
+    }
+
+    @PatchMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Admin updates a user (FR-80)",
+            description = "Partial update of fullName/email/phone/avatarUrl/role/plan/status. Guards: an admin cannot " +
+                    "demote or lock/delete their own account; a Google user's email cannot be changed. Restricted to ADMIN."
+    )
+    public ApiResponse<UserResponse> updateUser(
+            @AuthenticationPrincipal UserDetails principal,
+            @PathVariable UUID userId,
+            @Valid @RequestBody AdminUpdateUserRequest request) {
+        return userService.updateUser(principal.getUsername(), userId, request);
+    }
+
+    @PostMapping("/{userId}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Admin triggers a password-reset email for a user (FR-80)",
+            description = "Generates a password-reset OTP and emails it to the user (same flow as forgot-password); " +
+                    "the admin never sees the password. Rejected for Google accounts. Restricted to ADMIN."
+    )
+    public ApiResponse<String> resetUserPassword(
+            @AuthenticationPrincipal UserDetails principal,
+            @PathVariable UUID userId) {
+        return userService.resetUserPassword(principal.getUsername(), userId);
     }
 
     @PatchMapping("/{userId}/status")

@@ -39,6 +39,15 @@ public class UserResponse {
     @Schema(description = "Account status.", example = "ACTIVE", allowableValues = {"ACTIVE", "LOCKED", "PENDING_DELETE"})
     String status;
 
+    @Schema(description = "Gói dịch vụ.", example = "FREE", allowableValues = {"FREE", "PLUS", "PRO"})
+    String plan;
+
+    @Schema(description = "Phương thức đăng ký.", example = "EMAIL", allowableValues = {"EMAIL", "GOOGLE"})
+    String provider;
+
+    @Schema(description = "Số kênh mạng xã hội đã kết nối (chỉ trả về ở GET /users/{id}).", example = "3")
+    Integer connectedChannels;
+
     @Schema(description = "Avatar image URL.", example = "https://cdn.example.com/avatars/johndoe.png")
     String avatarUrl;
 

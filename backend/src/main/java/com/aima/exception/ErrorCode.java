@@ -195,7 +195,13 @@ public enum ErrorCode {
     ADMIN_PROTECTED(1972, "Không thể khóa/xóa tài khoản quản trị", HttpStatus.BAD_REQUEST),
 
     // WEBHOOK ERRORS
-    WEBHOOK_VERIFY_FAILED(1973, "Xác thực webhook thất bại", HttpStatus.FORBIDDEN),;
+    WEBHOOK_VERIFY_FAILED(1973, "Xác thực webhook thất bại", HttpStatus.FORBIDDEN),
+
+    // ADMIN USER MANAGEMENT (FR-80)
+    ADMIN_CANNOT_DEMOTE_SELF(1974, "Bạn không thể tự hạ vai trò của chính mình", HttpStatus.BAD_REQUEST),
+    EMAIL_LOCKED_FOR_GOOGLE(1975, "Tài khoản đăng nhập bằng Google không được đổi email", HttpStatus.BAD_REQUEST),
+    GOOGLE_NO_PASSWORD(1976, "Tài khoản đăng nhập qua Google không dùng mật khẩu", HttpStatus.BAD_REQUEST),
+    ;
 
     private int code;
     private String message;

@@ -1,5 +1,6 @@
 package com.aima.entity;
 
+import com.aima.enums.UserPlan;
 import com.aima.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -52,6 +53,13 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     UserStatus status;
+
+    // Nhãn gói (FR-80). columnDefinition default 'FREE' để ddl-auto=update thêm cột
+    // NOT NULL vào bảng có sẵn dữ liệu mà không vỡ (các dòng cũ được backfill FREE).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plan", length = 20)
+    @Builder.Default
+    private UserPlan plan = UserPlan.FREE;
 
     @Column(name = "deletion_date")
     LocalDateTime deletionDate;

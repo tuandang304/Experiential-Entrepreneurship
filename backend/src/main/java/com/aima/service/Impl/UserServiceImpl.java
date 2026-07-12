@@ -22,20 +22,26 @@ import com.aima.config.storage.StorageBuckets;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.PageResponse;
 import com.aima.dto.response.UserResponse;
+import com.aima.dto.response.UserStatsResponse;
 import com.aima.entity.Role;
 import com.aima.entity.User;
+import com.aima.enums.UserPlan;
 import com.aima.enums.UserStatus;
 import com.aima.exception.AppException;
 import com.aima.exception.ErrorCode;
 import com.aima.mapper.UserMapper;
+import com.aima.repository.PlatformAccountRepository;
 import com.aima.repository.RoleRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.StorageService;
 import com.aima.service.UserService;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -46,6 +52,7 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
     UserRepository userRepository;
     RoleRepository roleRepository;
+    PlatformAccountRepository platformAccountRepository;
 
     EmailService emailService;
     OtpService otpService;
@@ -83,12 +90,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public ApiResponse<PageResponse<UserResponse>> getAllUsers(String q, UserStatus status, Pageable pageable) {
-        // FR-80: tìm theo tên/email + lọc trạng thái; ORDER BY nằm trong native query
+    public ApiResponse<PageResponse<UserResponse>> getAllUsers(String q, UserStatus status, String role, UserPlan plan, Pageable pageable) {
+        // FR-80: tìm theo tên/email + lọc trạng thái/vai trò/gói; ORDER BY nằm trong native query
         // nên Pageable không mang Sort riêng (cùng mẫu ContentItemServiceImpl.list).
         Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
-        Page<User> users = userRepository.search(q == null ? "" : q.trim(),
-                status == null ? null : status.name(), unsorted);
+        Page<User> users = userRepository.search(
+                q == null ? "" : q.trim(),
+                status == null ? null : status.name(),
+                (role == null || role.isBlank()) ? null : role.trim().toUpperCase(),
+                plan == null ? null : plan.name(),
+                unsorted);
 
         if (users.getTotalElements() == 0) {
             throw new AppException(ErrorCode.USER_LIST_EMPTY);
@@ -97,6 +108,130 @@ public class UserServiceImpl implements UserService {
         PageResponse<UserResponse> result =
                 PageResponse.from(users, userMapper.toResponseList(users.getContent()));
         return ApiResponse.success("Lấy danh sách người dùng thành công", result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ApiResponse<UserStatsResponse> getUserStats() {
+        LocalDateTime startOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        UserStatsResponse stats = UserStatsResponse.builder()
+                .total(userRepository.countByDeletedAtIsNull())
+                .active(userRepository.countByStatusAndDeletedAtIsNull(UserStatus.ACTIVE))
+                .locked(userRepository.countByStatusAndDeletedAtIsNull(UserStatus.LOCKED))
+                .newThisMonth(userRepository.countByCreatedAtGreaterThanEqualAndDeletedAtIsNull(startOfMonth))
+                .build();
+        return ApiResponse.success("Lấy số liệu người dùng thành công", stats);
+    }
+
+    // FR-80: admin tạo tài khoản thủ công — mật khẩu do admin đặt, mặc định role USER + gói FREE.
+    @Override
+    public ApiResponse<UserResponse> createUser(String adminEmail, AdminCreateUserRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new AppException(ErrorCode.EMAIL_EXISTED);
+        }
+
+        User user = userMapper.toUser(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        String roleName = "ADMIN".equalsIgnoreCase(request.getRole()) ? "ADMIN" : "USER";
+        Role role = roleRepository.findByRoleName(roleName)
+                .orElseThrow(() -> new AppException(ErrorCode.DEFAULT_ROLE_NOT_FOUND));
+        user.setRole(role);
+
+        if (user.getPlan() == null) user.setPlan(UserPlan.FREE);
+        user.setStatus(UserStatus.ACTIVE);
+        user.setProfileCompleted(true);
+        User saved = userRepository.save(user);
+
+        log.info("[Admin] {} tạo tài khoản {} (role={}, plan={})", adminEmail, saved.getEmail(), roleName, saved.getPlan());
+
+        UserResponse response = userMapper.toResponse(saved);
+        return ApiResponse.success("Tạo tài khoản thành công", response);
+    }
+
+    // FR-80: admin cập nhật hồ sơ/gói/vai trò/trạng thái (partial). Guard chống tự hạ vai trò/tự khoá-xoá
+    // chính mình + khoá đổi email cho tài khoản Google. Ghi audit log (ai, gì, khi nào).
+    @Override
+    public ApiResponse<UserResponse> updateUser(String adminEmail, UUID userId, AdminUpdateUserRequest request) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        boolean isSelf = user.getId().equals(admin.getId());
+        if (isSelf && request.getRole() != null && !"ADMIN".equalsIgnoreCase(request.getRole())) {
+            throw new AppException(ErrorCode.ADMIN_CANNOT_DEMOTE_SELF);
+        }
+        if (isSelf && request.getStatus() != null && request.getStatus() != UserStatus.ACTIVE) {
+            throw new AppException(ErrorCode.DELETE_SELF_INVALID);
+        }
+        // SEC-05: tài khoản ADMIN được bảo vệ khỏi khoá/chờ-xoá — nhất quán với PATCH /users/{id}/status.
+        boolean targetIsAdmin = user.getRole() != null && "ADMIN".equals(user.getRole().getRoleName());
+        if (targetIsAdmin && request.getStatus() != null && request.getStatus() != UserStatus.ACTIVE) {
+            throw new AppException(ErrorCode.ADMIN_PROTECTED);
+        }
+
+        boolean isGoogle = "GOOGLE".equalsIgnoreCase(user.getProvider());
+        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            if (isGoogle) throw new AppException(ErrorCode.EMAIL_LOCKED_FOR_GOOGLE);
+            if (userRepository.existsByEmail(request.getEmail())) throw new AppException(ErrorCode.EMAIL_EXISTED);
+        }
+
+        String oldAvatarUrl = user.getAvatarUrl();
+        userMapper.updateByAdmin(request, user);
+
+        // Vai trò do service tra cứu entity — chỉ đổi khi admin gửi và khác hiện tại.
+        if (request.getRole() != null) {
+            String roleName = "ADMIN".equalsIgnoreCase(request.getRole()) ? "ADMIN" : "USER";
+            if (user.getRole() == null || !roleName.equals(user.getRole().getRoleName())) {
+                Role role = roleRepository.findByRoleName(roleName)
+                        .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+                user.setRole(role);
+            }
+        }
+
+        User saved = userRepository.save(user);
+
+        // Đổi avatar → xoá ảnh cũ trên Supabase (sau commit, không phá luồng nếu lỗi).
+        if (request.getAvatarUrl() != null && !request.getAvatarUrl().equals(oldAvatarUrl)) {
+            scheduleOldAvatarDeletion(oldAvatarUrl);
+        }
+
+        log.info("[Admin] {} cập nhật user {} [{}]", adminEmail, userId, describeChanges(request));
+
+        UserResponse response = userMapper.toResponse(saved);
+        return ApiResponse.success("Cập nhật tài khoản thành công", response);
+    }
+
+    // FR-80: admin kích hoạt đặt lại mật khẩu — tái dùng luồng OTP quên mật khẩu (gửi tới email user).
+    @Override
+    public ApiResponse<String> resetUserPassword(String adminEmail, UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if ("GOOGLE".equalsIgnoreCase(user.getProvider())) {
+            throw new AppException(ErrorCode.GOOGLE_NO_PASSWORD);
+        }
+
+        String otpCode = generateOtp();
+        otpService.storeOtp(user.getEmail(), otpCode);
+        emailService.sendForgotPasswordOtpEmail(user.getEmail(), otpCode, user.getFullName());
+
+        log.info("[Admin] {} kích hoạt đặt lại mật khẩu cho user {} ({})", adminEmail, userId, user.getEmail());
+        return ApiResponse.success("Đã gửi email đặt lại mật khẩu");
+    }
+
+    // Ghi audit: liệt kê các trường được admin thay đổi (giá trị nhạy cảm không log).
+    private String describeChanges(AdminUpdateUserRequest r) {
+        List<String> f = new ArrayList<>();
+        if (r.getFullName() != null) f.add("fullName");
+        if (r.getEmail() != null) f.add("email");
+        if (r.getPhone() != null) f.add("phone");
+        if (r.getAvatarUrl() != null) f.add("avatarUrl");
+        if (r.getRole() != null) f.add("role=" + r.getRole());
+        if (r.getPlan() != null) f.add("plan=" + r.getPlan());
+        if (r.getStatus() != null) f.add("status=" + r.getStatus());
+        return String.join(", ", f);
     }
 
     // FR-80: admin khóa/mở khóa — chỉ đổi qua lại ACTIVE/LOCKED; tài khoản ADMIN được bảo vệ (SEC-05).
@@ -120,11 +255,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ApiResponse<UserResponse> getUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         UserResponse userResponse = userMapper.toResponse(user);
+        // Số kênh MXH đã kết nối — trường suy diễn không có trên entity (cùng mẫu setProfileCompleted).
+        userResponse.setConnectedChannels((int) platformAccountRepository.countByUser_IdAndDeletedAtIsNull(userId));
         return ApiResponse.success("Lấy thông tin Người dùng thành công", userResponse);
     }
 

@@ -92,7 +92,7 @@ export default function Auth() {
     setF((s) => ({ ...s, [name]: value }));
     if (route === 'login') {
       if (name === 'email') setErrors((er) => ({ ...er, email: !value ? t.errEmailReq : !validEmail(value) ? t.errEmailBad : undefined }));
-      else if (name === 'password') setErrors((er) => ({ ...er, password: !value ? t.errPwReq : value.length < 6 ? t.errPwShort : undefined }));
+      else if (name === 'password') setErrors((er) => ({ ...er, password: !value ? t.errPwReq : undefined }));
     } else {
       if (name === 'name') setErrors((er) => ({ ...er, name: !value ? t.errNameReq : undefined }));
       else if (name === 'email') setErrors((er) => ({ ...er, email: !value ? t.errEmailReq : !validEmail(value) ? t.errEmailBad : undefined }));
@@ -109,7 +109,6 @@ export default function Auth() {
     if (!f.email) er.email = t.errEmailReq;
     else if (!validEmail(f.email)) er.email = t.errEmailBad;
     if (!f.password) er.password = t.errPwReq;
-    else if (f.password.length < 6) er.password = t.errPwShort;
     setErrors(er);
     if (Object.keys(er).length > 0) return;
     setSubmitting(true);
@@ -119,9 +118,7 @@ export default function Auth() {
       afterAuth(me);
     } catch (err) {
       const msg = (err as Error).message;
-      if (/mật khẩu|password|sai/i.test(msg)) setErrors({ password: msg });
-      else if (/tài khoản|không|tồn tại|user/i.test(msg)) setErrors({ email: msg });
-      else setErrors({ email: msg });
+      setErrors({ submit: msg });
     } finally {
       setSubmitting(false);
     }
@@ -235,6 +232,7 @@ export default function Auth() {
                   </label>
                   <span onClick={() => navigate('/forgot-password')} style={{ fontSize: 13.5, color: '#8b5cf6', fontWeight: 600, cursor: 'pointer' }}>{t.forgot}</span>
                 </div>
+                {errors.submit && <div style={{ fontSize: 13, color: '#e23d6e', textAlign: 'center', marginBottom: 16 }}>{errors.submit}</div>}
                 <button type="submit" disabled={submitting} style={btnPrimary}>
                   {submitting ? (
                     <div className="dots-container">

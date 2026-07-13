@@ -28,4 +28,8 @@ public class ResearchResultPayload {
     List<ContentIdeaPayload> contentIdeas;
 
     String summary;
+
+    /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
+    @JsonProperty("tokens_used")
+    Long tokensUsed;
 }

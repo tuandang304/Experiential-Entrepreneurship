@@ -32,10 +32,34 @@ public class PlanDataInitializer implements CommandLineRunner {
     PlanRepository planRepository;
     PlanFeatureRepository featureRepository;
 
+    /** Hạn mức token LLM/tháng của 3 gói lõi (đã chốt): FREE 1.000 / PLUS 100.000 / PRO 1.000.000. */
+    static final Map<String, Long> CORE_MONTHLY_TOKEN_LIMITS = Map.of(
+            "FREE", 1_000L,
+            "PLUS", 100_000L,
+            "PRO", 1_000_000L
+    );
+
     @Override
     public void run(String... args) {
         seedPlans();
         seedFeatures();
+        backfillMonthlyTokenLimits();
+    }
+
+    /**
+     * DB có sẵn từ trước khi thêm cột monthly_token_limit: điền hạn mức mặc định cho 3 gói
+     * lõi còn null (ddl-auto=update chỉ tạo cột, không có Flyway). Chỉ đụng ô null nên
+     * không ghi đè giá trị admin đã chỉnh.
+     */
+    private void backfillMonthlyTokenLimits() {
+        CORE_MONTHLY_TOKEN_LIMITS.forEach((code, limit) ->
+                planRepository.findByCodeAndDeletedAtIsNull(code)
+                        .filter(plan -> plan.getMonthlyTokenLimit() == null)
+                        .ifPresent(plan -> {
+                            plan.setMonthlyTokenLimit(limit);
+                            planRepository.save(plan);
+                            log.info("[PlanInit] Backfilled monthly_token_limit={} for plan {}", limit, code);
+                        }));
     }
 
     private void seedPlans() {
@@ -45,6 +69,7 @@ public class PlanDataInitializer implements CommandLineRunner {
                 .code("FREE").nameVi("Free").nameEn("Free")
                 .price(0L).billingCycleVi("trọn đời").billingCycleEn("forever")
                 .tokenQuota(5L)
+                .monthlyTokenLimit(CORE_MONTHLY_TOKEN_LIMITS.get("FREE"))
                 .descriptionVi("Trải nghiệm quy trình AI với một thương hiệu.")
                 .descriptionEn("Try the AI pipeline with one brand.")
                 .featuresVi("1 hồ sơ thương hiệu\n5 bài viết AI mỗi tháng\nKết nối 1 nền tảng\nNghiên cứu xu hướng cơ bản")
@@ -59,6 +84,7 @@ public class PlanDataInitializer implements CommandLineRunner {
                 .code("PLUS").nameVi("Plus").nameEn("Plus")
                 .price(499_000L).billingCycleVi("/tháng").billingCycleEn("/month")
                 .tokenQuota(100L)
+                .monthlyTokenLimit(CORE_MONTHLY_TOKEN_LIMITS.get("PLUS"))
                 .descriptionVi("Cho creator & shop cần nội dung đều đặn mỗi ngày.")
                 .descriptionEn("For creators & shops posting every day.")
                 .featuresVi("3 hồ sơ thương hiệu\n100 bài viết AI mỗi tháng\nĐủ 3 nền tảng: Facebook · Instagram · Threads\nLên lịch & tự động đăng bài\nPhân tích hiệu quả sau đăng")
@@ -72,7 +98,8 @@ public class PlanDataInitializer implements CommandLineRunner {
         Plan pro = Plan.builder()
                 .code("PRO").nameVi("Pro").nameEn("Pro")
                 .price(1_990_000L).billingCycleVi("/tháng").billingCycleEn("/month")
-                .tokenQuota(null) // không giới hạn
+                .tokenQuota(null) // không giới hạn (hiển thị)
+                .monthlyTokenLimit(CORE_MONTHLY_TOKEN_LIMITS.get("PRO"))
                 .descriptionVi("Cho doanh nghiệp nhỏ chạy nhiều thương hiệu cùng lúc.")
                 .descriptionEn("For small businesses running multiple brands.")
                 .featuresVi("Không giới hạn hồ sơ thương hiệu\nKhông giới hạn bài viết AI\nAI tối ưu chiến lược từ dữ liệu\nBáo cáo hiệu quả chuyên sâu\nHỗ trợ ưu tiên")

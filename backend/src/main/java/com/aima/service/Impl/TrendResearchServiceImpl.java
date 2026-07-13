@@ -17,6 +17,7 @@ import com.aima.repository.BrandProfileRepository;
 import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.TrendResearchSessionRepository;
 import com.aima.repository.UserRepository;
+import com.aima.service.TokenUsageService;
 import com.aima.service.TrendResearchService;
 import com.aima.service.TrendResearchWorkerService;
 import lombok.AccessLevel;
@@ -44,12 +45,14 @@ public class TrendResearchServiceImpl implements TrendResearchService {
     UserRepository userRepository;
     TrendResearchMapper trendResearchMapper;
     TrendResearchWorkerService trendResearchWorkerService;
+    TokenUsageService tokenUsageService;
 
     // FR-19: "Research now" — cần brand profile đang hoạt động + chiến lược ACTIVE (BR-01, BR-03),
     // và không cho phép 2 phiên chạy song song.
     @Override
     public ApiResponse<TrendResearchSessionResponse> startResearch(String email, TrendResearchRequest request) {
         User user = currentUser(email);
+        tokenUsageService.checkQuota(user); // hết hạn mức token tháng → chặn phiên mới
 
         BrandProfile brand = (request != null && request.getBrandProfileId() != null)
                 ? brandProfileRepository.findByIdAndUser_IdAndDeletedAtIsNull(request.getBrandProfileId(), user.getId())

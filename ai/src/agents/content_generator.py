@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..llm import get_llm
-from ..schemas import ContentItem, GenerateRequest
+from ..llm import invoke_structured
+from ..schemas import ContentItem, GenerateRequest, GenerateResult
 
 SYSTEM_PROMPT = """You are the Content Generator for AIMA, an AI social-media content \
 assistant. You write short-form social content for small brands.
@@ -95,11 +95,10 @@ def build_prompt_vars(req: GenerateRequest) -> dict:
     }
 
 
-def generate_content(req: GenerateRequest) -> ContentItem:
-    """Run the generation chain and return a structured ContentItem."""
-    llm = get_llm().with_structured_output(ContentItem)
+def generate_content(req: GenerateRequest) -> GenerateResult:
+    """Run the generation chain and return the ContentItem + LLM token usage."""
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("user", USER_PROMPT)]
     )
-    chain = prompt | llm
-    return chain.invoke(build_prompt_vars(req))
+    item, tokens = invoke_structured(ContentItem, prompt, build_prompt_vars(req))
+    return GenerateResult(**item.model_dump(), tokens_used=tokens)

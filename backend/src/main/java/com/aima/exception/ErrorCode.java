@@ -212,6 +212,9 @@ public enum ErrorCode {
     PLAN_FEATURE_NOT_FOUND(1986, "Không tìm thấy dòng tính năng", HttpStatus.NOT_FOUND),
     PLAN_FEATURE_NAME_REQUIRED(1987, "Thiếu tên tính năng", HttpStatus.BAD_REQUEST),
     PLAN_FIELD_REQUIRED(1988, "Thiếu trường bắt buộc của gói", HttpStatus.BAD_REQUEST),
+
+    // TOKEN USAGE (hạn mức token LLM theo tháng — Plan.monthlyTokenLimit)
+    TOKEN_QUOTA_EXCEEDED(1990, "Bạn đã dùng hết hạn mức token của tháng này. Nâng cấp gói hoặc chờ sang tháng sau.", HttpStatus.TOO_MANY_REQUESTS),
     ;
 
     private int code;

@@ -15,12 +15,12 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..llm import get_llm
+from ..llm import invoke_structured
 from concurrent.futures import ThreadPoolExecutor
 
 from ..platform.facebook import FacebookTrendAnalyzer
 from ..platform.trends_mcp import TrendsMCPConnector
-from ..schemas import ResearchRequest, ResearchResponse
+from ..schemas import ResearchRequest, ResearchResponse, ResearchResult
 
 
 def _collect_signal(req: ResearchRequest) -> dict:
@@ -152,29 +152,29 @@ RAW SOCIAL SIGNAL (aggregated):
 Return at most {max_trends} trends and at most {max_ideas} content ideas."""
 
 
-def research_trends(req: ResearchRequest) -> ResearchResponse:
-    """Run a single trend-research session and return trends + ideas."""
+def research_trends(req: ResearchRequest) -> ResearchResult:
+    """Run a single trend-research session and return trends + ideas (+ token usage)."""
     signal = _collect_signal(req)
 
-    llm = get_llm().with_structured_output(ResearchResponse)
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("user", USER_PROMPT)]
     )
-    chain = prompt | llm
-    result: ResearchResponse = chain.invoke(
+    result, tokens = invoke_structured(
+        ResearchResponse,
+        prompt,
         {
             "brand_profile": req.brand_profile.model_dump_json(indent=2),
             "strategy": req.strategy.model_dump_json(indent=2),
             "signal": _format_signal(signal),
             "max_trends": req.max_trends,
             "max_ideas": req.max_ideas,
-        }
+        },
     )
     # Enforce the industry on the response and trim to requested limits.
     result.industry = req.brand_profile.industry
     result.trends = result.trends[: req.max_trends]
     result.content_ideas = result.content_ideas[: req.max_ideas]
-    return result
+    return ResearchResult(**result.model_dump(), tokens_used=tokens)
 
 
 def _format_signal(signal: dict) -> str:

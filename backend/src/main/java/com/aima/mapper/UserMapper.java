@@ -3,6 +3,7 @@ package com.aima.mapper;
 import com.aima.dto.request.CompleteProfileRequest;
 import com.aima.dto.response.DeleteAccountResponse;
 import com.aima.dto.response.MeResponse;
+import com.aima.dto.response.TokenUsageResponse;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -55,4 +56,8 @@ public interface UserMapper {
     void updateByAdmin(AdminUpdateUserRequest request, @MappingTarget User user);
 
     DeleteAccountResponse toDeleteAccountResponse(User user, Long daysRemaining, String message);
+
+    // used/limit khớp tên tham số; plan lấy từ user (null → FREE, cùng quy ước toResponse).
+    @Mapping(target = "plan", expression = "java(user.getPlan() != null ? user.getPlan().name() : \"FREE\")")
+    TokenUsageResponse toTokenUsageResponse(User user, Long used, Long limit);
 }

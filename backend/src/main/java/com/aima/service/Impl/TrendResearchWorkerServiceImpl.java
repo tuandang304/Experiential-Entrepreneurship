@@ -16,6 +16,7 @@ import com.aima.mapper.TrendResearchMapper;
 import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.TrendResearchSessionRepository;
 import com.aima.service.AiServiceClient;
+import com.aima.service.TokenUsageService;
 import com.aima.service.TrendResearchWorkerService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,7 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
     TrendResearchMapper trendResearchMapper;
     AiContentMapper aiContentMapper;
     TransactionTemplate transactionTemplate;
+    TokenUsageService tokenUsageService;
 
     @Async("trendResearchExecutor")
     @Override
@@ -136,6 +138,9 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
         session.setSummary(result.getSummary());
         session.setStatus(ResearchStatus.COMPLETED);
         sessionRepository.save(session); // cascade ALL: lưu luôn trends + content ideas
+
+        // Cộng token LLM thật của lần gọi vào hạn mức tháng của user (thanh usage ở sidebar).
+        tokenUsageService.record(session.getBrandProfile().getUser(), result.getTokensUsed());
     }
 
     private void saveFailure(UUID sessionId, String message) {

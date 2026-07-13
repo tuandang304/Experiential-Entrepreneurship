@@ -16,6 +16,7 @@ import com.aima.repository.ContentItemRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.ContentFormattingService;
 import com.aima.service.ContentFormattingWorkerService;
+import com.aima.service.TokenUsageService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -50,11 +51,13 @@ public class ContentFormattingServiceImpl implements ContentFormattingService {
     UserRepository userRepository;
     ContentFormattingMapper contentFormattingMapper;
     ContentFormattingWorkerService contentFormattingWorkerService;
+    TokenUsageService tokenUsageService;
 
     @Override
     public ApiResponse<ContentFormattingJobResponse> startFormatting(String email, UUID itemId,
                                                                      ContentFormatRequest request) {
         User user = currentUser(email);
+        tokenUsageService.checkQuota(user); // hết hạn mức token tháng → chặn tạo job mới
         ContentItem item = contentItemRepository
                 .findByIdAndBrandProfile_User_IdAndDeletedAtIsNull(itemId, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.CONTENT_ITEM_NOT_FOUND));

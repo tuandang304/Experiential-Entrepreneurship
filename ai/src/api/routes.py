@@ -22,10 +22,10 @@ from ..config import get_settings
 from ..schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
-    ContentItem,
     FormatRequest,
-    FormatResponse,
+    FormatResult,
     GenerateRequest,
+    GenerateResult,
     GoldenHourRequest,
     GoldenHourResponse,
     OptimizeRequest,
@@ -33,7 +33,7 @@ from ..schemas import (
     RegeneratePartRequest,
     RegeneratePartResult,
     ResearchRequest,
-    ResearchResponse,
+    ResearchResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,21 +58,21 @@ def health() -> dict:
     return {"status": "ok", "provider": s.llm_provider}
 
 
-@router.post("/research", response_model=ResearchResponse)
-def research(req: ResearchRequest) -> ResearchResponse:
-    """FR-19..FR-23 — trend research for one session."""
+@router.post("/research", response_model=ResearchResult)
+def research(req: ResearchRequest) -> ResearchResult:
+    """FR-19..FR-23 — trend research for one session (+ tokens_used)."""
     return _run("trend research", trend_research.research_trends, req)
 
 
-@router.post("/generate", response_model=ContentItem)
-def generate(req: GenerateRequest) -> ContentItem:
-    """FR-24..FR-30, FR-32 — generate one content item."""
+@router.post("/generate", response_model=GenerateResult)
+def generate(req: GenerateRequest) -> GenerateResult:
+    """FR-24..FR-30, FR-32 — generate one content item (+ tokens_used)."""
     return _run("content generation", content_generator.generate_content, req)
 
 
-@router.post("/format", response_model=FormatResponse)
-def format_versions(req: FormatRequest) -> FormatResponse:
-    """FR-40, FR-42, FR-44, Threads, FR-46 — one version per platform."""
+@router.post("/format", response_model=FormatResult)
+def format_versions(req: FormatRequest) -> FormatResult:
+    """FR-40, FR-42, FR-44, Threads, FR-46 — one version per platform (+ tokens_used)."""
     return _run("platform formatting", platform_formatter.format_content, req)
 
 

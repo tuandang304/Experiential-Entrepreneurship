@@ -27,7 +27,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import com.aima.config.swagger.SwaggerExamples;
 import com.aima.dto.response.PageResponse;
+import com.aima.dto.response.TokenUsageResponse;
 import com.aima.dto.response.UserResponse;
+import com.aima.service.TokenUsageService;
 import com.aima.service.UserService;
 
 import java.util.UUID;
@@ -39,6 +41,7 @@ import java.util.UUID;
 @Tag(name = "Account", description = "Account management for both regular users and admins (registration, profile, password, deletion).")
 public class AccountController {
     UserService userService;
+    TokenUsageService tokenUsageService;
 
     @PostMapping("/register")
     @Operation(
@@ -167,6 +170,18 @@ public class AccountController {
     public ApiResponse<MeResponse> getCurrentUser(
             @AuthenticationPrincipal UserDetails userDetails) {
         return userService.getCurrentUser(userDetails.getUsername());
+    }
+
+    @GetMapping("/me/token-usage")
+    @Operation(
+            summary = "Get the current user's monthly LLM token usage",
+            description = "Returns tokens used this month, the monthly limit of the user's plan " +
+                    "(Plan.monthlyTokenLimit; null = unlimited) and the plan code. Usage resets at the " +
+                    "start of each month (lazy reset). Drives the usage bar in the sidebar."
+    )
+    public ApiResponse<TokenUsageResponse> getTokenUsage(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return tokenUsageService.getMyUsage(userDetails.getUsername());
     }
 
     @PutMapping("/me")

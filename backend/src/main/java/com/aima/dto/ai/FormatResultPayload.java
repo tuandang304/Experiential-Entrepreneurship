@@ -1,5 +1,6 @@
 package com.aima.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,4 +21,8 @@ import java.util.List;
 public class FormatResultPayload {
 
     List<ContentVersionPayload> versions;
+
+    /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
+    @JsonProperty("tokens_used")
+    Long tokensUsed;
 }

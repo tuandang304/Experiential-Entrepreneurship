@@ -18,6 +18,7 @@ import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.ContentGenerationService;
 import com.aima.service.ContentGenerationWorkerService;
+import com.aima.service.TokenUsageService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -42,11 +43,13 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
     UserRepository userRepository;
     ContentGenerationJobMapper contentGenerationJobMapper;
     ContentGenerationWorkerService contentGenerationWorkerService;
+    TokenUsageService tokenUsageService;
 
     // BR-01, BR-03, FR-13: chỉ chiến lược ACTIVE mới được tạo nội dung.
     @Override
     public ApiResponse<ContentGenerationJobResponse> startGeneration(String email, ContentGenerationRequest request) {
         User user = currentUser(email);
+        tokenUsageService.checkQuota(user); // hết hạn mức token tháng → chặn tạo job mới
         ContentStrategy strategy = contentStrategyRepository
                 .findByIdAndBrandProfile_User_IdAndDeletedAtIsNull(request.getStrategyId(), user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.CONTENT_STRATEGY_NOT_FOUND));

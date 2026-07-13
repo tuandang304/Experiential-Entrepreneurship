@@ -61,6 +61,16 @@ public class User extends BaseEntity {
     @Builder.Default
     private UserPlan plan = UserPlan.FREE;
 
+    // Token LLM đã dùng trong tháng tokenUsageMonth (quota theo Plan.monthlyTokenLimit).
+    // Reset "lazy" đầu mỗi tháng: TokenUsageService so tokenUsageMonth ("yyyy-MM") với
+    // tháng hiện tại — khác tháng thì coi như 0 (không cần scheduler reset).
+    @Column(name = "tokens_used")
+    @Builder.Default
+    Long tokensUsed = 0L;
+
+    @Column(name = "token_usage_month", length = 7)
+    String tokenUsageMonth;
+
     @Column(name = "deletion_date")
     LocalDateTime deletionDate;
 

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, AlertTriangle, Server, FileText, Code, DollarSign, Package,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../auth/AuthContext';
+import { getTokenUsage, type TokenUsage } from '../api/auth';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useUiStore } from '../store/useUiStore';
 import { Icon } from './ui';
@@ -22,6 +23,12 @@ interface Item {
 /** Key sessionStorage: user tắt card "Nâng cấp Pro" CHỈ trong phiên hiện tại — phiên sau card hiện lại. */
 const UPGRADE_CARD_HIDDEN_KEY = 'aima.upgradeCardHidden';
 
+/** Rút gọn số token cho thanh usage: 1000 → 1K, 100000 → 100K, 1000000 → 1M. */
+const fmtTokens = (n: number) =>
+  n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M`
+    : n >= 1_000 ? `${+(n / 1_000).toFixed(1)}K`
+      : n.toLocaleString('vi-VN');
+
 export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpen }: { mode?: 'app' | 'admin', mobileMenuOpen?: boolean, setMobileMenuOpen?: (v: boolean) => void }) {
   const { t, route, go, brandGradient } = useApp();
   const { user } = useAuth();
@@ -37,6 +44,23 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
     setUpgradeHidden(true);
   };
   const showUpgradeCard = (user?.plan ?? 'FREE') === 'FREE' && !upgradeHidden;
+
+  // Thanh usage token AI trong tháng (GET /users/me/token-usage). Refetch khi đổi route
+  // để số liệu cập nhật sau mỗi lần tạo/định dạng/nghiên cứu; lỗi thì ẩn thanh (không chặn UI).
+  const [usage, setUsage] = useState<TokenUsage | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getTokenUsage()
+      .then((u) => { if (!cancelled) setUsage(u); })
+      .catch(() => { if (!cancelled) setUsage(null); });
+    return () => { cancelled = true; };
+  }, [user, route]);
+
+  const usagePct = usage && usage.limit !== null
+    ? Math.min(usage.limit > 0 ? (usage.used / usage.limit) * 100 : 100, 100)
+    : 0;
+  const usageFill = usagePct >= 100 ? '#ef4444' : usagePct >= 80 ? '#f59e0b' : brandGradient;
 
   // Hồ sơ/Cài đặt là route khu "app", nhưng nếu mở từ khu Quản trị thì vẫn giữ
   // sidebar admin và highlight ở mục gốc (vd Trạng thái hệ thống / Bảng điều khiển)
@@ -219,6 +243,23 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
       {!isAdminArea && isAdmin && <div style={{ marginTop: 14 }}>{adminPortalBtn}</div>}
 
       <div style={{ marginTop: 'auto', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10, flex: 'none' }}>
+        {!isAdminArea && !collapsed && usage && (
+          <div style={{ background: '#f8f6fd', border: '1px solid #eee9f6', borderRadius: 16, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.04em', color: '#7d6aa3', whiteSpace: 'nowrap' }}>{t.usageTitle}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#5b5670', whiteSpace: 'nowrap' }}>
+                {fmtTokens(usage.used)} / {usage.limit === null ? '∞' : fmtTokens(usage.limit)}
+              </span>
+            </div>
+            {usage.limit !== null ? (
+              <div style={{ height: 6, borderRadius: 999, background: '#ece6f8', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${usagePct}%`, borderRadius: 999, background: usageFill, transition: 'width .4s ease' }} />
+              </div>
+            ) : (
+              <div style={{ fontSize: 11, color: '#a59fbb' }}>{t.usageUnlimited}</div>
+            )}
+          </div>
+        )}
         {!isAdminArea && !collapsed && showUpgradeCard && (
           <div style={{ position: 'relative', background: 'linear-gradient(150deg,#f6f2ff,#fcf1fc)', border: '1px solid #efe6fb', borderRadius: 16, padding: 16 }}>
             <button

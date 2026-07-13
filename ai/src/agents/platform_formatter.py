@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..llm import get_llm
-from ..schemas import ContentVersion, FormatRequest, FormatResponse
+from ..llm import invoke_structured
+from ..schemas import ContentVersion, FormatRequest, FormatResponse, FormatResult
 
 # Platform-specific formatting guidance (REQUIREMENTS.md §8).
 PLATFORM_RULES = {
@@ -50,26 +50,26 @@ Per-platform rules:
 {rules}"""
 
 
-def format_content(req: FormatRequest) -> FormatResponse:
-    """Generate one ContentVersion per requested platform."""
+def format_content(req: FormatRequest) -> FormatResult:
+    """Generate one ContentVersion per requested platform (+ LLM token usage)."""
     rules_text = "\n".join(
         f"- {p}: {PLATFORM_RULES.get(p.lower(), 'Use sensible native defaults for this platform.')}"
         for p in req.platforms
     )
 
     # Structured output as a list wrapper so the model returns all versions at once.
-    llm = get_llm().with_structured_output(FormatResponse)
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("user", USER_PROMPT)]
     )
-    chain = prompt | llm
-    result: FormatResponse = chain.invoke(
+    result, tokens = invoke_structured(
+        FormatResponse,
+        prompt,
         {
             "brand_profile": req.brand_profile.model_dump_json(indent=2),
             "content": req.content.model_dump_json(indent=2),
             "platforms": ", ".join(req.platforms),
             "rules": rules_text,
-        }
+        },
     )
 
     # Guard: keep only requested platforms, dedupe, and ensure each is covered.
@@ -81,4 +81,4 @@ def format_content(req: FormatRequest) -> FormatResponse:
         if key in wanted and key not in seen:
             versions.append(v)
             seen.add(key)
-    return FormatResponse(versions=versions)
+    return FormatResult(versions=versions, tokens_used=tokens)

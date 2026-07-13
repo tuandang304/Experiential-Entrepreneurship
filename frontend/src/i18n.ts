@@ -47,6 +47,7 @@ export const STRINGS = {
     fpSuccess: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.',
     // shell
     secMain: 'TỔNG QUAN', upgradeTitle: 'Nâng cấp Pro', upgradeMsg: 'Mở khoá AI không giới hạn & phân tích nâng cao.', upgradeBtn: 'Nâng cấp ngay',
+    usageTitle: 'Token AI tháng này', usageUnlimited: 'Không giới hạn',
     searchPh: 'Tìm nội dung, chiến dịch...', greeting: 'Chào', dashHeadline: 'Hôm nay AIMA đã sẵn sàng',
     // chuông thông báo (FR-75..FR-78)
     ntfTitle: 'Thông báo', ntfEmpty: 'Chưa có thông báo nào', ntfMarkAll: 'Đọc tất cả',
@@ -574,6 +575,7 @@ export const STRINGS = {
     fpOtpSent: 'An OTP has been sent to your email.', fpBackLogin: 'Back to sign in',
     fpSuccess: 'Password reset successfully. Please sign in.',
     secMain: 'OVERVIEW', upgradeTitle: 'Upgrade to Pro', upgradeMsg: 'Unlock unlimited AI & advanced analytics.', upgradeBtn: 'Upgrade now',
+    usageTitle: 'AI tokens this month', usageUnlimited: 'Unlimited',
     searchPh: 'Search content, campaigns...', greeting: 'Hi', dashHeadline: 'AIMA is ready for you today',
     // notification bell (FR-75..FR-78)
     ntfTitle: 'Notifications', ntfEmpty: 'No notifications yet', ntfMarkAll: 'Mark all read',

@@ -11,6 +11,7 @@ import logging
 from functools import lru_cache
 
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.prompts import ChatPromptTemplate
 
 from .config import get_settings
 

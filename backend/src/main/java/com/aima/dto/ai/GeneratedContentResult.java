@@ -38,4 +38,8 @@ public class GeneratedContentResult {
     /** FR-30: AI tự chấm brand voice — persist vào ContentVersion (voice_*). */
     @JsonProperty("brand_voice_check")
     BrandVoiceCheckPayload brandVoiceCheck;
+
+    /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
+    @JsonProperty("tokens_used")
+    Long tokensUsed;
 }

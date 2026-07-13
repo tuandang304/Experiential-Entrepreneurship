@@ -72,6 +72,19 @@ export async function getProfile(): Promise<User> {
   return data.result;
 }
 
+// Mức dùng token LLM trong tháng (thanh usage ở sidebar). limit null = không giới hạn.
+// Hạn mức lấy từ Plan.monthlyTokenLimit của gói user; reset đầu mỗi tháng ở backend.
+export interface TokenUsage {
+  used: number;
+  limit: number | null;
+  plan: "FREE" | "PLUS" | "PRO" | string;
+}
+
+export async function getTokenUsage(): Promise<TokenUsage> {
+  const { data } = await client.get<ApiResponse<TokenUsage>>("/users/me/token-usage");
+  return data.result;
+}
+
 export async function updateProfile(request: UpdateProfileRequest): Promise<User> {
   const { data } = await client.put<ApiResponse<User>>("/users/me", request);
   return data.result;

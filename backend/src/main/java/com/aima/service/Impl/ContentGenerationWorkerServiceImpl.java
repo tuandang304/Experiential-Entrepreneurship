@@ -20,6 +20,7 @@ import com.aima.repository.TrendRepository;
 import com.aima.service.AiServiceClient;
 import com.aima.service.ContentGenerationWorkerService;
 import com.aima.service.NotificationService;
+import com.aima.service.TokenUsageService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -53,6 +54,7 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
     AiContentMapper aiContentMapper;
     TransactionTemplate transactionTemplate;
     NotificationService notificationService;
+    TokenUsageService tokenUsageService;
 
     @Async("contentGenerationExecutor")
     @Override
@@ -162,6 +164,8 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
         // FR-77: nội dung mới do AI tạo — nhắc user xem và duyệt trước khi lên lịch.
         // (B2: mỗi nền tảng một thông báo — chấp nhận ồn nhẹ, tối ưu ở lượt sau.)
         BrandProfile brand = item.getBrandProfile();
+        // Cộng token LLM thật của lần gọi vào hạn mức tháng của user (thanh usage ở sidebar).
+        tokenUsageService.record(brand.getUser(), result.getTokensUsed());
         notificationService.notify(brand.getUser(), NotificationType.REVIEW_NEEDED,
                 "Nội dung mới cần xem xét",
                 "AI vừa tạo nội dung mới cho thương hiệu " + brand.getBrandName()

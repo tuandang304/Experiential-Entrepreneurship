@@ -51,6 +51,15 @@ public class Plan extends BaseEntity {
     @Column(name = "token_quota")
     Long tokenQuota;
 
+    /**
+     * Hạn mức token LLM THẬT mỗi tháng cho user thuộc gói này (nguồn duy nhất cho
+     * TokenUsageService — FREE 1.000 / PLUS 100.000 / PRO 1.000.000, backfill ở
+     * PlanDataInitializer). null = không giới hạn. Reset đầu mỗi tháng (lazy, xem
+     * User.tokenUsageMonth).
+     */
+    @Column(name = "monthly_token_limit")
+    Long monthlyTokenLimit;
+
     @Column(name = "description_vi", length = 500)
     String descriptionVi;
 

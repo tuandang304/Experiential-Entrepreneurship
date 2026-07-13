@@ -113,6 +113,14 @@ class ResearchResponse(BaseModel):
     summary: str
 
 
+class ResearchResult(ResearchResponse):
+    """HTTP response of /research — adds real LLM token usage for backend quota
+    accounting. Kept OUT of ResearchResponse so the structured-output schema sent
+    to the model never asks it to fill an accounting field."""
+
+    tokens_used: int = 0
+
+
 # ============================================================
 # Content Generation (FR-24..FR-30)
 # ============================================================
@@ -207,6 +215,13 @@ class ContentItem(BaseModel):
     brand_voice_check: BrandVoiceCheck
 
 
+class GenerateResult(ContentItem):
+    """HTTP response of /generate — ContentItem plus real LLM token usage
+    (same subclass pattern as ResearchResult)."""
+
+    tokens_used: int = 0
+
+
 # ============================================================
 # Partial script regeneration (tạo lại từng phần kịch bản)
 # ============================================================
@@ -286,6 +301,13 @@ class ContentVersion(BaseModel):
 
 class FormatResponse(BaseModel):
     versions: List[ContentVersion]
+
+
+class FormatResult(FormatResponse):
+    """HTTP response of /format — adds real LLM token usage
+    (same subclass pattern as ResearchResult)."""
+
+    tokens_used: int = 0
 
 
 # ============================================================

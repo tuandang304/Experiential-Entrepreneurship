@@ -9,6 +9,7 @@ import com.aima.mapper.TrendResearchMapper;
 import com.aima.repository.BrandProfileRepository;
 import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.TrendResearchSessionRepository;
+import com.aima.service.TokenUsageService;
 import com.aima.service.TrendResearchWorkerService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class DailyTrendResearchJob {
     TrendResearchSessionRepository sessionRepository;
     TrendResearchMapper trendResearchMapper;
     TrendResearchWorkerService trendResearchWorkerService;
+    TokenUsageService tokenUsageService;
 
     @Scheduled(cron = "0 0 2 * * *")
     public void run() {
@@ -68,6 +70,12 @@ public class DailyTrendResearchJob {
         if (sessionRepository.existsByBrandProfile_User_IdAndStatusInAndDeletedAtIsNull(
                 brand.getUser().getId(), List.of(ResearchStatus.PENDING, ResearchStatus.RUNNING))) {
             return false; // đã có phiên đang chạy cho user này
+        }
+        try {
+            tokenUsageService.checkQuota(brand.getUser());
+        } catch (Exception e) {
+            log.info("[DailyTrendResearch] Bỏ qua hồ sơ {} — user hết hạn mức token tháng", brand.getId());
+            return false; // cùng chính sách chặn với "Research ngay"
         }
 
         // Không có transaction bao ngoài — save commit ngay nên dispatch worker trực tiếp

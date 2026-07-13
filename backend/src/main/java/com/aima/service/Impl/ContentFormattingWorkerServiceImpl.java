@@ -14,6 +14,7 @@ import com.aima.mapper.ContentFormattingMapper;
 import com.aima.repository.ContentFormattingJobRepository;
 import com.aima.service.AiServiceClient;
 import com.aima.service.ContentFormattingWorkerService;
+import com.aima.service.TokenUsageService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -45,6 +46,7 @@ public class ContentFormattingWorkerServiceImpl implements ContentFormattingWork
     ContentFormattingMapper contentFormattingMapper;
     AiContentMapper aiContentMapper;
     TransactionTemplate transactionTemplate;
+    TokenUsageService tokenUsageService;
 
     @Async("contentFormattingExecutor")
     @Override
@@ -109,6 +111,9 @@ public class ContentFormattingWorkerServiceImpl implements ContentFormattingWork
         item.setStatus(ContentLifecycle.FORMATTED);
         job.setStatus(GenerationJobStatus.SUCCESS);
         jobRepository.save(job); // item + versions lưu qua cascade từ item đang managed trong tx
+
+        // Cộng token LLM thật của lần gọi vào hạn mức tháng của user (thanh usage ở sidebar).
+        tokenUsageService.record(item.getBrandProfile().getUser(), result.getTokensUsed());
     }
 
     private void saveFailure(UUID jobId, String message) {

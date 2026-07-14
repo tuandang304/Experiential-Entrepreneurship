@@ -9,13 +9,17 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
+from typing import Any, TypeVar
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel
 
 from .config import get_settings
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T", bound=BaseModel)
 
 
 @lru_cache
@@ -57,3 +61,24 @@ def get_llm() -> BaseChatModel:
         )
 
     raise ValueError(f"Unknown LLM_PROVIDER: {settings.llm_provider!r}")
+
+
+def invoke_structured(
+    schema: type[T], prompt: ChatPromptTemplate, variables: dict[str, Any]
+) -> tuple[T, int]:
+    """Run ``prompt`` through the configured model and return (typed result, tokens used).
+
+    Uses ``include_raw=True`` so the raw message stays reachable for token accounting;
+    providers that report no usage metadata yield 0.
+    """
+    chain = prompt | get_llm().with_structured_output(schema, include_raw=True)
+    out = chain.invoke(variables)
+
+    parsed = out["parsed"]
+    if parsed is None:
+        raise ValueError(
+            f"Model returned no valid {schema.__name__}: {out.get('parsing_error')}"
+        )
+
+    usage = getattr(out["raw"], "usage_metadata", None) or {}
+    return parsed, usage.get("total_tokens", 0)

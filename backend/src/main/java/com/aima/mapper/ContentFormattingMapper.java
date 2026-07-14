@@ -40,6 +40,13 @@ public interface ContentFormattingMapper {
     @Mapping(target = "hashtags", source = "hashtag", qualifiedByName = "splitHashtags")
     FormatContentPayload toFormatContentPayload(ContentItem item);
 
+    // PA2-a: nguồn format là CHÍNH bản nền tảng đã tạo/sửa (mỗi nền tảng format từ version của nó,
+    // giữ chỉnh sửa tay của user làm đầu vào). Nội dung nằm ở cột formatted_*/script của version.
+    @Mapping(target = "script", source = "script", qualifiedByName = "plainScript")
+    @Mapping(target = "caption", source = "formattedCaption")
+    @Mapping(target = "hashtags", source = "formattedHashtag", qualifiedByName = "splitHashtags")
+    FormatContentPayload toFormatContentPayload(ContentVersion version);
+
     // ===== AI result → entity =====
 
     @Mapping(target = "contentItem", ignore = true)

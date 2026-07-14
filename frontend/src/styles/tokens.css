@@ -26,6 +26,11 @@
   --theme-surface-from: #5bd8ec;
   --theme-surface-via: #6aa1f2;
   --theme-surface-to: #7e86f1;
+
+  /* Dropdown/menu mở ra (.menu-pop ở index.css) — KHÔNG theo theme, một nguồn cho cả app.
+     Đổi 2 giá trị này là mọi dropdown đổi theo; đừng hardcode lại ở từng component. */
+  --dropdown-duration: 220ms;
+  --dropdown-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Đại dương (Ocean) — bằng giá trị :root mặc định (khai báo tường minh cho đối xứng). */

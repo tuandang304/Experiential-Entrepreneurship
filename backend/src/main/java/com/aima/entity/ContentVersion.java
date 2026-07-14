@@ -8,6 +8,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Platform-specific version of a {@link ContentItem} (BR-04: content is tailored
@@ -71,6 +72,14 @@ public class ContentVersion extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     ContentLifecycle status;
+
+    /**
+     * Bản GỐC mà bản FORMATTED này chuyển thể từ (FR-40 truy vết + "Định dạng lại" luôn adapt từ
+     * bản gốc, không trôi nghĩa). Lưu id trần (không phải quan hệ JPA) để tránh self-FK gây phức tạp
+     * khi xóa cứng theo GDPR; null với bản chưa qua format (bản generate/gốc).
+     */
+    @Column(name = "source_version_id")
+    UUID sourceVersionId;
 
     @OneToOne(mappedBy = "contentVersion", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @ToString.Exclude

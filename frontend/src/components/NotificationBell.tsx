@@ -17,11 +17,12 @@ import type { Route } from "../types";
 const PAGE_SIZE = 8;
 const POLL_MS = 60_000;
 
-// Điều hướng theo loại thông báo (FR-75..FR-78): bài đăng → lịch, cần duyệt → nội dung,
-// kết nối lại → cài đặt, insight → phân tích.
+// Điều hướng theo loại thông báo (FR-75..FR-78): bài đăng → lịch, đăng lỗi → trang Bài lỗi & cần
+// xử lý (FR-38, nhảy thẳng vào trung tâm hồi phục), cần duyệt → nội dung, kết nối lại → cài đặt,
+// insight → phân tích.
 const ROUTE_BY_TYPE: Record<NotificationType, Route> = {
   POST_PUBLISHED: "calendar",
-  POST_FAILED: "calendar",
+  POST_FAILED: "failedPosts",
   REVIEW_NEEDED: "create",
   RECONNECT_NEEDED: "settings",
   NEW_INSIGHT: "analytics",

@@ -117,6 +117,7 @@ export default function StrategyCard({ s, selected, onSelect, onToggleStatus, on
           {open && (
             <div
               role="menu"
+              className="menu-pop"
               onClick={(e) => e.stopPropagation()}
               style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: 168, background: '#fff', border: '1px solid #ece8f6', borderRadius: 12, boxShadow: '0 12px 32px -10px rgba(40,20,90,.28)', padding: 6, zIndex: 30, display: 'flex', flexDirection: 'column', gap: 2 }}
             >

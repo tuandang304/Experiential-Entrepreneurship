@@ -188,7 +188,7 @@ export default function Profile() {
               </span>
 
               {avatarMenuOpen && (
-                <div role="menu" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 10, width: 186, background: '#fff', borderRadius: 12, border: '1px solid #ece8f6', boxShadow: '0 24px 48px -22px rgba(80,40,140,.5)', overflow: 'hidden', zIndex: 50 }}>
+                <div role="menu" className="menu-pop menu-pop--center" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 10, width: 186, background: '#fff', borderRadius: 12, border: '1px solid #ece8f6', boxShadow: '0 24px 48px -22px rgba(80,40,140,.5)', overflow: 'hidden', zIndex: 50 }}>
                   <button role="menuitem" onClick={() => { setAvatarMenuOpen(false); setLightboxOpen(true); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 15px', border: 'none', background: 'transparent', fontSize: 13.5, fontWeight: 600, color: '#574f6e', cursor: 'pointer' }}>
                     <Eye size={17} color="#a39bbf" strokeWidth={1.8} />
                     {t.avView}

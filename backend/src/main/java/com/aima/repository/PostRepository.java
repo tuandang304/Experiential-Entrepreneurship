@@ -44,6 +44,33 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             + "order by p.updatedAt desc")
     Page<Post> findFailedForAdmin(@Param("violationOnly") boolean violationOnly, Pageable pageable);
 
+    // FR-35..FR-39: bài lỗi CHƯA xử lý của CHÍNH user (trang "Bài lỗi & cần xử lý"), lọc phân loại
+    // mode = ALL | POLICY (vi phạm chính sách) | TECHNICAL (lỗi kỹ thuật — không phải vi phạm).
+    // Chỉ tính lịch còn FAILED: hủy/đặt lại/đăng lại sẽ đổi schedule khỏi FAILED → tự rời danh sách.
+    @Query("select p from Post p where p.status = com.aima.enums.PostStatus.FAILED and p.deletedAt is null "
+            + "and p.schedule.status = com.aima.enums.ScheduleStatus.FAILED "
+            + "and p.schedule.platformAccount.user.id = :userId "
+            + "and (:mode = 'ALL' "
+            + "  or (:mode = 'POLICY' and exists (select j from PostingJob j where j.post = p "
+            + "      and j.errorType = com.aima.enums.PublishErrorType.POLICY_VIOLATION)) "
+            + "  or (:mode = 'TECHNICAL' and not exists (select j from PostingJob j where j.post = p "
+            + "      and j.errorType = com.aima.enums.PublishErrorType.POLICY_VIOLATION))) "
+            + "order by p.updatedAt desc")
+    Page<Post> findFailedForUser(@Param("userId") UUID userId, @Param("mode") String mode, Pageable pageable);
+
+    // Khối "Tổng quan lỗi": tổng bài lỗi + số bài vi phạm chính sách (kỹ thuật = tổng - policy).
+    @Query("select count(p) from Post p where p.status = com.aima.enums.PostStatus.FAILED and p.deletedAt is null "
+            + "and p.schedule.status = com.aima.enums.ScheduleStatus.FAILED "
+            + "and p.schedule.platformAccount.user.id = :userId")
+    long countFailedForUser(@Param("userId") UUID userId);
+
+    @Query("select count(p) from Post p where p.status = com.aima.enums.PostStatus.FAILED and p.deletedAt is null "
+            + "and p.schedule.status = com.aima.enums.ScheduleStatus.FAILED "
+            + "and p.schedule.platformAccount.user.id = :userId "
+            + "and exists (select j from PostingJob j where j.post = p "
+            + "and j.errorType = com.aima.enums.PublishErrorType.POLICY_VIOLATION)")
+    long countPolicyFailedForUser(@Param("userId") UUID userId);
+
     long countByStatusAndPublishedAtAfterAndDeletedAtIsNull(PostStatus status, LocalDateTime after);
 
     long countByStatusAndUpdatedAtAfterAndDeletedAtIsNull(PostStatus status, LocalDateTime after);

@@ -42,9 +42,12 @@ import java.util.UUID;
 @Transactional
 public class ContentFormattingServiceImpl implements ContentFormattingService {
 
-    // Chỉ format nội dung đã sẵn sàng: GENERATED (luồng thường) hoặc APPROVED (luồng review).
+    // Thứ tự mới (Tạo → Định dạng → Sửa → Duyệt): format chạy TRƯỚC review nên bài còn ở DRAFT khi
+    // format. Cho phép DRAFT + GENERATED (bài đã tạo) / APPROVED (đã duyệt) / FORMATTED ("Định dạng lại").
+    // Format chỉ đổi status của VERSION sang FORMATTED, KHÔNG lật status item — item giữ vòng đời review.
     static final Set<ContentLifecycle> FORMATTABLE_STATUSES =
-            EnumSet.of(ContentLifecycle.GENERATED, ContentLifecycle.APPROVED);
+            EnumSet.of(ContentLifecycle.DRAFT, ContentLifecycle.GENERATED,
+                    ContentLifecycle.APPROVED, ContentLifecycle.FORMATTED);
 
     ContentFormattingJobRepository jobRepository;
     ContentItemRepository contentItemRepository;

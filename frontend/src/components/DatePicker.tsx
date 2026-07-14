@@ -238,6 +238,7 @@ export default function DatePicker({
         createPortal(
           <div
             ref={panelRef}
+            className="menu-pop menu-pop--left"
             style={{
               position: 'fixed',
               top: pos.top,
@@ -249,7 +250,6 @@ export default function DatePicker({
               border: '1px solid #efeaf8',
               boxShadow: dropShadow,
               padding: '16px 16px 12px',
-              animation: 'datepicker-enter .2s ease-out',
             }}
           >
             {/* Header — month/year + arrows */}
@@ -414,14 +414,6 @@ export default function DatePicker({
           </div>,
           document.body,
         )}
-
-      {/* Animation keyframes — injected once */}
-      <style>{`
-        @keyframes datepicker-enter {
-          from { opacity: 0; transform: translateY(-6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </>
   );
 }

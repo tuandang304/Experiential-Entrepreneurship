@@ -21,6 +21,7 @@ const PATH_BY_ROUTE: Record<Route, string> = {
   create: '/create',
   createWizard: '/create/new',
   calendar: '/calendar',
+  failedPosts: '/failed-posts',
   analytics: '/analytics',
   trends: '/trends',
   brand: '/brand',

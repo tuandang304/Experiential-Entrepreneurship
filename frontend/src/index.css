@@ -185,7 +185,10 @@ html {
   scroll-margin-top: 104px;
 }
 
-/* Dropdown UserMenu xuất hiện mượt (thay framer-motion ở bản UML). */
+/* Dropdown/menu xuất hiện mượt (thay framer-motion ở bản UML) — dùng chung cho MỌI
+   popover mở-xuống: UserMenu, NotificationBell, kebab admin/StrategyCard, menu avatar,
+   listbox gợi ý, DatePicker. Thời lượng/easing lấy từ token (styles/tokens.css) nên
+   chỉnh một chỗ là cả app đổi. Chỉ animate opacity + transform (không display/height). */
 @keyframes menu-pop {
   from {
     opacity: 0;
@@ -196,9 +199,35 @@ html {
     transform: none;
   }
 }
+/* Bản căn giữa: menu định vị bằng left:50% + translateX(-50%). Keyframe phải GIỮ
+   translateX(-50%) ở mọi frame, nếu dùng menu-pop thường thì 'transform: none' sẽ
+   xoá căn giữa và menu nhảy lệch nửa chiều rộng. */
+@keyframes menu-pop-center {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
 .menu-pop {
-  animation: menu-pop 0.16s ease-out both;
+  animation: menu-pop var(--dropdown-duration) var(--dropdown-ease) both;
   transform-origin: top right;
+}
+/* Listbox/menu neo mép trái (combobox full-width) — đổi gốc phóng cho khớp vị trí. */
+.menu-pop--left {
+  transform-origin: top left;
+}
+.menu-pop--center {
+  animation-name: menu-pop-center;
+  transform-origin: top center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-pop {
+    animation: none !important;
+  }
 }
 
 /* Nút Login co/giãn dạng "viên thuốc" (phỏng theo UML, đổi sang gradient AIMA). */

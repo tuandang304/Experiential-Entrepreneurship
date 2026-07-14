@@ -145,7 +145,7 @@ export function ComboInput({
         <ChevronDown size={15} strokeWidth={1.9} />
       </span>
       {open && matches.length > 0 && (
-        <div role="listbox" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 40, background: '#fff', border: '1px solid #ece8f6', borderRadius: 12, boxShadow: '0 12px 32px -10px rgba(40,20,90,.28)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 264, overflowY: 'auto' }}>
+        <div role="listbox" className="menu-pop menu-pop--left" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 40, background: '#fff', border: '1px solid #ece8f6', borderRadius: 12, boxShadow: '0 12px 32px -10px rgba(40,20,90,.28)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 264, overflowY: 'auto' }}>
           {matches.map((s, i) => (
             <button
               key={s}

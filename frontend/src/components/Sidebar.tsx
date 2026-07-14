@@ -88,6 +88,8 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
     { key: 'dashboard', label: t.navDashboard, icon: ICON.dashboard },
     { key: 'create', label: t.navCreate, icon: ICON.create },
     { key: 'calendar', label: t.navCalendar, icon: ICON.calendar, badge: '3' },
+    // Trung tâm hồi phục bài lỗi (FR-35..FR-39) — bổ trợ lối vào từ trang Lịch + notification.
+    { key: 'failedPosts', label: t.navFailedPosts, icon: AlertTriangle },
     { key: 'analytics', label: t.navAnalytics, icon: ICON.analytics },
     { key: 'trends', label: t.navTrends, icon: ICON.trends },
     { key: 'brand', label: t.navBrand, icon: ICON.brand },

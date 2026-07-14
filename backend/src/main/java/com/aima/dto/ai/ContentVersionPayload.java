@@ -29,6 +29,9 @@ public class ContentVersionPayload {
     @JsonProperty("formatted_hashtags")
     List<String> formattedHashtags;
 
+    /** CTA đã được chuyển thể cho nền tảng (FR-40) — bắt buộc có, không để trống. */
+    String cta;
+
     @JsonProperty("media_format")
     String mediaFormat;
 

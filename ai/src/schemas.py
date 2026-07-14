@@ -290,11 +290,20 @@ class FormatRequest(BaseModel):
 
 
 class ContentVersion(BaseModel):
-    """Platform-specific formatted version (FR-40, FR-46)."""
+    """Platform-specific formatted version (FR-40, FR-46).
+
+    This is an ADAPTATION of the source content — the core message, product/offer
+    facts and CTA intent are preserved; only presentation (length, tone, hashtags,
+    structure, phrasing) changes per platform.
+    """
 
     platform_name: str
     formatted_caption: str
     formatted_hashtags: List[str] = Field(default_factory=list)
+    cta: str = Field(
+        ...,
+        description="The source CTA rewritten to fit this platform — MUST be present, never empty.",
+    )
     media_format: str = Field(..., description="e.g. vertical video, square image, link post")
     notes: Optional[str] = None
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Clock, PencilLine, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Clock, PencilLine, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext.tsx';
 import { useBreakpoint } from '../../hooks/useBreakpoint.ts';
 import { Card, PlatformTag } from '../../components/ui.tsx';
@@ -173,6 +173,16 @@ export default function Calendar() {
             {t.calAuto}
           </span>
         </div>
+
+        {/* Lối vào trung tâm hồi phục bài lỗi (FR-35..FR-39) — xử lý vi phạm chính sách / lỗi kỹ thuật */}
+        <button
+          onClick={() => go('failedPosts')}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', marginBottom: 14, border: '1px solid #f2d9df', background: '#fdf5f7', borderRadius: 10, padding: '9px 12px', fontSize: 12.5, fontWeight: 700, color: '#c0356a', cursor: 'pointer' }}
+        >
+          <AlertTriangle size={14} />
+          {t.fpNavFailed}
+          <span style={{ marginLeft: 'auto' }}>›</span>
+        </button>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
           {FILTERS.map((f) => {

@@ -41,8 +41,14 @@ client.interceptors.response.use(
     const status = error.response?.status;
     const message = data?.message ?? "Cannot reach the server. Please try again.";
     
-    if (status === 401 && !error.config?.url?.includes("/auth/login")) {
-      globalToast?.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", { title: "Lỗi kết nối" });
+    const isLoginEndpoint = error.config?.url?.includes("/auth/login");
+    const isProfileProbe = error.config?.url?.includes("/users/me");
+    
+    if (status === 401 && !isLoginEndpoint && !isProfileProbe) {
+      globalToast?.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", { 
+        title: "Lỗi kết nối",
+        id: 401 
+      });
     } else if (status >= 500) {
       globalToast?.error("Máy chủ hiện không phản hồi. Vui lòng thử lại sau.", { title: "Lỗi hệ thống" });
     }

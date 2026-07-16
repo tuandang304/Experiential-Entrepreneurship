@@ -90,7 +90,11 @@ export default function LandingHeader() {
   // Bấm nav: route → điều hướng trang; section → cuộn (hoặc về "/#id" nếu ở trang khác).
   const onNavClick = (it: HeaderNavItem) => {
     if (it.kind === "route") {
-      go(it.route);
+      if (onLanding && it.spyId) {
+        scrollToId(it.spyId);
+      } else {
+        go(it.route);
+      }
     } else if (onLanding) {
       scrollToId(it.id);
     } else {
@@ -178,7 +182,7 @@ export default function LandingHeader() {
                   <a
                     key={i}
                     ref={(el) => { itemRefs.current[i] = el; }}
-                    href={it.kind === "route" ? it.path : `/#${it.id}`}
+                    href={it.kind === "route" ? (onLanding && it.spyId ? `/#${it.spyId}` : it.path) : `/#${it.id}`}
                     onClick={(e) => { e.preventDefault(); onNavClick(it); }}
                     onMouseEnter={() => setHovered(i)}
                     style={{ position: "relative", zIndex: 1, padding: "9px 17px", borderRadius: 999, cursor: "pointer", whiteSpace: "nowrap", fontWeight: isActive ? 700 : 600, fontSize: 15, color: isActive ? "#fff" : hovered === i ? "#7c3aed" : "#4b4660", transition: "color .25s ease" }}
@@ -227,7 +231,7 @@ export default function LandingHeader() {
               return (
                 <a
                   key={i}
-                  href={it.kind === "route" ? it.path : `/#${it.id}`}
+                  href={it.kind === "route" ? (onLanding && it.spyId ? `/#${it.spyId}` : it.path) : `/#${it.id}`}
                   onClick={(e) => { e.preventDefault(); onNavClick(it); closeMobile(); }}
                   style={{ padding: "11px 12px", borderRadius: 11, fontWeight: isActive ? 700 : 600, fontSize: 15, color: isActive ? "#7c3aed" : "#4b4660", background: isActive ? "#f4eefe" : "transparent", textDecoration: "none" }}
                 >

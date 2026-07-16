@@ -26,12 +26,6 @@ export interface FailedPost {
   failedAt: string | null;
 }
 
-export interface FailedPostSummary {
-  total: number;
-  policyViolation: number;
-  technical: number;
-}
-
 export interface FailedPostListParams {
   filter?: FailedPostFilter;
   page?: number;
@@ -43,11 +37,5 @@ export async function listFailedPosts(params: FailedPostListParams = {}): Promis
   const { data } = await client.get<ApiResponse<PageResponse<FailedPost>>>("/me/failed-posts", {
     params: { filter: params.filter ?? "ALL", page: params.page ?? 0, size: params.size ?? 8 },
   });
-  return data.result;
-}
-
-// GET /me/failed-posts/summary — khối "Tổng quan lỗi" (tổng / vi phạm / kỹ thuật).
-export async function getFailedPostSummary(): Promise<FailedPostSummary> {
-  const { data } = await client.get<ApiResponse<FailedPostSummary>>("/me/failed-posts/summary");
   return data.result;
 }

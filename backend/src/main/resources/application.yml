@@ -13,7 +13,7 @@ spring:
     name: ${APP_NAME}
 
   config:
-    import: optional:file:.env[.properties]
+    import: optional:file:backend/.env[.properties]
 
   datasource:
     url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require&prepareThreshold=0
@@ -133,6 +133,20 @@ meta:
 ai-service:
   base-url: ${AI_SERVICE_BASE_URL:http://localhost:8000}
   timeout-seconds: ${AI_SERVICE_TIMEOUT_SECONDS:60}
+
+# Cấu hình AI theo DB (admin quản lý provider/model/routing — trang "Cấu hình AI").
+# from-db=false (mặc định) → payload gửi AI service KHÔNG kèm llm_config, AI service
+# chạy bằng env của nó như trước (đường rollback). Chỉ bật khi admin đã dán key + verify.
+ai-config:
+  from-db: ${AI_CONFIG_FROM_DB:false}
+  # Seed 1 lần từ env (copy giá trị từ ai/.env, tuỳ chọn). Trống → provider vẫn được tạo
+  # nhưng chưa có key, admin dán key qua UI. Chỉ áp khi TẠO MỚI row, không ghi đè DB.
+  # Model để trống → dùng default trong AiConfigDataInitializer (khớp ai/src/config.py).
+  seed:
+    anthropic-api-key: ${AI_SEED_ANTHROPIC_API_KEY:}
+    anthropic-model: ${AI_SEED_ANTHROPIC_MODEL:}
+    google-api-key: ${AI_SEED_GOOGLE_API_KEY:}
+    google-model: ${AI_SEED_GOOGLE_MODEL:}
 
 aima:
   encryption:

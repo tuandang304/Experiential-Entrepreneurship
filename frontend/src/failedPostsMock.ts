@@ -1,10 +1,10 @@
-import type { PageResponse } from './api/apiClient.ts';
-import type { FailedPost, FailedPostFilter, FailedPostSummary } from './api/failedPosts.ts';
+import type { FailedPost } from './api/failedPosts.ts';
 
 // Mock demo cho trang "Bài lỗi & cần xử lý" — dùng khi backend chưa chạy / user chưa có bài lỗi
 // (cùng vai trò với trendsData.ts của trang Trends). Dữ liệu thật luôn được ưu tiên.
 // Mã lỗi lấy theo Graph API thật: 368 (vi phạm chuẩn cộng đồng), 190 (token hết hạn),
 // 4 (rate limit), 100 (sai tham số/media), 2 (lỗi tạm thời phía nền tảng).
+// Đủ >10 bản ghi để demo phân trang 10 item/trang của layout master–detail.
 
 const MOCK_FAILED_POSTS: FailedPost[] = [
   {
@@ -91,21 +91,93 @@ const MOCK_FAILED_POSTS: FailedPost[] = [
     errorMessage: 'Trang Facebook đã thu hồi quyền đăng bài của ứng dụng. Cần cấp lại quyền khi kết nối.',
     failedAt: '2026-07-10T11:48:00',
   },
+  {
+    id: 'mock-8',
+    scheduleId: 'mock-sch-8',
+    contentItemId: 'mock-ci-8',
+    platformName: 'INSTAGRAM',
+    accountName: '@aima.coffee',
+    caption: 'Cam kết hoàn tiền 200% nếu bạn không thấy ngon — đảm bảo tuyệt đối!',
+    errorType: 'POLICY_VIOLATION',
+    errorCode: '368',
+    errorMessage: 'Nội dung vi phạm chính sách quảng cáo: cam kết hoàn tiền phóng đại, dễ gây hiểu lầm cho người dùng.',
+    failedAt: '2026-07-09T19:20:00',
+  },
+  {
+    id: 'mock-9',
+    scheduleId: 'mock-sch-9',
+    contentItemId: 'mock-ci-9',
+    platformName: 'THREADS',
+    accountName: '@aima.coffee',
+    caption: 'Một buổi sáng chậm rãi cùng ly bạc xỉu nóng ☁️',
+    errorType: 'TEMPORARY',
+    errorCode: '2',
+    errorMessage: 'Máy chủ nền tảng trả lỗi tạm thời (service unavailable). Đã thử lại 3 lần nhưng chưa thành công.',
+    failedAt: '2026-07-09T06:55:00',
+  },
+  {
+    id: 'mock-10',
+    scheduleId: 'mock-sch-10',
+    contentItemId: 'mock-ci-10',
+    platformName: 'FACEBOOK',
+    accountName: 'AIMA Coffee House',
+    caption: 'Thuốc bổ từ cà phê: chữa đau đầu, hết stress ngay lập tức!',
+    errorType: 'POLICY_VIOLATION',
+    errorCode: '368',
+    errorMessage: 'Nội dung vi phạm Tiêu chuẩn cộng đồng: gán công dụng y tế cho thực phẩm không có kiểm chứng.',
+    failedAt: '2026-07-08T15:40:00',
+  },
+  {
+    id: 'mock-11',
+    scheduleId: 'mock-sch-11',
+    contentItemId: 'mock-ci-11',
+    platformName: 'INSTAGRAM',
+    accountName: '@aima.coffee',
+    caption: 'Toàn cảnh quán mới tại Quận 3 — hẹn bạn ghé chơi cuối tuần này 🌿',
+    errorType: 'PERMANENT',
+    errorCode: '100',
+    errorMessage: 'Video vượt quá thời lượng cho phép của Reels. Hãy cắt ngắn video rồi đăng lại.',
+    failedAt: '2026-07-08T10:05:00',
+  },
+  {
+    id: 'mock-12',
+    scheduleId: 'mock-sch-12',
+    contentItemId: 'mock-ci-12',
+    platformName: 'THREADS',
+    accountName: '@aima.coffee',
+    caption: 'Poll nhanh: mở cửa tới 23h hay 24h? Vote ngay bên dưới 👇',
+    errorType: 'TEMPORARY',
+    errorCode: '4',
+    errorMessage: 'Ứng dụng chạm ngưỡng rate limit theo giờ của nền tảng. Bài sẽ được thử lại theo lịch retry.',
+    failedAt: '2026-07-07T21:30:00',
+  },
+  {
+    id: 'mock-13',
+    scheduleId: 'mock-sch-13',
+    contentItemId: 'mock-ci-13',
+    platformName: 'FACEBOOK',
+    accountName: 'AIMA Coffee House',
+    caption: 'Giới thiệu blend mới: 100% khách hàng đánh giá 5 sao, ngon nhất Việt Nam.',
+    errorType: 'POLICY_VIOLATION',
+    errorCode: '368',
+    errorMessage: 'Nội dung vi phạm chính sách quảng cáo: tuyên bố "nhất/duy nhất" không kèm bằng chứng xác thực.',
+    failedAt: '2026-07-07T09:12:00',
+  },
+  {
+    id: 'mock-14',
+    scheduleId: 'mock-sch-14',
+    contentItemId: 'mock-ci-14',
+    platformName: 'INSTAGRAM',
+    accountName: '@aima.coffee',
+    caption: 'Behind the scenes: quy trình rang xay tại xưởng AIMA 🔥',
+    errorType: 'PERMANENT',
+    errorCode: '190',
+    errorMessage: 'Access token không còn hợp lệ do tài khoản đổi mật khẩu. Hãy kết nối lại tài khoản Instagram.',
+    failedAt: '2026-07-06T17:25:00',
+  },
 ];
 
-const matches = (p: FailedPost, filter: FailedPostFilter) =>
-  filter === 'ALL' ||
-  (filter === 'POLICY' ? p.errorType === 'POLICY_VIOLATION' : p.errorType !== 'POLICY_VIOLATION');
-
-/** Cắt trang y như backend (page đánh số từ 0) để nút "Xem thêm" hoạt động trên mock. */
-export function mockFailedPostPage(filter: FailedPostFilter, page: number, size: number): PageResponse<FailedPost> {
-  const all = MOCK_FAILED_POSTS.filter((p) => matches(p, filter));
-  const content = all.slice(page * size, page * size + size);
-  const totalPages = Math.max(1, Math.ceil(all.length / size));
-  return { content, page, size, totalElements: all.length, totalPages, last: page >= totalPages - 1 };
-}
-
-export function mockFailedPostSummary(): FailedPostSummary {
-  const policyViolation = MOCK_FAILED_POSTS.filter((p) => p.errorType === 'POLICY_VIOLATION').length;
-  return { total: MOCK_FAILED_POSTS.length, policyViolation, technical: MOCK_FAILED_POSTS.length - policyViolation };
+/** Toàn bộ mock (bản sao) — trang lọc/phân trang client-side trên danh sách này. */
+export function mockFailedPosts(): FailedPost[] {
+  return [...MOCK_FAILED_POSTS];
 }

@@ -1048,3 +1048,28 @@ html {
     box-shadow: 0 0 0 0 rgba(178, 212, 252, 0.7);
   }
 }
+
+/* ===== Trang "Bài lỗi & cần xử lý" ===== */
+/* Skeleton shimmer khi đang tải danh sách. */
+.skeleton {
+  background: linear-gradient(90deg, #f1eef8 25%, #faf9fe 45%, #f1eef8 65%);
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-wave {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Hàng bảng/card chọn được — hover nhạt (hàng đang chọn set background inline nên vẫn thắng). */
+.row-hover:hover {
+  background: #faf9fe;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

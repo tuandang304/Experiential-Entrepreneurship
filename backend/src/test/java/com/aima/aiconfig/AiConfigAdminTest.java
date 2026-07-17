@@ -158,6 +158,57 @@ class AiConfigAdminTest {
                 "Flag tắt → không task nào được nhận llm_config");
     }
 
+    // ===== Effective status (GET /admin/ai/status — một nguồn sự thật) =====
+
+    @Test
+    void statusRejectsAnonymous() throws Exception {
+        mockMvc.perform(get("/admin/ai/status"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void statusReflectsProviderState() throws Exception {
+        // Cả hai provider tắt + không key → route nào đang bật cũng hỏng cả hai nhánh.
+        for (AiProviderCode code : AiProviderCode.values()) {
+            AiProvider p = provider(code);
+            p.setEnabled(false);
+            p.setApiKey(null);
+            providerRepository.save(p);
+        }
+
+        mockMvc.perform(get("/admin/ai/status").with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.fromDb").value(false)) // context này chạy from-db mặc định (false)
+                .andExpect(jsonPath("$.result.routes.length()").value(AiTaskCode.values().length))
+                .andExpect(jsonPath("$.result.routes[0].primaryBlockReason").value("PROVIDER_DISABLED"));
+
+        // Bật ANTHROPIC + có key (primary của seed routing) → không còn route lỗi.
+        AiProvider anthropic = provider(AiProviderCode.ANTHROPIC);
+        anthropic.setEnabled(true);
+        anthropic.setApiKey(SECRET_KEY);
+        providerRepository.save(anthropic);
+
+        mockMvc.perform(get("/admin/ai/status").with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.errorCount").value(0))
+                .andExpect(jsonPath("$.result.routes[0].primaryBlockReason").isEmpty());
+    }
+
+    // ===== DTO enrichment: nghiệp vụ đang dùng model / phụ thuộc provider =====
+
+    @Test
+    void modelAndProviderResponsesExposeRoutingDependencies() throws Exception {
+        // Seed: model Anthropic là primary, model Google là fallback của cả 6 routing.
+        mockMvc.perform(get("/admin/ai/models").with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result[0].usedByTaskCodes").isArray())
+                .andExpect(jsonPath("$.result[0].usedByTaskCodes.length()").value(AiTaskCode.values().length));
+
+        mockMvc.perform(get("/admin/ai/providers").with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result[0].dependentTaskCount").value(AiTaskCode.values().length));
+    }
+
     // ===== (d) Audit snapshot chỉ lưu key đã mask =====
 
     @Test

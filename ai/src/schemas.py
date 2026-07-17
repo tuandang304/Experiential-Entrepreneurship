@@ -467,3 +467,30 @@ class TestConnectionResult(BaseModel):
     success: bool
     message: Optional[str] = None
     latency_ms: Optional[int] = None
+
+
+# ============================================================
+# Provider model catalog (admin "Cấu hình AI" — model sync)
+# ============================================================
+
+
+class ListModelsRequest(BaseModel):
+    """Mirrors backend dto/ai/ListModelsPayload. Always requires the internal token."""
+
+    provider: Literal["anthropic", "google"]
+    api_key: SecretStr
+
+
+class CatalogModel(BaseModel):
+    """One provider model normalized to a shared shape (missing / 0 limits => None)."""
+
+    id: str
+    display_name: Optional[str] = None
+    max_input_tokens: Optional[int] = None
+    max_tokens: Optional[int] = None
+
+
+class ListModelsResult(BaseModel):
+    """Provider order is preserved (Anthropic lists newest models first)."""
+
+    models: List[CatalogModel] = Field(default_factory=list)

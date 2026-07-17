@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -36,4 +37,15 @@ public class AiProviderResponse {
     String lastTestStatus;
 
     LocalDateTime updatedAt;
+
+    /**
+     * Catalog model đã đồng bộ từ API provider (kèm giá GỢI Ý join từ bảng giá tự bảo trì);
+     * null = chưa đồng bộ lần nào. Thứ tự như provider trả (Anthropic: mới nhất trước).
+     */
+    List<AiCatalogModelResponse> modelCatalog;
+
+    LocalDateTime modelCatalogSyncedAt;
+
+    /** Số nghiệp vụ có model chính/dự phòng thuộc provider này — cảnh báo trước khi tắt. */
+    Integer dependentTaskCount;
 }

@@ -1,14 +1,18 @@
 package com.aima.mapper;
 
+import com.aima.dto.ai.CatalogModelPayload;
 import com.aima.dto.ai.LlmConfigPayload;
 import com.aima.dto.ai.LlmSpecPayload;
 import com.aima.dto.request.AiModelCreateRequest;
 import com.aima.dto.request.AiModelUpdateRequest;
 import com.aima.dto.request.AiProviderUpdateRequest;
 import com.aima.dto.request.AiRoutingUpdateRequest;
+import com.aima.dto.response.AiCatalogModelResponse;
 import com.aima.dto.response.AiConfigAuditResponse;
+import com.aima.dto.response.AiEffectiveStatusResponse;
 import com.aima.dto.response.AiModelResponse;
 import com.aima.dto.response.AiProviderResponse;
+import com.aima.dto.response.AiRouteStatusResponse;
 import com.aima.dto.response.AiRoutingResponse;
 import com.aima.dto.response.AiUsageByModelResponse;
 import com.aima.dto.response.AiUsageByTaskResponse;
@@ -44,10 +48,18 @@ public interface AiConfigMapper {
 
     // ===== Provider =====
 
+    // modelCatalog (JSON String → List đã join giá gợi ý) + dependentTaskCount do service tính.
     @Mapping(target = "apiKeyMasked", source = "apiKey", qualifiedByName = "maskKey")
+    @Mapping(target = "modelCatalog", ignore = true)
+    @Mapping(target = "dependentTaskCount", ignore = true)
     AiProviderResponse toProviderResponse(AiProvider provider);
 
     List<AiProviderResponse> toProviderResponseList(List<AiProvider> providers);
+
+    /** Catalog payload từ AI service → shape lưu JSONB/trả FE (giá gợi ý do service join sau). */
+    AiCatalogModelResponse toCatalogModel(CatalogModelPayload payload);
+
+    List<AiCatalogModelResponse> toCatalogModelList(List<CatalogModelPayload> payloads);
 
     // apiKey xử lý riêng ở service (write-only, blank = giữ nguyên) — mapper không đụng tới.
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -56,8 +68,10 @@ public interface AiConfigMapper {
 
     // ===== Model =====
 
+    // usedByTaskCodes do service tính từ bảng routing.
     @Mapping(target = "providerId", source = "provider.id")
     @Mapping(target = "providerCode", source = "provider.code")
+    @Mapping(target = "usedByTaskCodes", ignore = true)
     AiModelResponse toModelResponse(AiModel model);
 
     List<AiModelResponse> toModelResponseList(List<AiModel> models);
@@ -85,6 +99,15 @@ public interface AiConfigMapper {
      * primaryModel/fallbackModel do service lookup và set.
      */
     void updateRouting(AiRoutingUpdateRequest request, @MappingTarget AiTaskRouting routing);
+
+    // ===== Effective status (một nguồn sự thật — tính ở AiConfigServiceImpl) =====
+
+    AiRouteStatusResponse toRouteStatus(UUID routingId, String taskCode, Boolean enabled, String health,
+                                        String primaryBlockReason, String fallbackBlockReason,
+                                        Boolean hasFallback);
+
+    AiEffectiveStatusResponse toEffectiveStatus(Boolean fromDb, Integer degradedCount, Integer errorCount,
+                                                List<AiRouteStatusResponse> routes);
 
     // ===== Audit =====
 

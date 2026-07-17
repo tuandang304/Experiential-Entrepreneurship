@@ -17,6 +17,8 @@ import com.aima.dto.ai.ResearchPayload;
 import com.aima.dto.ai.ResearchResultPayload;
 import com.aima.dto.ai.TestConnectionPayload;
 import com.aima.dto.ai.TestConnectionResultPayload;
+import com.aima.dto.ai.ListModelsPayload;
+import com.aima.dto.ai.ListModelsResultPayload;
 import com.aima.dto.ai.LlmRoutedPayload;
 import com.aima.enums.AiTaskCode;
 import com.aima.exception.AppException;
@@ -108,6 +110,12 @@ public class AiServiceClientImpl implements AiServiceClient {
     @Override
     public TestConnectionResultPayload testConnection(TestConnectionPayload payload) {
         return post("/test-connection", payload, TestConnectionResultPayload.class);
+    }
+
+    // Payload chứa API key plaintext — cùng ràng buộc không-log như testConnection.
+    @Override
+    public ListModelsResultPayload listModels(ListModelsPayload payload) {
+        return post("/list-models", payload, ListModelsResultPayload.class);
     }
 
     private <T> T post(String uri, Object payload, Class<T> resultType) {

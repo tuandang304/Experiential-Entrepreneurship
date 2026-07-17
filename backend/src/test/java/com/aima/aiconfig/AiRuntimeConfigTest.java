@@ -1,7 +1,9 @@
 package com.aima.aiconfig;
 
 import com.aima.dto.ai.LlmConfigPayload;
+import com.aima.entity.AiModel;
 import com.aima.entity.AiProvider;
+import com.aima.enums.AiModelBlockReason;
 import com.aima.enums.AiProviderCode;
 import com.aima.enums.AiTaskCode;
 import com.aima.repository.AiProviderRepository;
@@ -9,6 +11,8 @@ import com.aima.service.AiRuntimeConfigService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -82,5 +86,33 @@ class AiRuntimeConfigTest {
         assertNotNull(withFallback.getFallback(), "Provider fallback bật → phải kèm fallback");
         assertEquals("google", withFallback.getFallback().getProvider());
         assertEquals("gemini-2.5-pro", withFallback.getFallback().getModel());
+    }
+
+    /**
+     * blockReason là MỘT nguồn sự thật cho cả runtime lẫn effective status trang admin —
+     * kiểm tra đúng thứ tự ưu tiên lý do: xóa → model tắt → provider tắt → thiếu key.
+     * Entity dựng in-memory (không chạm DB) vì luật chỉ đọc field.
+     */
+    @Test
+    void blockReasonFollowsPriorityOrder() {
+        AiProvider provider = AiProvider.builder().enabled(true).apiKey(KEY).build();
+        AiModel model = AiModel.builder().provider(provider).enabled(true).build();
+
+        assertNull(runtimeConfigService.blockReason(model), "Model bật + provider bật + có key → dùng được");
+
+        provider.setApiKey(" ");
+        assertEquals(AiModelBlockReason.PROVIDER_KEY_MISSING, runtimeConfigService.blockReason(model));
+
+        provider.setEnabled(false);
+        assertEquals(AiModelBlockReason.PROVIDER_DISABLED, runtimeConfigService.blockReason(model));
+
+        model.setEnabled(false);
+        assertEquals(AiModelBlockReason.MODEL_DISABLED, runtimeConfigService.blockReason(model));
+
+        model.setDeletedAt(LocalDateTime.now());
+        assertEquals(AiModelBlockReason.MODEL_DELETED, runtimeConfigService.blockReason(model));
+
+        assertEquals(AiModelBlockReason.MODEL_DELETED, runtimeConfigService.blockReason(null),
+                "Fallback null coi như model không tồn tại");
     }
 }

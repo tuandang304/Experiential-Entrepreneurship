@@ -33,6 +33,18 @@ public interface AiTaskRoutingRepository extends JpaRepository<AiTaskRouting, UU
 
     List<AiTaskRouting> findByDeletedAtIsNullOrderByTaskCodeAsc();
 
+    /** Fetch-join đủ hai nhánh model+provider cho tính effective status / đếm nghiệp vụ đang dùng. */
+    @Query("""
+            select r from AiTaskRouting r
+            join fetch r.primaryModel pm
+            join fetch pm.provider
+            left join fetch r.fallbackModel fm
+            left join fetch fm.provider
+            where r.deletedAt is null
+            order by r.taskCode asc
+            """)
+    List<AiTaskRouting> findAllWithModels();
+
     boolean existsByPrimaryModelAndDeletedAtIsNull(AiModel model);
 
     boolean existsByFallbackModelAndDeletedAtIsNull(AiModel model);

@@ -8,6 +8,8 @@ import com.aima.dto.ai.GenerateContentPayload;
 import com.aima.dto.ai.GeneratedContentResult;
 import com.aima.dto.ai.GoldenHourPayload;
 import com.aima.dto.ai.GoldenHourResultPayload;
+import com.aima.dto.ai.ListModelsPayload;
+import com.aima.dto.ai.ListModelsResultPayload;
 import com.aima.dto.ai.OptimizePayload;
 import com.aima.dto.ai.OptimizeResultPayload;
 import com.aima.dto.ai.RegeneratePartPayload;
@@ -48,4 +50,10 @@ public interface AiServiceClient {
      * (trang admin "Cấu hình AI"). Payload chứa key plaintext: KHÔNG log payload.
      */
     TestConnectionResultPayload testConnection(TestConnectionPayload payload);
+
+    /**
+     * POST /list-models — catalog model của provider (id + tên + token limits; provider
+     * KHÔNG trả giá). Payload chứa key plaintext: KHÔNG log payload.
+     */
+    ListModelsResultPayload listModels(ListModelsPayload payload);
 }

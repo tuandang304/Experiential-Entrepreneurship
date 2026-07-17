@@ -24,4 +24,7 @@ public class AiModelUpdateRequest {
     BigDecimal inputPricePer1m;
 
     BigDecimal outputPricePer1m;
+
+    /** Trần max_tokens tham khảo; null = giữ nguyên (partial update). */
+    Integer maxTokens;
 }

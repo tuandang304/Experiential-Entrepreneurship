@@ -31,6 +31,7 @@ from ..agents import (
 )
 from ..config import get_settings
 from ..llm import build_llm, use_llm_config
+from ..model_catalog import list_models
 from ..schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -40,6 +41,8 @@ from ..schemas import (
     GenerateResult,
     GoldenHourRequest,
     GoldenHourResponse,
+    ListModelsRequest,
+    ListModelsResult,
     LlmConfig,
     LlmSpec,
     OptimizeRequest,
@@ -205,3 +208,24 @@ def _redact(message: str, api_key: str) -> str:
     if api_key:
         message = message.replace(api_key, "••••")
     return message[:300]
+
+
+@router.post("/list-models", response_model=ListModelsResult)
+def list_provider_models(
+    req: ListModelsRequest,
+    x_internal_token: Optional[str] = Header(default=None, alias=INTERNAL_TOKEN_HEADER),
+) -> ListModelsResult:
+    """Admin "Cấu hình AI" model sync: fetch the provider's model catalog (id +
+    display name + token limits — providers return NO pricing). Provider order is
+    preserved (Anthropic: newest first)."""
+    _require_internal_token(x_internal_token)
+
+    try:
+        models = list_models(req.provider, req.api_key.get_secret_value())
+        return ListModelsResult(models=models)
+    except Exception as e:  # noqa: BLE001 — surface provider/HTTP failures as one clean 502
+        logger.warning("list-models %s failed: %s", req.provider, type(e).__name__)
+        raise HTTPException(
+            status_code=502,
+            detail=f"list-models failed: {_redact(str(e), req.api_key.get_secret_value())}",
+        )

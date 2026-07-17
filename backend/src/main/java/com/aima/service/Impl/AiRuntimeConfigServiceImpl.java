@@ -5,6 +5,7 @@ import com.aima.dto.ai.LlmConfigPayload;
 import com.aima.dto.ai.LlmSpecPayload;
 import com.aima.entity.AiModel;
 import com.aima.entity.AiTaskRouting;
+import com.aima.enums.AiModelBlockReason;
 import com.aima.enums.AiTaskCode;
 import com.aima.mapper.AiConfigMapper;
 import com.aima.repository.AiTaskRoutingRepository;
@@ -99,14 +100,26 @@ public class AiRuntimeConfigServiceImpl implements AiRuntimeConfigService {
         return new CachedRouting(payload, activeModel, LocalDateTime.now());
     }
 
-    /** Model dùng được khi: model bật + provider bật + provider có key. */
+    @Override
+    public AiModelBlockReason blockReason(AiModel model) {
+        if (model == null || model.getDeletedAt() != null) {
+            return AiModelBlockReason.MODEL_DELETED;
+        }
+        if (!Boolean.TRUE.equals(model.getEnabled())) {
+            return AiModelBlockReason.MODEL_DISABLED;
+        }
+        if (!Boolean.TRUE.equals(model.getProvider().getEnabled())) {
+            return AiModelBlockReason.PROVIDER_DISABLED;
+        }
+        if (model.getProvider().getApiKey() == null || model.getProvider().getApiKey().isBlank()) {
+            return AiModelBlockReason.PROVIDER_KEY_MISSING;
+        }
+        return null;
+    }
+
+    /** Luật "dùng được" tập trung ở {@link #blockReason(AiModel)} — một nguồn sự thật. */
     private boolean usable(AiModel model) {
-        return model != null
-                && model.getDeletedAt() == null
-                && Boolean.TRUE.equals(model.getEnabled())
-                && Boolean.TRUE.equals(model.getProvider().getEnabled())
-                && model.getProvider().getApiKey() != null
-                && !model.getProvider().getApiKey().isBlank();
+        return blockReason(model) == null;
     }
 
     private CachedRouting inactive() {

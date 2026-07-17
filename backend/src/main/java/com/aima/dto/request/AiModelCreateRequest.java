@@ -34,4 +34,7 @@ public class AiModelCreateRequest {
     BigDecimal inputPricePer1m;
 
     BigDecimal outputPricePer1m;
+
+    /** Trần max_tokens tham khảo (auto-fill từ catalog provider, cho ghi đè); null = không rõ. */
+    Integer maxTokens;
 }

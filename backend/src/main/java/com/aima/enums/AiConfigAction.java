@@ -8,5 +8,6 @@ public enum AiConfigAction {
     CREATE,
     UPDATE,
     DELETE,
-    TEST_CONNECTION
+    TEST_CONNECTION,
+    SYNC_MODELS
 }

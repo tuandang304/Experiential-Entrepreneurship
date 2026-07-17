@@ -1,18 +1,22 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { KeyRound, PlugZap, Power } from 'lucide-react';
+import { KeyRound, PlugZap, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Icon } from '../../components/ui';
+import { Card, Icon, Loader } from '../../components/ui';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import StatusBadge from '../../components/admin/StatusBadge';
+import Switch from '../../components/admin/Switch';
 import AiServiceStatusBadge from '../../components/admin/AiServiceStatusBadge';
-import AdminListPage, { DataTable, type ListState } from '../../components/admin/AdminListPage';
+import AiStatusBanner from '../../components/admin/AiStatusBanner';
 import { useToast } from '../../components/toast/ToastProvider';
 import {
+  getAiStatus,
   listAiProviders,
+  syncAiProviderModels,
   testAiProvider,
   updateAiProvider,
   fmtAiDateTime,
+  type AiEffectiveStatus,
   type AiProviderInfo,
 } from '../../api/adminAi';
 
@@ -29,12 +33,22 @@ const inputStyle: CSSProperties = {
 
 const labelStyle: CSSProperties = { display: 'block', fontSize: 12.5, fontWeight: 700, color: '#3f3a55', marginBottom: 6 };
 
+// Badge phụ 1 dòng dưới tên provider (mã / số model / đồng bộ / kết quả test)
+const pill: CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600,
+  color: '#6b6680', background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 999, padding: '3px 9px',
+};
+// Nút hành động đồng đều, căn phải trong cụm
+const actBtn: CSSProperties = { ...btnOutline, justifyContent: 'center', minWidth: 104 };
+
 export default function AiProviders() {
   const { t, brandGradient } = useApp();
   const toast = useToast();
   const [load, setLoad] = useState<'loading' | 'error' | 'ok'>('loading');
   const [rows, setRows] = useState<AiProviderInfo[]>([]);
+  const [status, setStatus] = useState<AiEffectiveStatus | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   // Modal sửa key/tên
   const [editing, setEditing] = useState<AiProviderInfo | null>(null);
@@ -49,13 +63,11 @@ export default function AiProviders() {
 
   const fetchProviders = () => {
     setLoad('loading');
-    listAiProviders()
-      .then((r) => { setRows(r); setLoad('ok'); })
+    Promise.all([listAiProviders(), getAiStatus()])
+      .then(([r, s]) => { setRows(r); setStatus(s); setLoad('ok'); })
       .catch(() => setLoad('error'));
   };
   useEffect(fetchProviders, []);
-
-  const state: ListState = load === 'loading' ? 'loading' : load === 'error' ? 'error' : rows.length === 0 ? 'empty' : 'ready';
 
   const replaceRow = (p: AiProviderInfo) => setRows((prev) => prev.map((x) => (x.id === p.id ? p : x)));
 
@@ -104,9 +116,19 @@ export default function AiProviders() {
       .then((updated) => {
         replaceRow(updated);
         toast.success(enabled ? t.aiProviderEnabled : t.aiProviderDisabled);
+        getAiStatus().then(setStatus).catch(() => {}); // bật/tắt provider đổi health các route
       })
       .catch((e: Error) => toast.error(e.message)) // vd mã 2017: bật khi chưa có key
       .finally(() => { setBusy(false); setDisabling(null); });
+  };
+
+  /** Đồng bộ catalog model từ API provider (id + tên + token limits — không có giá). */
+  const runSync = (p: AiProviderInfo) => {
+    setSyncingId(p.id);
+    syncAiProviderModels(p.id)
+      .then((updated) => { replaceRow(updated); toast.success(t.aiSyncOk); })
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() => setSyncingId(null));
   };
 
   const testMeta = (p: AiProviderInfo) =>
@@ -122,66 +144,89 @@ export default function AiProviders() {
         <AiServiceStatusBadge />
       </div>
 
-      <AdminListPage state={state} onRetry={fetchProviders}>
-        <DataTable head={[t.aiColProvider, 'API key', t.colStatus, t.aiColLastTest, t.colAction]} minWidth={820}>
+      {/* Banner tổng effective status (nguồn: GET /admin/ai/status) */}
+      <AiStatusBanner status={status} />
+
+      {load === 'loading' && <Card><Loader label={t.listLoading} /></Card>}
+
+      {load === 'error' && (
+        <Card style={{ textAlign: 'center', padding: '54px 16px' }}>
+          <div style={{ fontSize: 14.5, fontWeight: 600, color: '#5b5670', marginBottom: 14 }}>{t.listError}</div>
+          <button onClick={fetchProviders} style={{ border: 'none', borderRadius: 10, padding: '9px 18px', fontWeight: 700, fontSize: 13, color: '#fff', background: brandGradient, cursor: 'pointer' }}>{t.retry}</button>
+        </Card>
+      )}
+
+      {load === 'ok' && rows.length === 0 && (
+        <Card style={{ textAlign: 'center', padding: '54px 16px', color: '#8a85a0', fontSize: 14.5, fontWeight: 600 }}>{t.listEmpty}</Card>
+      )}
+
+      {load === 'ok' && rows.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
           {rows.map((p) => {
             const tm = testMeta(p);
             return (
-              <tr key={p.id} style={{ borderTop: '1px solid #f1eef8' }}>
-                <td style={{ padding: '13px 16px' }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2b2543' }}>{p.name}</div>
-                  <div style={{ fontSize: 11.5, color: '#a59fbb' }}>{p.code}</div>
-                </td>
-                <td style={{ padding: '13px 16px' }}>
-                  {p.apiKeyMasked
-                    ? <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: '#3f3a55' }}>{p.apiKeyMasked}</span>
-                    : <StatusBadge tone="warning" label={t.aiNoKey} />}
-                </td>
-                <td style={{ padding: '13px 16px' }}>
-                  <StatusBadge tone={p.enabled ? 'success' : 'neutral'} label={p.enabled ? t.aiEnabled : t.aiDisabled} />
-                </td>
-                <td style={{ padding: '13px 16px' }}>
-                  {tm ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <StatusBadge tone={tm.tone} label={tm.label} />
-                      <span style={{ fontSize: 12, color: '#a59fbb' }}>{fmtAiDateTime(p.lastTestedAt)}</span>
-                    </div>
-                  ) : <span style={{ fontSize: 13, color: '#a59fbb' }}>—</span>}
-                </td>
-                <td style={{ padding: '13px 16px' }}>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button onClick={() => openEdit(p)} style={btnOutline}>
-                      <Icon icon={KeyRound} size={14} stroke="#8b5cf6" />{t.aiEditKey}
-                    </button>
-                    <button
-                      onClick={() => runTest(p)}
-                      disabled={!p.apiKeyMasked || testingId === p.id}
-                      title={!p.apiKeyMasked ? t.aiNoKey : undefined}
-                      style={{ ...btnOutline, cursor: testingId === p.id ? 'wait' : !p.apiKeyMasked ? 'not-allowed' : 'pointer', opacity: !p.apiKeyMasked ? 0.5 : 1 }}
-                    >
-                      <Icon icon={PlugZap} size={14} stroke="#0e7490" />
-                      {testingId === p.id ? t.processing : t.aiTest}
-                    </button>
-                    {p.enabled ? (
-                      <button onClick={() => setDisabling(p)} style={{ ...btnOutline, color: '#dc2626' }}>
-                        <Icon icon={Power} size={14} stroke="#dc2626" />{t.aiDisable}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setEnabled(p, true)}
-                        disabled={busy}
-                        style={{ ...btnOutline, border: 'none', background: brandGradient, color: '#fff' }}
-                      >
-                        <Icon icon={Power} size={14} stroke="#fff" />{t.aiEnable}
-                      </button>
-                    )}
+              <Card key={p.id} style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Tên + mã | switch Bật/Tắt (khu Trạng thái, tách khỏi cụm hành động) */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: '#2b2543' }}>{p.name}</div>
+                    <div style={{ fontSize: 11.5, color: '#a59fbb', fontFamily: 'monospace' }}>{p.code}</div>
                   </div>
-                </td>
-              </tr>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
+                    <StatusBadge tone={p.enabled ? 'success' : 'neutral'} label={p.enabled ? t.aiEnabled : t.aiDisabled} />
+                    <Switch
+                      checked={p.enabled}
+                      disabled={busy}
+                      title={p.enabled ? t.aiDisable : t.aiEnable}
+                      onChange={(v) => (v ? setEnabled(p, true) : setDisabling(p))}
+                    />
+                  </div>
+                </div>
+
+                {/* Badge phụ 1 dòng: API key · số model + đồng bộ · kết quả test gần nhất */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {p.apiKeyMasked
+                    ? <span style={{ ...pill, fontFamily: 'monospace', color: '#3f3a55' }}><Icon icon={KeyRound} size={12} stroke="#8b5cf6" />{p.apiKeyMasked}</span>
+                    : <span style={{ ...pill, color: '#b45309', background: '#fdf0dc', borderColor: '#f6e2c2' }}>{t.aiNoKey}</span>}
+                  <span style={pill}>
+                    {p.modelCatalogSyncedAt
+                      ? `${p.modelCatalog?.length ?? 0} model · ${t.aiSyncedAt}: ${fmtAiDateTime(p.modelCatalogSyncedAt)}`
+                      : t.aiNeverSynced}
+                  </span>
+                  {tm && (
+                    <span style={{ ...pill, color: tm.tone === 'success' ? '#0f7b3f' : '#dc2626' }}>
+                      {tm.label} · {fmtAiDateTime(p.lastTestedAt)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Cụm hành động: 1 hàng, nút đồng đều, căn phải */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', borderTop: '1px solid #f1eef8', paddingTop: 12 }}>
+                  <button onClick={() => openEdit(p)} style={actBtn}>
+                    <Icon icon={KeyRound} size={14} stroke="#8b5cf6" />{t.aiEditKey}
+                  </button>
+                  <button
+                    onClick={() => runTest(p)}
+                    disabled={!p.apiKeyMasked || testingId === p.id}
+                    title={!p.apiKeyMasked ? t.aiNoKey : undefined}
+                    style={{ ...actBtn, cursor: testingId === p.id ? 'wait' : !p.apiKeyMasked ? 'not-allowed' : 'pointer', opacity: !p.apiKeyMasked ? 0.5 : 1 }}
+                  >
+                    <Icon icon={PlugZap} size={14} stroke="#0e7490" />{testingId === p.id ? t.processing : t.aiTest}
+                  </button>
+                  <button
+                    onClick={() => runSync(p)}
+                    disabled={!p.apiKeyMasked || syncingId === p.id}
+                    title={!p.apiKeyMasked ? t.aiNoKey : undefined}
+                    style={{ ...actBtn, cursor: syncingId === p.id ? 'wait' : !p.apiKeyMasked ? 'not-allowed' : 'pointer', opacity: !p.apiKeyMasked ? 0.5 : 1 }}
+                  >
+                    <Icon icon={RefreshCw} size={14} stroke="#7c3aed" />{syncingId === p.id ? t.processing : t.aiSyncModels}
+                  </button>
+                </div>
+              </Card>
             );
           })}
-        </DataTable>
-      </AdminListPage>
+        </div>
+      )}
 
       {/* Modal sửa key/tên — key là write-only, không bao giờ hiển thị full key cũ */}
       {editing && (
@@ -225,7 +270,7 @@ export default function AiProviders() {
         </Modal>
       )}
 
-      {/* Xác nhận TẮT provider */}
+      {/* Xác nhận TẮT provider — kèm số nghiệp vụ đang định tuyến vào provider này */}
       {disabling && (
         <ConfirmModal
           variant="warning"
@@ -235,7 +280,13 @@ export default function AiProviders() {
           busy={busy}
           onConfirm={() => setEnabled(disabling, false)}
           onClose={() => setDisabling(null)}
-        />
+        >
+          {disabling.dependentTaskCount > 0 && (
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: '#fdf0dc', color: '#b45309', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+              {t.aiModelInUse.replace('{n}', String(disabling.dependentTaskCount))}
+            </div>
+          )}
+        </ConfirmModal>
       )}
     </div>
   );

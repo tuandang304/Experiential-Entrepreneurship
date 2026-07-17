@@ -1,14 +1,20 @@
 package com.aima.service.Impl;
 
+import com.aima.config.AiConfigProperties;
+import com.aima.dto.ai.ListModelsPayload;
+import com.aima.dto.ai.ListModelsResultPayload;
 import com.aima.dto.ai.TestConnectionPayload;
 import com.aima.dto.ai.TestConnectionResultPayload;
 import com.aima.dto.request.AiModelCreateRequest;
 import com.aima.dto.request.AiModelUpdateRequest;
 import com.aima.dto.request.AiProviderUpdateRequest;
 import com.aima.dto.request.AiRoutingUpdateRequest;
+import com.aima.dto.response.AiCatalogModelResponse;
 import com.aima.dto.response.AiConfigAuditResponse;
+import com.aima.dto.response.AiEffectiveStatusResponse;
 import com.aima.dto.response.AiModelResponse;
 import com.aima.dto.response.AiProviderResponse;
+import com.aima.dto.response.AiRouteStatusResponse;
 import com.aima.dto.response.AiRoutingResponse;
 import com.aima.dto.response.AiTestConnectionResponse;
 import com.aima.dto.response.AiUsageByModelResponse;
@@ -19,16 +25,20 @@ import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.PageResponse;
 import com.aima.entity.AiConfigAudit;
 import com.aima.entity.AiModel;
+import com.aima.entity.AiModelPriceCatalog;
 import com.aima.entity.AiProvider;
 import com.aima.entity.AiTaskRouting;
 import com.aima.entity.AiUsage;
 import com.aima.entity.User;
 import com.aima.enums.AiConfigAction;
+import com.aima.enums.AiModelBlockReason;
+import com.aima.enums.AiRouteHealth;
 import com.aima.enums.AiTestStatus;
 import com.aima.exception.AppException;
 import com.aima.exception.ErrorCode;
 import com.aima.mapper.AiConfigMapper;
 import com.aima.repository.AiConfigAuditRepository;
+import com.aima.repository.AiModelPriceCatalogRepository;
 import com.aima.repository.AiModelRepository;
 import com.aima.repository.AiProviderRepository;
 import com.aima.repository.AiTaskRoutingRepository;
@@ -37,8 +47,9 @@ import com.aima.repository.UserRepository;
 import com.aima.service.AiConfigService;
 import com.aima.service.AiRuntimeConfigService;
 import com.aima.service.AiServiceClient;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -54,9 +65,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Ràng buộc bảo mật của cả class (SEC-03):
@@ -83,10 +98,12 @@ public class AiConfigServiceImpl implements AiConfigService {
     AiTaskRoutingRepository routingRepository;
     AiConfigAuditRepository auditRepository;
     AiUsageRepository usageRepository;
+    AiModelPriceCatalogRepository priceCatalogRepository;
     UserRepository userRepository;
     AiConfigMapper aiConfigMapper;
     AiServiceClient aiServiceClient;
     AiRuntimeConfigService runtimeConfigService;
+    AiConfigProperties aiConfigProperties;
     ObjectMapper objectMapper;
 
     // ===== Provider =====
@@ -94,8 +111,10 @@ public class AiConfigServiceImpl implements AiConfigService {
     @Override
     @Transactional(readOnly = true)
     public ApiResponse<List<AiProviderResponse>> listProviders() {
-        List<AiProviderResponse> providers =
-                aiConfigMapper.toProviderResponseList(providerRepository.findByDeletedAtIsNullOrderByCodeAsc());
+        List<AiTaskRouting> routings = routingRepository.findAllWithModels();
+        List<AiProviderResponse> providers = providerRepository.findByDeletedAtIsNullOrderByCodeAsc().stream()
+                .map(p -> enrichProvider(aiConfigMapper.toProviderResponse(p), p, routings))
+                .toList();
         return ApiResponse.success("Lấy danh sách nhà cung cấp AI thành công", providers);
     }
 
@@ -119,8 +138,10 @@ public class AiConfigServiceImpl implements AiConfigService {
         AiProvider saved = providerRepository.save(provider);
 
         AiProviderResponse response = aiConfigMapper.toProviderResponse(saved);
+        // Audit snapshot dùng bản CHƯA enrich (không nhét cả catalog vào audit); enrich sau.
         audit(AiConfigAction.UPDATE, ENTITY_PROVIDER, saved.getId(), before, toJson(response));
         runtimeConfigService.evictCache(); // key/bật-tắt đổi → routing runtime áp dụng ngay
+        enrichProvider(response, saved, routingRepository.findAllWithModels());
         return ApiResponse.success("Cập nhật nhà cung cấp AI thành công", response);
     }
 
@@ -159,6 +180,15 @@ public class AiConfigServiceImpl implements AiConfigService {
             message = e.getMessage();
         }
 
+        if (status == AiTestStatus.SUCCESS) {
+            // Key vừa xác nhận OK → làm mới catalog model luôn (best-effort, lỗi không phá kết quả test).
+            try {
+                syncCatalog(provider);
+            } catch (Exception e) {
+                log.warn("[AiConfig] Đồng bộ catalog sau test kết nối thất bại (bỏ qua): {}", e.getMessage());
+            }
+        }
+
         provider.setLastTestedAt(LocalDateTime.now());
         provider.setLastTestStatus(status);
         providerRepository.save(provider);
@@ -173,13 +203,66 @@ public class AiConfigServiceImpl implements AiConfigService {
         return ApiResponse.success("Đã kiểm tra kết nối", response);
     }
 
+    /**
+     * KHÔNG mở transaction: có HTTP call sang AI service (rule #24) — cùng lý do testConnection.
+     */
+    @Override
+    public ApiResponse<AiProviderResponse> syncProviderModels(UUID id) {
+        AiProvider provider = providerRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new AppException(ErrorCode.AI_PROVIDER_NOT_FOUND));
+        if (provider.getApiKey() == null || provider.getApiKey().isBlank()) {
+            throw new AppException(ErrorCode.AI_PROVIDER_KEY_MISSING);
+        }
+
+        String auditSummary = syncCatalog(provider); // AI service/provider lỗi → AI_SERVICE_ERROR (502) từ client
+        AiProvider saved = providerRepository.save(provider);
+
+        // Ghi audit SAU khi catalog đã lưu (method này KHÔNG mở transaction): lỗi ghi audit
+        // KHÔNG được làm hỏng kết quả sync đã persist — chỉ log lại, không ném ra ngoài.
+        try {
+            audit(AiConfigAction.SYNC_MODELS, ENTITY_PROVIDER, saved.getId(), null, auditSummary);
+        } catch (Exception e) {
+            log.error("[AiConfig] Ghi audit SYNC_MODELS lỗi (catalog vẫn lưu thành công): {}", e.getMessage());
+        }
+
+        AiProviderResponse response = aiConfigMapper.toProviderResponse(saved);
+        enrichProvider(response, saved, routingRepository.findAllWithModels());
+        return ApiResponse.success("Đã đồng bộ danh sách model từ nhà cung cấp", response);
+    }
+
+    /**
+     * Gọi AI service lấy catalog rồi set cache JSONB + timestamp vào entity — KHÔNG save và
+     * KHÔNG ghi audit (caller lưu provider trước, rồi ghi audit tách biệt để lỗi audit không
+     * làm hỏng việc lưu catalog). Catalog lưu KHÔNG kèm giá (giá gợi ý join từ
+     * ai_model_price_catalog lúc đọc). Trả JSON snapshot gọn để caller ghi audit.
+     */
+    private String syncCatalog(AiProvider provider) {
+        ListModelsPayload payload = ListModelsPayload.builder()
+                .provider(provider.getCode().name().toLowerCase())
+                .apiKey(provider.getApiKey())
+                .build();
+        ListModelsResultPayload result = aiServiceClient.listModels(payload);
+
+        List<AiCatalogModelResponse> catalog = aiConfigMapper.toCatalogModelList(result.getModels());
+        provider.setModelCatalog(toJson(catalog));
+        provider.setModelCatalogSyncedAt(LocalDateTime.now());
+
+        // Snapshot audit gọn: số model + thời điểm (catalog đầy đủ đã nằm trên provider).
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("count", catalog.size());
+        summary.put("syncedAt", provider.getModelCatalogSyncedAt().toString());
+        return toJson(summary);
+    }
+
     // ===== Model =====
 
     @Override
     @Transactional(readOnly = true)
     public ApiResponse<List<AiModelResponse>> listModels() {
-        List<AiModelResponse> models =
-                aiConfigMapper.toModelResponseList(modelRepository.findByDeletedAtIsNullOrderByModelCodeAsc());
+        List<AiTaskRouting> routings = routingRepository.findAllWithModels();
+        List<AiModelResponse> models = modelRepository.findByDeletedAtIsNullOrderByModelCodeAsc().stream()
+                .map(m -> enrichModel(aiConfigMapper.toModelResponse(m), routings))
+                .toList();
         return ApiResponse.success("Lấy danh sách model AI thành công", models);
     }
 
@@ -202,6 +285,7 @@ public class AiConfigServiceImpl implements AiConfigService {
         AiModelResponse response = aiConfigMapper.toModelResponse(saved);
         audit(AiConfigAction.CREATE, ENTITY_MODEL, saved.getId(), null, toJson(response));
         runtimeConfigService.evictCache();
+        enrichModel(response, routingRepository.findAllWithModels());
         return ApiResponse.success("Tạo model AI thành công", response);
     }
 
@@ -218,6 +302,7 @@ public class AiConfigServiceImpl implements AiConfigService {
         AiModelResponse response = aiConfigMapper.toModelResponse(saved);
         audit(AiConfigAction.UPDATE, ENTITY_MODEL, saved.getId(), before, toJson(response));
         runtimeConfigService.evictCache();
+        enrichModel(response, routingRepository.findAllWithModels());
         return ApiResponse.success("Cập nhật model AI thành công", response);
     }
 
@@ -274,6 +359,50 @@ public class AiConfigServiceImpl implements AiConfigService {
         audit(AiConfigAction.UPDATE, ENTITY_ROUTING, saved.getId(), before, toJson(response));
         runtimeConfigService.evictCache();
         return ApiResponse.success("Cập nhật định tuyến AI thành công", response);
+    }
+
+    // ===== Effective status (một nguồn sự thật — cùng luật blockReason với runtime) =====
+
+    @Override
+    @Transactional(readOnly = true)
+    public ApiResponse<AiEffectiveStatusResponse> getEffectiveStatus() {
+        List<AiRouteStatusResponse> routes = routingRepository.findAllWithModels().stream()
+                .map(this::toRouteStatus)
+                .toList();
+        int degraded = 0;
+        int error = 0;
+        for (AiRouteStatusResponse route : routes) {
+            if (AiRouteHealth.DEGRADED.name().equals(route.getHealth())) {
+                degraded++;
+            } else if (AiRouteHealth.ERROR.name().equals(route.getHealth())) {
+                error++;
+            }
+        }
+        AiEffectiveStatusResponse status = aiConfigMapper.toEffectiveStatus(
+                aiConfigProperties.fromDb(), degraded, error, routes);
+        return ApiResponse.success("Lấy trạng thái hiệu lực cấu hình AI thành công", status);
+    }
+
+    /** Route tắt (dùng env) → health = null, không tính vào counts; route bật → OK/DEGRADED/ERROR. */
+    private AiRouteStatusResponse toRouteStatus(AiTaskRouting routing) {
+        AiModelBlockReason primaryReason = runtimeConfigService.blockReason(routing.getPrimaryModel());
+        boolean hasFallback = routing.getFallbackModel() != null;
+        AiModelBlockReason fallbackReason = hasFallback
+                ? runtimeConfigService.blockReason(routing.getFallbackModel())
+                : null;
+
+        String health = null;
+        if (Boolean.TRUE.equals(routing.getEnabled())) {
+            AiRouteHealth resolved = primaryReason == null ? AiRouteHealth.OK
+                    : hasFallback && fallbackReason == null ? AiRouteHealth.DEGRADED
+                    : AiRouteHealth.ERROR;
+            health = resolved.name();
+        }
+        return aiConfigMapper.toRouteStatus(routing.getId(), routing.getTaskCode().name(),
+                routing.getEnabled(), health,
+                primaryReason == null ? null : primaryReason.name(),
+                fallbackReason == null ? null : fallbackReason.name(),
+                hasFallback);
     }
 
     // ===== Audit =====
@@ -342,6 +471,68 @@ public class AiConfigServiceImpl implements AiConfigService {
 
     // ===== Helpers =====
 
+    /** Parse catalog JSONB (+ join giá gợi ý) + đếm nghiệp vụ phụ thuộc — sau khi map response. */
+    private AiProviderResponse enrichProvider(AiProviderResponse response, AiProvider provider,
+                                              List<AiTaskRouting> routings) {
+        response.setModelCatalog(readCatalog(provider));
+        response.setDependentTaskCount((int) routings.stream()
+                .filter(r -> usesProvider(r, provider.getId()))
+                .count());
+        return response;
+    }
+
+    /** Catalog đã lưu → list response, gắn giá GỢI Ý từ bảng giá tự bảo trì. null = chưa đồng bộ. */
+    private List<AiCatalogModelResponse> readCatalog(AiProvider provider) {
+        if (provider.getModelCatalog() == null || provider.getModelCatalog().isBlank()) {
+            return null;
+        }
+        List<AiCatalogModelResponse> catalog;
+        try {
+            catalog = objectMapper.readValue(provider.getModelCatalog(), new TypeReference<>() {
+            });
+        } catch (JacksonException e) {
+            log.error("[AiConfig] Không đọc được catalog model của provider {}: {}",
+                    provider.getCode(), e.getMessage());
+            return null;
+        }
+        Map<String, AiModelPriceCatalog> prices = priceCatalogRepository
+                .findByProviderCodeAndDeletedAtIsNull(provider.getCode()).stream()
+                .collect(Collectors.toMap(AiModelPriceCatalog::getModelCode, Function.identity(), (a, b) -> a));
+        for (AiCatalogModelResponse item : catalog) {
+            AiModelPriceCatalog price = prices.get(item.getId());
+            if (price != null) {
+                item.setSuggestedInputPricePer1m(price.getInputPricePer1m());
+                item.setSuggestedOutputPricePer1m(price.getOutputPricePer1m());
+            }
+        }
+        return catalog;
+    }
+
+    /** Gắn danh sách nghiệp vụ đang dùng model (chính/dự phòng) — cảnh báo tắt/xóa phía FE. */
+    private AiModelResponse enrichModel(AiModelResponse response, List<AiTaskRouting> routings) {
+        List<String> usedBy = routings.stream()
+                .filter(r -> usesModel(r, response.getId()))
+                .map(r -> r.getTaskCode().name())
+                .toList();
+        response.setUsedByTaskCodes(usedBy);
+        return response;
+    }
+
+    private boolean usesProvider(AiTaskRouting routing, UUID providerId) {
+        if (providerId.equals(routing.getPrimaryModel().getProvider().getId())) {
+            return true;
+        }
+        return routing.getFallbackModel() != null
+                && providerId.equals(routing.getFallbackModel().getProvider().getId());
+    }
+
+    private boolean usesModel(AiTaskRouting routing, UUID modelId) {
+        if (modelId.equals(routing.getPrimaryModel().getId())) {
+            return true;
+        }
+        return routing.getFallbackModel() != null && modelId.equals(routing.getFallbackModel().getId());
+    }
+
     /** Snapshot truyền vào là JSON của response DTO (đã mask key) — KHÔNG serialize entity. */
     private void audit(AiConfigAction action, String entityType, UUID entityId, String before, String after) {
         AiConfigAudit entry = aiConfigMapper.toAudit(currentUser(), action, entityType, entityId, before, after);
@@ -356,13 +547,15 @@ public class AiConfigServiceImpl implements AiConfigService {
         return userRepository.findByEmail(authentication.getName()).orElse(null);
     }
 
+    // Mapper Jackson 3 (tools.jackson) của framework — mapper Jackson 2 (bean cũ) không có
+    // module java-time ngoài test scope nên serialize LocalDateTime (updatedAt...) sẽ fail.
     private String toJson(Object value) {
         if (value == null) {
             return null;
         }
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             // DTO chỉ gồm kiểu cơ bản nên thực tế không xảy ra; audit vẫn ghi row với snapshot null.
             log.error("[AiConfig] Không serialize được audit snapshot: {}", e.getMessage());
             return null;

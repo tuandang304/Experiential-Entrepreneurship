@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -32,4 +33,10 @@ public class AiModelResponse {
     BigDecimal inputPricePer1m;
 
     BigDecimal outputPricePer1m;
+
+    /** Trần max_tokens tham khảo của model (null = không rõ) — chỉ để FE gợi ý/cảnh báo. */
+    Integer maxTokens;
+
+    /** Các nghiệp vụ (AiTaskCode) đang dùng model này làm chính/dự phòng — cảnh báo tắt/xóa. */
+    List<String> usedByTaskCodes;
 }

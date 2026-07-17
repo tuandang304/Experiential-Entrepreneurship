@@ -6,6 +6,8 @@ import com.aima.util.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -52,4 +54,17 @@ public class AiProvider extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "last_test_status", length = 20)
     AiTestStatus lastTestStatus;
+
+    /**
+     * Cache catalog model từ API provider (sync thủ công/sau test OK): JSON mảng object
+     * {@code [{id, displayName, maxInputTokens, maxTokens}]} — thứ tự giữ nguyên như provider
+     * trả (Anthropic: mới nhất trước). Provider KHÔNG trả giá — giá ở ai_model_price_catalog.
+     * null = chưa đồng bộ lần nào.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "model_catalog", columnDefinition = "jsonb")
+    String modelCatalog;
+
+    @Column(name = "model_catalog_synced_at")
+    LocalDateTime modelCatalogSyncedAt;
 }

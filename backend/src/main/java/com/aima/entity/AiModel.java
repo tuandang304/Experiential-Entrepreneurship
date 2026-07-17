@@ -47,4 +47,12 @@ public class AiModel extends BaseEntity {
     /** Đơn giá USD / 1M token output — chỉ để ƯỚC TÍNH chi phí. */
     @Column(name = "output_price_per_1m", precision = 12, scale = 4)
     BigDecimal outputPricePer1m;
+
+    /**
+     * Trần tham số max_tokens của model (metadata tham khảo, auto-fill từ catalog provider,
+     * admin ghi đè được). Chỉ dùng để CẢNH BÁO khi routing đặt max_tokens vượt trần —
+     * không chặn cứng (trần có thể thay đổi). null = không rõ, bỏ qua cảnh báo.
+     */
+    @Column(name = "max_tokens")
+    Integer maxTokens;
 }

@@ -2,10 +2,13 @@ package com.aima.config.init;
 
 import com.aima.config.AiConfigProperties;
 import com.aima.entity.AiModel;
+import com.aima.entity.AiModelPriceCatalog;
 import com.aima.entity.AiProvider;
 import com.aima.entity.AiTaskRouting;
+import com.aima.enums.AiConfigAction;
 import com.aima.enums.AiProviderCode;
 import com.aima.enums.AiTaskCode;
+import com.aima.repository.AiModelPriceCatalogRepository;
 import com.aima.repository.AiModelRepository;
 import com.aima.repository.AiProviderRepository;
 import com.aima.repository.AiTaskRoutingRepository;
@@ -18,6 +21,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Seed cấu hình AI theo DB (chạy sau {@code PlanDataInitializer}):
@@ -49,9 +56,27 @@ public class AiConfigDataInitializer implements CommandLineRunner {
     static final String DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
     static final String DEFAULT_GOOGLE_MODEL = "gemini-2.5-pro";
 
+    /**
+     * Bảng giá GỢI Ý (USD / 1M token in, out) — provider không trả giá qua API nên tự bảo trì;
+     * admin sửa giá thực trên từng AiModel. Chỉ áp khi TẠO MỚI row, không ghi đè chỉnh sửa.
+     */
+    static final Object[][] PRICE_CATALOG_SEED = {
+            {AiProviderCode.ANTHROPIC, "claude-opus-4-6", "5", "25"},
+            {AiProviderCode.ANTHROPIC, "claude-opus-4-5", "5", "25"},
+            {AiProviderCode.ANTHROPIC, "claude-opus-4-1", "15", "75"},
+            {AiProviderCode.ANTHROPIC, "claude-sonnet-4-6", "3", "15"},
+            {AiProviderCode.ANTHROPIC, "claude-sonnet-4-5", "3", "15"},
+            {AiProviderCode.ANTHROPIC, "claude-haiku-4-5", "1", "5"},
+            {AiProviderCode.GOOGLE, "gemini-3-pro-preview", "2", "12"},
+            {AiProviderCode.GOOGLE, "gemini-2.5-pro", "1.25", "10"},
+            {AiProviderCode.GOOGLE, "gemini-2.5-flash", "0.30", "2.50"},
+            {AiProviderCode.GOOGLE, "gemini-2.5-flash-lite", "0.10", "0.40"},
+    };
+
     AiProviderRepository providerRepository;
     AiModelRepository modelRepository;
     AiTaskRoutingRepository routingRepository;
+    AiModelPriceCatalogRepository priceCatalogRepository;
     AiConfigProperties properties;
     JdbcTemplate jdbcTemplate;
 
@@ -66,7 +91,31 @@ public class AiConfigDataInitializer implements CommandLineRunner {
         AiModel googleModel = seedModel(google, defaultIfBlank(seed.googleModel(), DEFAULT_GOOGLE_MODEL));
 
         seedRouting(anthropicModel, googleModel);
+        seedPriceCatalog();
         createPartialUniqueIndexes();
+        refreshAuditActionCheck();
+    }
+
+    /**
+     * Hibernate sinh CHECK constraint cho cột enum lúc TẠO bảng nhưng {@code ddl-auto: update}
+     * KHÔNG nới nó khi enum thêm giá trị (vd SYNC_MODELS) → insert audit vỡ constraint.
+     * Tái tạo constraint theo enum hiện hành mỗi lần khởi động — idempotent, tự lành cho
+     * các giá trị enum thêm sau này.
+     */
+    private void refreshAuditActionCheck() {
+        String values = Arrays.stream(AiConfigAction.values())
+                .map(a -> "'" + a.name() + "'")
+                .collect(Collectors.joining(","));
+        try {
+            jdbcTemplate.execute(
+                    "ALTER TABLE ai_config_audit DROP CONSTRAINT IF EXISTS ai_config_audit_action_check");
+            jdbcTemplate.execute(
+                    "ALTER TABLE ai_config_audit ADD CONSTRAINT ai_config_audit_action_check "
+                            + "CHECK (action IN (" + values + "))");
+            log.info("[AiConfigInit] Check constraint ai_config_audit_action_check đồng bộ theo enum.");
+        } catch (Exception e) {
+            log.warn("[AiConfigInit] Tái tạo check constraint audit action bỏ qua: {}", e.getMessage());
+        }
     }
 
     private AiProvider seedProvider(AiProviderCode code, String name, String apiKey) {
@@ -119,6 +168,26 @@ public class AiConfigDataInitializer implements CommandLineRunner {
         }
     }
 
+    private void seedPriceCatalog() {
+        for (Object[] row : PRICE_CATALOG_SEED) {
+            AiProviderCode providerCode = (AiProviderCode) row[0];
+            String modelCode = (String) row[1];
+            if (priceCatalogRepository
+                    .findByProviderCodeAndModelCodeAndDeletedAtIsNull(providerCode, modelCode)
+                    .isPresent()) {
+                continue;
+            }
+            AiModelPriceCatalog entry = AiModelPriceCatalog.builder()
+                    .providerCode(providerCode)
+                    .modelCode(modelCode)
+                    .inputPricePer1m(new BigDecimal((String) row[2]))
+                    .outputPricePer1m(new BigDecimal((String) row[3]))
+                    .build();
+            priceCatalogRepository.save(entry);
+            log.info("[AiConfigInit] Seeded price catalog {} ({})", modelCode, providerCode);
+        }
+    }
+
     // Unique "còn sống" (bỏ qua row đã soft-delete) — từng index một để một lỗi không chặn các index còn lại.
     private void createPartialUniqueIndexes() {
         String[] statements = {
@@ -127,7 +196,9 @@ public class AiConfigDataInitializer implements CommandLineRunner {
                 "CREATE UNIQUE INDEX IF NOT EXISTS uk_ai_models_provider_model " +
                         "ON ai_models (provider_id, model_code) WHERE deleted_at IS NULL",
                 "CREATE UNIQUE INDEX IF NOT EXISTS uk_ai_task_routing_task_code " +
-                        "ON ai_task_routing (task_code) WHERE deleted_at IS NULL"
+                        "ON ai_task_routing (task_code) WHERE deleted_at IS NULL",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uk_ai_model_price_catalog " +
+                        "ON ai_model_price_catalog (provider_code, model_code) WHERE deleted_at IS NULL"
         };
         for (String sql : statements) {
             try {

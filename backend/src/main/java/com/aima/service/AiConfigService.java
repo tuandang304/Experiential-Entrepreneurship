@@ -5,6 +5,7 @@ import com.aima.dto.request.AiModelUpdateRequest;
 import com.aima.dto.request.AiProviderUpdateRequest;
 import com.aima.dto.request.AiRoutingUpdateRequest;
 import com.aima.dto.response.AiConfigAuditResponse;
+import com.aima.dto.response.AiEffectiveStatusResponse;
 import com.aima.dto.response.AiModelResponse;
 import com.aima.dto.response.AiProviderResponse;
 import com.aima.dto.response.AiRoutingResponse;
@@ -29,6 +30,18 @@ public interface AiConfigService {
 
     /** "Kiểm tra kết nối": gọi AI service thực hiện 1 call model tối thiểu bằng key của provider. */
     ApiResponse<AiTestConnectionResponse> testConnection(UUID id);
+
+    /**
+     * Đồng bộ catalog model từ API provider (qua AI service /list-models) — cần key;
+     * lưu cache JSONB + timestamp trên provider, ghi audit SYNC_MODELS.
+     */
+    ApiResponse<AiProviderResponse> syncProviderModels(UUID id);
+
+    /**
+     * Effective status 3 mức (OK / chỉ dự phòng chạy / lỗi cả hai) cho 6 nghiệp vụ + cờ
+     * AI_CONFIG_FROM_DB — MỘT nguồn sự thật cho cả 3 trang admin, cùng luật với runtime.
+     */
+    ApiResponse<AiEffectiveStatusResponse> getEffectiveStatus();
 
     ApiResponse<List<AiModelResponse>> listModels();
 

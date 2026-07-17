@@ -5,6 +5,7 @@ import com.aima.dto.request.AiModelUpdateRequest;
 import com.aima.dto.request.AiProviderUpdateRequest;
 import com.aima.dto.request.AiRoutingUpdateRequest;
 import com.aima.dto.response.AiConfigAuditResponse;
+import com.aima.dto.response.AiEffectiveStatusResponse;
 import com.aima.dto.response.AiModelResponse;
 import com.aima.dto.response.AiProviderResponse;
 import com.aima.dto.response.AiRoutingResponse;
@@ -61,6 +62,19 @@ public class AiConfigAdminController {
     @Operation(summary = "Kiểm tra kết nối provider (1 call model tối thiểu qua AI service)")
     public ApiResponse<AiTestConnectionResponse> testConnection(@PathVariable UUID id) {
         return aiConfigService.testConnection(id);
+    }
+
+    @PostMapping("/providers/{id}/sync-models")
+    @PreAuthorize(AiConfigAccess.WRITE)
+    @Operation(summary = "Đồng bộ catalog model từ API provider (id + tên + token limits — provider không trả giá)")
+    public ApiResponse<AiProviderResponse> syncModels(@PathVariable UUID id) {
+        return aiConfigService.syncProviderModels(id);
+    }
+
+    @GetMapping("/status")
+    @Operation(summary = "Effective status 6 nghiệp vụ (OK / suy giảm / lỗi) + cờ AI_CONFIG_FROM_DB — một nguồn sự thật")
+    public ApiResponse<AiEffectiveStatusResponse> getStatus() {
+        return aiConfigService.getEffectiveStatus();
     }
 
     @GetMapping("/models")

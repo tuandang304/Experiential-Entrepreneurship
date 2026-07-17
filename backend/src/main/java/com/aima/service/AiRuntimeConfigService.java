@@ -1,6 +1,8 @@
 package com.aima.service;
 
 import com.aima.dto.ai.LlmConfigPayload;
+import com.aima.entity.AiModel;
+import com.aima.enums.AiModelBlockReason;
 import com.aima.enums.AiProviderCode;
 import com.aima.enums.AiTaskCode;
 
@@ -22,6 +24,15 @@ public interface AiRuntimeConfigService {
 
     /** Gọi sau MỌI mutation cấu hình AI để config mới áp dụng ngay. */
     void evictCache();
+
+    /**
+     * MỘT nguồn sự thật cho luật "model dùng được trong định tuyến": runtime resolve và
+     * effective status trang admin (AiConfigService) đều đi qua đây. null = dùng được;
+     * ngược lại là lý do hỏng đầu tiên theo thứ tự: xóa → model tắt → provider tắt →
+     * provider thiếu key. Yêu cầu {@code model.getProvider()} đã fetch (dùng các query
+     * fetch-join của {@code AiTaskRoutingRepository}).
+     */
+    AiModelBlockReason blockReason(AiModel model);
 
     /** Thông tin model đang hiệu lực + đơn giá ước tính (USD/1M token). */
     record ActiveModel(AiProviderCode providerCode, String modelCode,

@@ -5,6 +5,8 @@ import { Loader, Card } from '../../components/ui';
 import StatCard from '../../components/admin/StatCard';
 import SectionCard from '../../components/admin/SectionCard';
 import AiServiceStatusBadge from '../../components/admin/AiServiceStatusBadge';
+import AiStatusBanner from '../../components/admin/AiStatusBanner';
+import RouteHealthBadge from '../../components/admin/RouteHealthBadge';
 import Pagination from '../../components/admin/Pagination';
 import { DataTable } from '../../components/admin/AdminListPage';
 import {
@@ -12,9 +14,11 @@ import {
   aiTaskLabel,
   fmtAiDateTime,
   getAiAudit,
+  getAiStatus,
   getAiUsage,
   getAiUsageSummary,
   type AiAuditRow,
+  type AiEffectiveStatus,
   type AiUsageRow,
   type AiUsageSummary,
 } from '../../api/adminAi';
@@ -34,6 +38,7 @@ export default function AiUsage() {
   const { t, lang } = useApp();
   const [load, setLoad] = useState<'loading' | 'error' | 'ok'>('loading');
   const [summary, setSummary] = useState<AiUsageSummary | null>(null);
+  const [status, setStatus] = useState<AiEffectiveStatus | null>(null);
   const [month, setMonth] = useState(''); // '' = tháng hiện tại (BE mặc định)
 
   const [rows, setRows] = useState<AiUsageRow[]>([]);
@@ -64,6 +69,10 @@ export default function AiUsage() {
       .catch(() => { setAudit([]); setAuditPageCount(0); });
   }, [auditPage]);
 
+  useEffect(() => {
+    getAiStatus().then(setStatus).catch(() => setStatus(null));
+  }, []);
+
   if (load === 'loading' && !summary) {
     return <div className="view-pop" style={{ maxWidth: 1180, margin: '0 auto' }}><Card><Loader label={t.listLoading} /></Card></div>;
   }
@@ -93,6 +102,9 @@ export default function AiUsage() {
         <AiServiceStatusBadge />
       </div>
 
+      {/* Banner effective status: AI_CONFIG_FROM_DB tắt = không ghi usage + đếm route lỗi/suy giảm */}
+      <AiStatusBanner status={status} />
+
       {/* Tổng quan tháng */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 18 }}>
         <StatCard icon={Coins} iconBg="linear-gradient(135deg,#f1e9ff,#fae9ff)" iconColor="#8b5cf6"
@@ -100,6 +112,20 @@ export default function AiUsage() {
         <StatCard icon={DollarSign} iconBg="linear-gradient(135deg,#fff3e0,#ffe9f3)" iconColor="#ec4899"
           value={fmtUsd(s.estimatedCost)} label={`${t.aiUsageCost} · ${s.month}`} valueFontSize={24} />
       </div>
+
+      {/* Route nào đang hoạt động — cùng nguồn effective status với trang Model & định tuyến */}
+      {status && (
+        <SectionCard title={t.aiTaskStatusTitle}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {status.routes.map((r) => (
+              <div key={r.routingId} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid #f1eef8', borderRadius: 10, padding: '7px 12px' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#3f3a55' }}>{aiTaskLabel(lang, r.taskCode)}</span>
+                <RouteHealthBadge health={r.health} enabled={r.enabled} />
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20, alignItems: 'start' }}>
         {/* Theo nghiệp vụ */}

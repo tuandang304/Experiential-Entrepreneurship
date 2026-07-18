@@ -29,7 +29,9 @@ import com.aima.config.swagger.SwaggerExamples;
 import com.aima.dto.response.PageResponse;
 import com.aima.dto.response.TokenUsageResponse;
 import com.aima.dto.response.UserResponse;
+import com.aima.dto.response.UserUsageResponse;
 import com.aima.service.TokenUsageService;
+import com.aima.service.UsageQueryService;
 import com.aima.service.UserService;
 
 import java.util.UUID;
@@ -42,6 +44,7 @@ import java.util.UUID;
 public class AccountController {
     UserService userService;
     TokenUsageService tokenUsageService;
+    UsageQueryService usageQueryService;
 
     @PostMapping("/register")
     @Operation(
@@ -182,6 +185,18 @@ public class AccountController {
     public ApiResponse<TokenUsageResponse> getTokenUsage(
             @AuthenticationPrincipal UserDetails userDetails) {
         return tokenUsageService.getMyUsage(userDetails.getUsername());
+    }
+
+    @GetMapping("/me/usage")
+    @Operation(
+            summary = "Get the current user's token usage page data",
+            description = "Aggregated from the ai_usage event log for the current billing period: totals vs the " +
+                    "plan limit, daily series, per-feature breakdown and the current plan (with reset date from " +
+                    "the user's subscription). Drives the \"Tokens & usage\" page."
+    )
+    public ApiResponse<UserUsageResponse> getUsage(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return usageQueryService.getMyUsage(userDetails.getUsername());
     }
 
     @PutMapping("/me")

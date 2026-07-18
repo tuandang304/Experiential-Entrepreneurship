@@ -16,6 +16,7 @@ import com.aima.dto.request.UserRegisterRequest;
 import com.aima.dto.response.UserResponse;
 import com.aima.entity.User;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -59,5 +60,6 @@ public interface UserMapper {
 
     // used/limit khớp tên tham số; plan lấy từ user (null → FREE, cùng quy ước toResponse).
     @Mapping(target = "plan", expression = "java(user.getPlan() != null ? user.getPlan().name() : \"FREE\")")
-    TokenUsageResponse toTokenUsageResponse(User user, Long used, Long limit);
+    TokenUsageResponse toTokenUsageResponse(User user, Long used, Long limit, Long creditLeft,
+                                            String effectivePlanForQuota, LocalDateTime pendingPlanChangeAt);
 }

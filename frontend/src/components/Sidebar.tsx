@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, AlertTriangle, Server, FileText, Code, DollarSign, Package,
-  KeyRound, Route as RouteIcon, Coins,
+  KeyRound, Route as RouteIcon, Coins, Gauge,
   ChevronRight, ChevronLeft, X, type LucideIcon,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -94,6 +94,8 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
     { key: 'analytics', label: t.navAnalytics, icon: ICON.analytics },
     { key: 'trends', label: t.navTrends, icon: ICON.trends },
     { key: 'brand', label: t.navBrand, icon: ICON.brand },
+    // Trang "Token & mức dùng" — usage kỳ này so hạn mức gói (nguồn: event log ai_usage).
+    { key: 'usage', label: t.navUsage, icon: Coins },
   ];
   // Sidebar admin chia NHÓM (đồng bộ UI khu quản trị). Nhóm đầu (Bảng điều khiển)
   // không cần nhãn — mục Tổng quan tự đứng đầu như các admin UI thông dụng.
@@ -106,6 +108,8 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
         { key: 'adminUsers', label: t.navAdminUsers, icon: Users },
         { key: 'adminRevenue', label: t.navAdminRevenue, icon: DollarSign },
         { key: 'adminPlans', label: t.navAdminPlans, icon: Package },
+        // Token & hạn mức — usage đối chiếu hạn mức gói (đọc/gộp từ ai_usage + grant/reset).
+        { key: 'adminUsage', label: t.navAdminUsage, icon: Gauge },
       ],
     },
     {

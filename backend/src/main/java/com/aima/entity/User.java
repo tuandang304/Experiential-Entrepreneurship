@@ -110,4 +110,18 @@ public class User extends BaseEntity {
     @EqualsAndHashCode.Exclude
     @Builder.Default
     List<Notification> notifications = new ArrayList<>();
+
+    // Gói đăng ký + điều chỉnh usage token tham chiếu user trực tiếp — cascade để purge
+    // GDPR không vi phạm khóa ngoại (cùng lý do notifications).
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    List<Subscription> subscriptions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    List<UsageAdjustment> usageAdjustments = new ArrayList<>();
 }

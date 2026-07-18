@@ -230,6 +230,36 @@ public enum ErrorCode {
     AI_MAX_TOKENS_INVALID(2020, "Max tokens phải là số dương", HttpStatus.BAD_REQUEST),
     AI_ROUTING_ENABLED_REQUIRED(2021, "Thiếu trạng thái bật/tắt của định tuyến", HttpStatus.BAD_REQUEST),
     AI_USAGE_MONTH_INVALID(2022, "Tháng không hợp lệ — dùng định dạng YYYY-MM", HttpStatus.BAD_REQUEST),
+
+    // SUBSCRIPTION & USAGE (gói đăng ký + điều chỉnh token — grant/reset admin dùng từ pha sau)
+    SUBSCRIPTION_NOT_FOUND(2023, "Không tìm thấy gói đăng ký của người dùng", HttpStatus.NOT_FOUND),
+    USAGE_ADJUSTMENT_INVALID(2024, "Điều chỉnh token không hợp lệ", HttpStatus.BAD_REQUEST),
+
+    // BILLING RATES (hệ số quy đổi hạn mức — billing_rates, append-only versioning)
+    BILLING_RATE_UNIT_TYPE_REQUIRED(2025, "Thiếu loại đơn vị quy đổi", HttpStatus.BAD_REQUEST),
+    BILLING_RATE_MULTIPLIER_INVALID(2026, "Hệ số quy đổi phải lớn hơn 0", HttpStatus.BAD_REQUEST),
+    BILLING_RATE_MIN_CHARGE_INVALID(2027, "Mức trừ tối thiểu phải ≥ 0", HttpStatus.BAD_REQUEST),
+    BILLING_RATE_EFFECTIVE_FROM_INVALID(2028,
+            "Mốc hiệu lực không hợp lệ — phải từ bây giờ trở đi và sau version đang mở cùng scope",
+            HttpStatus.BAD_REQUEST),
+
+    // DEV TOOLS (chỉ bật ở môi trường dev qua cờ cấu hình)
+    DEV_TOOL_DISABLED(2029, "Công cụ dev đang tắt — bật AIMA_DEV_CREDIT_SEED=true (chỉ môi trường dev)",
+            HttpStatus.FORBIDDEN),
+    DEV_SEED_SCENARIO_INVALID(2030, "Kịch bản seed không hợp lệ — dùng SIMPLE, FIFO hoặc EXPIRY",
+            HttpStatus.BAD_REQUEST),
+
+    // USAGE EVENTS (tab Nhật ký sử dụng)
+    USAGE_EXPORT_TOO_LARGE(2031, "Kết quả vượt trần 50.000 dòng — thu hẹp bộ lọc rồi export lại",
+            HttpStatus.BAD_REQUEST),
+    USAGE_EVENT_NOT_FOUND(2032, "Không tìm thấy bản ghi usage", HttpStatus.NOT_FOUND),
+    USAGE_CURSOR_INVALID(2033, "Con trỏ phân trang không hợp lệ — tải lại trang đầu", HttpStatus.BAD_REQUEST),
+
+    // USAGE ALERTS (cảnh báo bất thường — pha 5A alert-only)
+    USAGE_ALERT_NOT_FOUND(2034, "Không tìm thấy cảnh báo", HttpStatus.NOT_FOUND),
+    USAGE_ALERT_ALREADY_ACKED(2035, "Cảnh báo đã được xác nhận trước đó", HttpStatus.BAD_REQUEST),
+    ALERT_CONFIG_KEY_INVALID(2036, "Khoá cấu hình ngưỡng cảnh báo không hợp lệ", HttpStatus.BAD_REQUEST),
+    ALERT_CONFIG_VALUE_INVALID(2037, "Giá trị ngưỡng cảnh báo phải là số không âm", HttpStatus.BAD_REQUEST),
     ;
 
     private int code;

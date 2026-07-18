@@ -75,20 +75,20 @@ public interface StrategyOptimizationMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "analytics", source = "analytics")
+    @Mapping(target = "analytics", source = "analyticsEntity")
     @Mapping(target = "strategyAdjustments", ignore = true)
-    OptimizationInsight toInsight(OptimizationInsightPayload payload, PostAnalytics analytics);
+    OptimizationInsight toInsight(OptimizationInsightPayload payload, PostAnalytics analyticsEntity);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
-    @Mapping(target = "strategy", source = "strategy")
-    @Mapping(target = "insight", source = "insight")
+    @Mapping(target = "strategy", source = "strategyEntity")
+    @Mapping(target = "insight", source = "insightEntity")
     @Mapping(target = "appliedStatus", constant = "PENDING")
     @Mapping(target = "decidedAt", ignore = true)
-    StrategyAdjustment toAdjustment(StrategyAdjustmentPayload payload, ContentStrategy strategy,
-                                    OptimizationInsight insight);
+    StrategyAdjustment toAdjustment(StrategyAdjustmentPayload payload, ContentStrategy strategyEntity,
+                                    OptimizationInsight insightEntity);
 
     // ===== Entity → response =====
 

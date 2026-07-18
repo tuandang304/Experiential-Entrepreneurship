@@ -20,6 +20,7 @@ export type Route =
   | 'analytics'
   | 'trends'
   | 'brand'
+  | 'usage'
   | 'profile'
   | 'settings'
   | 'admin'
@@ -30,6 +31,7 @@ export type Route =
   | 'adminApiVersions'
   | 'adminRevenue'
   | 'adminPlans'
+  | 'adminUsage'
   | 'adminAiProviders'
   | 'adminAiModels'
   | 'adminAiUsage';

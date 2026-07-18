@@ -39,8 +39,8 @@ public interface PostPublishMapper {
     @Mapping(target = "endTime", ignore = true)
     @Mapping(target = "errorMessage", ignore = true)
     @Mapping(target = "errorType", ignore = true)
-    @Mapping(target = "status", source = "status") // tường minh: lấy param, không phải post.status
-    PostingJob toPostingJob(Post post, Integer retryCount, LocalDateTime nextRetryAt, PostingJobStatus status);
+    @Mapping(target = "status", source = "jobStatus") // tường minh: lấy param, không phải post.status
+    PostingJob toPostingJob(Post post, Integer retryCount, LocalDateTime nextRetryAt, PostingJobStatus jobStatus);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

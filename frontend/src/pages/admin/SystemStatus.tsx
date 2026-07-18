@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { Card, Loader, Icon } from '../../components/ui';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import StatusBadge, { type Tone } from '../../components/admin/StatusBadge';
+import SectionCard from '../../components/admin/SectionCard';
 import {
   getSystemStatus, getSystemActivity,
   type SystemStatus as SystemStatusData, type ServiceStatus, type SvcHealth,
@@ -24,6 +25,7 @@ export default function SystemStatus() {
   const [range, setRange] = useState<ActivityRange>('24h');
   const [activity, setActivity] = useState<SystemActivity | null>(null);
   const [actLoading, setActLoading] = useState(true);
+  const [hover, setHover] = useState<number | null>(null); // cột đang trỏ (null = hiện tổng theo kỳ)
 
   const fetchStatus = () => {
     setLoad('loading');
@@ -35,6 +37,7 @@ export default function SystemStatus() {
 
   useEffect(() => {
     setActLoading(true);
+    setHover(null);
     getSystemActivity(range).then(setActivity).catch(() => setActivity(null)).finally(() => setActLoading(false));
   }, [range]);
 
@@ -75,6 +78,12 @@ export default function SystemStatus() {
   const maxTotal = Math.max(1, ...activeBuckets.map((b) => b.total));
   const hasActivity = activeBuckets.some((b) => b.total > 0);
   const fmtTick = (iso: string) => iso.slice(range === '1y' || range === '30d' ? 5 : 11, 16).replace('T', ' ');
+  // Tổng theo kỳ (hiện mặc định) — readout đổi sang bucket đang trỏ khi hover.
+  const actSum = activeBuckets.reduce(
+    (a, b) => ({ posts: a.posts + b.posts, jobs: a.jobs + b.jobs, errors: a.errors + b.errors }),
+    { posts: 0, jobs: 0, errors: 0 },
+  );
+  const shown = hover != null ? activeBuckets[hover] : null;
 
   return (
     <div className="view-pop" style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -146,13 +155,10 @@ export default function SystemStatus() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.6fr 1fr', gap: 20, alignItems: 'start' }}>
-        {/* Activity chart + range selector */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#211c38' }}>{t.sysActivity}</div>
-              <div style={{ fontSize: 11.5, color: '#a59fbb', marginTop: 2 }}>{t.sysActivitySub}</div>
-            </div>
+        {/* Hoạt động hệ thống — chỉ số hiện mặc định (readout đổi theo cột đang trỏ) */}
+        <SectionCard
+          title={t.sysActivity}
+          action={
             <div style={{ display: 'flex', gap: 4, background: '#f4f1fb', borderRadius: 10, padding: 3 }}>
               {RANGES.map((r) => (
                 <button key={r} onClick={() => setRange(r)} style={{
@@ -161,8 +167,8 @@ export default function SystemStatus() {
                 }}>{t[`rng${r}` as keyof typeof t] as string}</button>
               ))}
             </div>
-          </div>
-
+          }
+        >
           {actLoading ? (
             <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader /></div>
           ) : !hasActivity ? (
@@ -171,10 +177,26 @@ export default function SystemStatus() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: activeBuckets.length > 60 ? 1 : 3, height: 160, marginTop: 14 }}>
+              {/* Chỉ số hiện rõ mặc định = tổng theo kỳ; rê vào 1 cột → hiện số của cột đó */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <MiniStat tone="#6b5ca8" bg="#f4f1fb" value={shown ? shown.posts : actSum.posts} label={t.sysPosts} />
+                <MiniStat tone="#0e7490" bg="#e0f7fb" value={shown ? shown.jobs : actSum.jobs} label={t.sysJobs} />
+                <MiniStat tone="#dc2626" bg="#fde8e8" value={shown ? shown.errors : actSum.errors} label={t.sysErrors} />
+              </div>
+              {/* Chú thích màu + ngữ cảnh readout (tổng theo kỳ / thời điểm cột đang trỏ) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, fontSize: 11.5, color: '#8a85a0' }}>
+                <Dot color="#7c3aed" label={t.sysActLegendOk} />
+                <Dot color="#ec4899" label={t.sysActLegendErr} />
+                <span style={{ marginLeft: 'auto', fontWeight: 700, color: '#6b6580' }}>{shown ? fmtTick(shown.time) : t.sysActInRange}</span>
+              </div>
+              <div onMouseLeave={() => setHover(null)}
+                style={{ display: 'flex', alignItems: 'flex-end', gap: activeBuckets.length > 60 ? 1 : 3, height: 150, marginTop: 14, borderBottom: '1px solid #f1eef8' }}>
                 {activeBuckets.map((b, i) => (
-                  <div key={i} title={`${fmtTick(b.time)} · ${t.sysPosts} ${b.posts} · ${t.sysJobs} ${b.jobs} · ${t.sysErrors} ${b.errors}`}
-                    style={{ flex: 1, height: `${(b.total / maxTotal) * 100}%`, minHeight: b.total > 0 ? 3 : 0, borderRadius: 3, background: b.errors > 0 ? 'linear-gradient(#ec4899,#f9a8d4)' : brandGradient }} />
+                  <div key={i} onMouseEnter={() => setHover(i)}
+                    title={`${fmtTick(b.time)} · ${t.sysPosts} ${b.posts} · ${t.sysJobs} ${b.jobs} · ${t.sysErrors} ${b.errors}`}
+                    style={{ flex: 1, height: `${(b.total / maxTotal) * 100}%`, minHeight: b.total > 0 ? 3 : 0, borderRadius: 3,
+                      background: b.errors > 0 ? 'linear-gradient(#ec4899,#f9a8d4)' : brandGradient,
+                      outline: hover === i ? '2px solid rgba(124,58,237,.35)' : 'none', outlineOffset: 1 }} />
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11, color: '#a59fbb' }}>
@@ -183,7 +205,7 @@ export default function SystemStatus() {
               </div>
             </>
           )}
-        </Card>
+        </SectionCard>
 
         {/* Alerts (gọn top-5) + link sang Logs */}
         <Card>
@@ -223,5 +245,15 @@ function MiniStat({ tone, bg, value, label }: { tone: string; bg: string; value:
       <div style={{ fontSize: 24, fontWeight: 800, color: tone, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 12, color: '#6b6580', marginTop: 4 }}>{label}</div>
     </div>
+  );
+}
+
+// Chấm tròn chú thích màu (cùng pattern dot của StatusBadge).
+function Dot({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flex: 'none' }} />
+      {label}
+    </span>
   );
 }

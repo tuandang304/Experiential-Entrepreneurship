@@ -15,4 +15,7 @@ public interface RefreshTokenService {
     void setLogoutTime(String email);
 
     Long getLogoutTime(String email);
+
+    /** Số refresh token đang sống của user (≈ số session đồng thời) — đếm set user_rt:{userId}. */
+    long countActiveSessions(String userId);
 }

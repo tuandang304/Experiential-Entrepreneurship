@@ -69,4 +69,11 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         String val = redis.opsForValue().get(LOGOUT_TIME_PREFIX + email);
         return val != null ? Long.parseLong(val) : null;
     }
+
+    // Set có TTL theo refresh token nên jti hết hạn tự rơi khỏi index — size ≈ session sống.
+    @Override
+    public long countActiveSessions(String userId) {
+        Long size = redis.opsForSet().size(USER_INDEX_PREFIX + userId);
+        return size == null ? 0 : size;
+    }
 }

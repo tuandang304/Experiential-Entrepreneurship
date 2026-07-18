@@ -56,6 +56,12 @@ public class SystemLogServiceImpl implements SystemLogService {
         save(LogLevel.WARN, module, message);
     }
 
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void info(String module, String message) {
+        save(LogLevel.INFO, module, message);
+    }
+
     // FR-84: trang Logs của admin — lọc level + ngày + tìm kiếm; grouped = gom dòng trùng (×N).
     @Override
     @Transactional(readOnly = true)

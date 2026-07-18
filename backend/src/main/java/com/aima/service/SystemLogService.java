@@ -19,6 +19,9 @@ public interface SystemLogService {
     /** Cảnh báo không có exception đi kèm. */
     void warn(String module, String message);
 
+    /** Dấu vết nghiệp vụ cần lưu (audit thao tác admin nhạy cảm: dev-tools, xem IP/UA…). */
+    void info(String module, String message);
+
     /**
      * FR-84: admin xem log — lọc level + ngày + tìm kiếm (message/module), phân trang server-side.
      * grouped = true: gom các dòng trùng (level+module+message) thành 1 dòng kèm số đếm (×N) và

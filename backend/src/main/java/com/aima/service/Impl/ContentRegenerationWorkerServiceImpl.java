@@ -12,6 +12,7 @@ import com.aima.entity.BrandProfile;
 import com.aima.entity.ContentItem;
 import com.aima.entity.ContentRegenerationJob;
 import com.aima.entity.ContentVersion;
+import com.aima.enums.AiTaskCode;
 import com.aima.enums.GenerationJobStatus;
 import com.aima.enums.RegenField;
 import com.aima.enums.RegenSection;
@@ -21,6 +22,7 @@ import com.aima.mapper.AiContentMapper;
 import com.aima.repository.ContentRegenerationJobRepository;
 import com.aima.repository.ContentVersionRepository;
 import com.aima.service.AiServiceClient;
+import com.aima.service.AiUsageService;
 import com.aima.service.ContentRegenerationWorkerService;
 import com.aima.util.ScriptJson;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,19 +58,26 @@ public class ContentRegenerationWorkerServiceImpl implements ContentRegeneration
     ContentVersionRepository contentVersionRepository;
     AiServiceClient aiServiceClient;
     AiContentMapper aiContentMapper;
+    AiUsageService aiUsageService;
     ObjectMapper objectMapper;
     TransactionTemplate transactionTemplate;
+
+    /** Payload + ngữ cảnh event usage, dựng trong TX ngắn #1 để dùng ngoài transaction. */
+    private record RegenerationTask(RegeneratePartPayload payload, AiUsageService.AiCallContext callContext) {
+    }
 
     @Async("contentRegenerationExecutor")
     @Override
     public void process(UUID jobId) {
         // TX ngắn #1: RUNNING + dựng payload từ dữ liệu lazy, commit ngay (client poll thấy RUNNING).
-        RegeneratePartPayload payload = transactionTemplate.execute(status -> markRunningAndBuildPayload(jobId));
-        if (payload == null) {
+        RegenerationTask task = transactionTemplate.execute(status -> markRunningAndBuildPayload(jobId));
+        if (task == null) {
             return; // job không tồn tại / version đã mất
         }
         try {
-            RegeneratePartResultPayload result = aiServiceClient.regeneratePart(payload);
+            // Gọi AI NGOÀI transaction (rule #24), bọc recordCall để ghi event usage (kể cả lỗi).
+            RegeneratePartResultPayload result = aiUsageService.recordCall(task.callContext(),
+                    () -> aiServiceClient.regeneratePart(task.payload()));
             transactionTemplate.executeWithoutResult(status -> saveSuccess(jobId, result));
         } catch (Exception e) {
             String message = e.getMessage();
@@ -77,7 +86,7 @@ public class ContentRegenerationWorkerServiceImpl implements ContentRegeneration
         }
     }
 
-    private RegeneratePartPayload markRunningAndBuildPayload(UUID jobId) {
+    private RegenerationTask markRunningAndBuildPayload(UUID jobId) {
         ContentRegenerationJob job = jobRepository.findById(jobId).orElse(null);
         if (job == null) {
             log.warn("[ContentRegen] Job {} không tồn tại khi bắt đầu xử lý", jobId);
@@ -94,7 +103,7 @@ public class ContentRegenerationWorkerServiceImpl implements ContentRegeneration
         ContentItem item = version.getContentItem();
         BrandProfile brand = item.getBrandProfile();
         VideoScriptDto script = parseOrEmpty(version.getScript());
-        return RegeneratePartPayload.builder()
+        RegeneratePartPayload payload = RegeneratePartPayload.builder()
                 .brandProfile(aiContentMapper.toBrandProfilePayload(brand))
                 .platform(version.getPlatformName().name())
                 .section(job.getSection().name().toLowerCase())
@@ -102,6 +111,9 @@ public class ContentRegenerationWorkerServiceImpl implements ContentRegeneration
                 .stepIndex(job.getStepIndex())
                 .currentScript(aiContentMapper.toVideoScriptPayload(script))
                 .build();
+        AiUsageService.AiCallContext callContext = AiUsageService.AiCallContext.of(
+                brand.getUser(), AiTaskCode.CONTENT_REGENERATION, jobId, job.getClientIp(), job.getUserAgent());
+        return new RegenerationTask(payload, callContext);
     }
 
     // Patch đúng nhánh vào script HIỆN TẠI của version (đọc lại từ DB), lưu fragment vào job.
@@ -129,6 +141,8 @@ public class ContentRegenerationWorkerServiceImpl implements ContentRegeneration
         }
         job.setStatus(GenerationJobStatus.SUCCESS);
         jobRepository.save(job);
+
+        // Usage (event + cache hạn mức) đã được recordCall ghi tại thời điểm gọi AI.
     }
 
     /** Ghi đè CHỈ nhánh được yêu cầu vào {@code script} và trả về fragment (chỉ phần thay đổi). */

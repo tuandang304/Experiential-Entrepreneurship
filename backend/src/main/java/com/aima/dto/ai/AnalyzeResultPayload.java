@@ -10,16 +10,29 @@ import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 
-/** Mirrors ai/src/schemas.py AnalyzeResponse — kết quả POST {ai-service}/analyze. */
+/** Mirrors ai/src/schemas.py AnalyzeResult — kết quả POST {ai-service}/analyze. */
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AnalyzeResultPayload {
+public class AnalyzeResultPayload implements TokenAccountedPayload {
 
     @JsonProperty("success_factors")
     List<SuccessFactorPayload> successFactors;
 
     List<OptimizationInsightPayload> insights;
+
+    /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
+    @JsonProperty("tokens_used")
+    Long tokensUsed;
+
+    @JsonProperty("input_tokens")
+    Long inputTokens;
+
+    @JsonProperty("output_tokens")
+    Long outputTokens;
+
+    @JsonProperty("cached_tokens")
+    Long cachedTokens;
 }

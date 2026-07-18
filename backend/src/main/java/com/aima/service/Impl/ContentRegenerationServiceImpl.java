@@ -19,6 +19,8 @@ import com.aima.repository.ContentVersionRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.ContentRegenerationService;
 import com.aima.service.ContentRegenerationWorkerService;
+import com.aima.service.TokenUsageService;
+import com.aima.util.RequestMeta;
 import com.aima.util.ScriptJson;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
@@ -44,12 +46,14 @@ public class ContentRegenerationServiceImpl implements ContentRegenerationServic
     ContentRegenerationJobRepository jobRepository;
     ContentRegenerationJobMapper jobMapper;
     ContentRegenerationWorkerService workerService;
+    TokenUsageService tokenUsageService;
     ObjectMapper objectMapper;
 
     @Override
     public ApiResponse<ContentRegenerationJobResponse> startRegeneration(String email, UUID itemId, UUID versionId,
                                                                          RegeneratePartRequest request) {
         User user = currentUser(email);
+        tokenUsageService.checkQuota(user); // hết hạn mức token tháng → chặn tạo job mới
         // Version phải thuộc user (qua item → brand profile → user) và đúng bài trên path.
         ContentVersion version = contentVersionRepository
                 .findByIdAndContentItem_BrandProfile_User_IdAndDeletedAtIsNull(versionId, user.getId())
@@ -74,6 +78,8 @@ public class ContentRegenerationServiceImpl implements ContentRegenerationServic
 
         ContentRegenerationJob job = jobMapper.toRegenerationJob(request);
         job.setContentVersion(version);
+        job.setClientIp(RequestMeta.clientIp());
+        job.setUserAgent(RequestMeta.userAgent());
         ContentRegenerationJob saved = jobRepository.save(job);
 
         // Dispatch worker nền SAU KHI commit (rule #24/#28) — tránh @Async đọc job trước khi ghi xong.

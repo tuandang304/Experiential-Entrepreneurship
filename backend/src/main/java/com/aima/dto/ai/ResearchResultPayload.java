@@ -18,7 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ResearchResultPayload {
+public class ResearchResultPayload implements TokenAccountedPayload {
 
     String industry;
 
@@ -32,4 +32,13 @@ public class ResearchResultPayload {
     /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
     @JsonProperty("tokens_used")
     Long tokensUsed;
+
+    @JsonProperty("input_tokens")
+    Long inputTokens;
+
+    @JsonProperty("output_tokens")
+    Long outputTokens;
+
+    @JsonProperty("cached_tokens")
+    Long cachedTokens;
 }

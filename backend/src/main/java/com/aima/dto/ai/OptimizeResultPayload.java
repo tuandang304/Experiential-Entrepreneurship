@@ -10,17 +10,30 @@ import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 
-/** Mirrors ai/src/schemas.py OptimizeResponse — kết quả POST {ai-service}/optimize. */
+/** Mirrors ai/src/schemas.py OptimizeResult — kết quả POST {ai-service}/optimize. */
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class OptimizeResultPayload {
+public class OptimizeResultPayload implements TokenAccountedPayload {
 
     @JsonProperty("strategy_adjustments")
     List<StrategyAdjustmentPayload> strategyAdjustments;
 
     @JsonProperty("future_improvements")
     List<String> futureImprovements;
+
+    /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
+    @JsonProperty("tokens_used")
+    Long tokensUsed;
+
+    @JsonProperty("input_tokens")
+    Long inputTokens;
+
+    @JsonProperty("output_tokens")
+    Long outputTokens;
+
+    @JsonProperty("cached_tokens")
+    Long cachedTokens;
 }

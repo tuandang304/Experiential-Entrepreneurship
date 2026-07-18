@@ -46,6 +46,14 @@ public class ContentRegenerationJob extends BaseEntity {
     @Column(name = "error_message", columnDefinition = "text")
     String errorMessage;
 
+    /** IP/User-Agent client lúc user tạo job (X-Forwarded-For aware qua util RequestMeta) —
+     *  null với job do hệ thống/scheduler tạo. Nguồn copy sang event usage (điều tra bất thường). */
+    @Column(name = "client_ip", length = 45)
+    String clientIp;
+
+    @Column(name = "user_agent", length = 300)
+    String userAgent;
+
     /** Fragment JSON đã tạo lại (chỉ phần thay đổi) — FE poll về merge; null cho tới khi SUCCESS. */
     @Column(name = "result_patch", columnDefinition = "text")
     String resultPatch;

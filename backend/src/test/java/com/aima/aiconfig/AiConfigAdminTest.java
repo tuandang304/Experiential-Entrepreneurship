@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -169,7 +170,8 @@ class AiConfigAdminTest {
     @Test
     void statusReflectsProviderState() throws Exception {
         // Cả hai provider tắt + không key → route nào đang bật cũng hỏng cả hai nhánh.
-        for (AiProviderCode code : AiProviderCode.values()) {
+        // UNKNOWN là sentinel cho event log ai_usage (đường env) — không có row provider seed.
+        for (AiProviderCode code : List.of(AiProviderCode.ANTHROPIC, AiProviderCode.GOOGLE)) {
             AiProvider p = provider(code);
             p.setEnabled(false);
             p.setApiKey(null);

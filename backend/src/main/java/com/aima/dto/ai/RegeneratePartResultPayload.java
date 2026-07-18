@@ -1,5 +1,6 @@
 package com.aima.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,11 +19,24 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class RegeneratePartResultPayload {
+public class RegeneratePartResultPayload implements TokenAccountedPayload {
 
     /** Dùng khi tạo lại HOOK/CTA — chỉ field được yêu cầu (content(+timing) hoặc scene_suggestion) có giá trị. */
     ScriptSectionPayload section;
 
     /** Dùng khi tạo lại BODY — mỗi bước chỉ mang field được yêu cầu. */
     List<ScriptStepPayload> steps;
+
+    /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
+    @JsonProperty("tokens_used")
+    Long tokensUsed;
+
+    @JsonProperty("input_tokens")
+    Long inputTokens;
+
+    @JsonProperty("output_tokens")
+    Long outputTokens;
+
+    @JsonProperty("cached_tokens")
+    Long cachedTokens;
 }

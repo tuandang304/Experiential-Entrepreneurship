@@ -18,11 +18,20 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class FormatResultPayload {
+public class FormatResultPayload implements TokenAccountedPayload {
 
     List<ContentVersionPayload> versions;
 
     /** Token LLM thật của lần gọi (usage_metadata) — cộng vào quota tháng của user. */
     @JsonProperty("tokens_used")
     Long tokensUsed;
+
+    @JsonProperty("input_tokens")
+    Long inputTokens;
+
+    @JsonProperty("output_tokens")
+    Long outputTokens;
+
+    @JsonProperty("cached_tokens")
+    Long cachedTokens;
 }

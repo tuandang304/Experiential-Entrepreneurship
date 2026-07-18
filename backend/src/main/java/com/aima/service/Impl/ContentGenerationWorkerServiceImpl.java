@@ -22,7 +22,6 @@ import com.aima.service.AiServiceClient;
 import com.aima.service.ContentGenerationWorkerService;
 import com.aima.service.NotificationService;
 import com.aima.service.AiUsageService;
-import com.aima.service.TokenUsageService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -56,21 +55,25 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
     AiContentMapper aiContentMapper;
     TransactionTemplate transactionTemplate;
     NotificationService notificationService;
-    TokenUsageService tokenUsageService;
     AiUsageService aiUsageService;
+
+    /** Payload + ngữ cảnh event usage, dựng trong TX ngắn #1 để dùng ngoài transaction. */
+    private record GenerationTask(GenerateContentPayload payload, AiUsageService.AiCallContext callContext) {
+    }
 
     @Async("contentGenerationExecutor")
     @Override
     public void process(UUID jobId) {
         // TX ngắn #1: đánh dấu RUNNING + dựng payload từ dữ liệu lazy, rồi commit.
-        GenerateContentPayload payload = transactionTemplate.execute(status -> markRunningAndBuildPayload(jobId));
-        if (payload == null) {
+        GenerationTask task = transactionTemplate.execute(status -> markRunningAndBuildPayload(jobId));
+        if (task == null) {
             return; // job không tồn tại / đã bị xóa
         }
 
         try {
-            // Gọi AI NGOÀI transaction (rule #24) — không giữ DB connection trong lúc chờ HTTP.
-            GeneratedContentResult result = aiServiceClient.generateContent(payload);
+            // Gọi AI NGOÀI transaction (rule #24), bọc recordCall để ghi event usage (kể cả lỗi).
+            GeneratedContentResult result = aiUsageService.recordCall(task.callContext(),
+                    () -> aiServiceClient.generateContent(task.payload()));
             // TX ngắn #2: lưu ContentItem + gắn kết quả vào job.
             transactionTemplate.executeWithoutResult(status -> saveSuccess(jobId, result));
         } catch (Exception e) {
@@ -81,7 +84,7 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
         }
     }
 
-    private GenerateContentPayload markRunningAndBuildPayload(UUID jobId) {
+    private GenerationTask markRunningAndBuildPayload(UUID jobId) {
         ContentGenerationJob job = jobRepository.findById(jobId).orElse(null);
         if (job == null) {
             log.warn("[ContentGeneration] Job {} không tồn tại khi bắt đầu xử lý", jobId);
@@ -93,7 +96,7 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
         ContentStrategy strategy = job.getContentStrategy();
         BrandProfile brand = strategy.getBrandProfile();
         UUID userId = brand.getUser().getId();
-        return GenerateContentPayload.builder()
+        GenerateContentPayload payload = GenerateContentPayload.builder()
                 .brandProfile(aiContentMapper.toBrandProfilePayload(brand))
                 .strategy(aiContentMapper.toStrategyPayload(strategy))
                 .platform(job.getPlatform().name())
@@ -103,6 +106,9 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
                 .note(job.getNote())
                 .regenerateFrom(job.getRegenerateFrom())
                 .build();
+        AiUsageService.AiCallContext callContext = AiUsageService.AiCallContext.of(
+                brand.getUser(), AiTaskCode.CONTENT_GENERATION, jobId, job.getClientIp(), job.getUserAgent());
+        return new GenerationTask(payload, callContext);
     }
 
     // Trend/idea gắn kèm resolve "mềm": id null → bỏ qua; id không tồn tại / không thuộc user
@@ -167,9 +173,7 @@ public class ContentGenerationWorkerServiceImpl implements ContentGenerationWork
         // FR-77: nội dung mới do AI tạo — nhắc user xem và duyệt trước khi lên lịch.
         // (B2: mỗi nền tảng một thông báo — chấp nhận ồn nhẹ, tối ưu ở lượt sau.)
         BrandProfile brand = item.getBrandProfile();
-        // Cộng token LLM thật của lần gọi vào hạn mức tháng của user (thanh usage ở sidebar).
-        tokenUsageService.record(brand.getUser(), result.getTokensUsed());
-        aiUsageService.record(brand.getUser(), AiTaskCode.CONTENT_GENERATION, result.getTokensUsed());
+        // Usage (event + cache hạn mức) đã được recordCall ghi tại thời điểm gọi AI.
         notificationService.notify(brand.getUser(), NotificationType.REVIEW_NEEDED,
                 "Nội dung mới cần xem xét",
                 "AI vừa tạo nội dung mới cho thương hiệu " + brand.getBrandName()

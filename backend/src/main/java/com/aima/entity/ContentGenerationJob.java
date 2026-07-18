@@ -58,6 +58,14 @@ public class ContentGenerationJob extends BaseEntity {
     @Column(name = "error_message", columnDefinition = "text")
     String errorMessage;
 
+    /** IP/User-Agent client lúc user tạo job (X-Forwarded-For aware qua util RequestMeta) —
+     *  null với job do hệ thống/scheduler tạo. Nguồn copy sang event usage (điều tra bất thường). */
+    @Column(name = "client_ip", length = 45)
+    String clientIp;
+
+    @Column(name = "user_agent", length = 300)
+    String userAgent;
+
     // B2: kết quả của job là MỘT ContentVersion (bản giàu của đúng nền tảng job).
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "result_content_version_id")

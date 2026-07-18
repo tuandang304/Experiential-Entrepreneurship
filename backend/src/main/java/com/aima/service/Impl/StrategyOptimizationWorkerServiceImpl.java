@@ -12,6 +12,7 @@ import com.aima.entity.OptimizationInsight;
 import com.aima.entity.Post;
 import com.aima.entity.PostAnalytics;
 import com.aima.entity.StrategyOptimizationJob;
+import com.aima.enums.AiTaskCode;
 import com.aima.enums.GenerationJobStatus;
 import com.aima.enums.NotificationType;
 import com.aima.enums.PostStatus;
@@ -22,6 +23,7 @@ import com.aima.repository.PostAnalyticsRepository;
 import com.aima.repository.PostRepository;
 import com.aima.repository.StrategyOptimizationJobRepository;
 import com.aima.service.AiServiceClient;
+import com.aima.service.AiUsageService;
 import com.aima.service.NotificationService;
 import com.aima.service.StrategyOptimizationWorkerService;
 import lombok.AccessLevel;
@@ -58,6 +60,7 @@ public class StrategyOptimizationWorkerServiceImpl implements StrategyOptimizati
     AiContentMapper aiContentMapper;
     StrategyOptimizationMapper strategyOptimizationMapper;
     NotificationService notificationService;
+    AiUsageService aiUsageService;
     TransactionTemplate transactionTemplate;
 
     @Override
@@ -70,10 +73,13 @@ public class StrategyOptimizationWorkerServiceImpl implements StrategyOptimizati
 
         try {
             // FR-63/FR-64: success factors + insights, rồi FR-65/FR-66: đề xuất điều chỉnh.
-            AnalyzeResultPayload analysis = aiServiceClient.analyze(task.analyzePayload());
+            // Hai cuộc gọi AI → recordCall ghi HAI event usage riêng (label phân biệt idempotency).
+            AnalyzeResultPayload analysis = aiUsageService.recordCall(task.callContext().withLabel("analyze"),
+                    () -> aiServiceClient.analyze(task.analyzePayload()));
             OptimizePayload optimizePayload = strategyOptimizationMapper.toOptimizePayload(
                     task.analyzePayload().getBrandProfile(), task.strategyPayload(), analysis.getInsights());
-            OptimizeResultPayload optimization = aiServiceClient.optimize(optimizePayload);
+            OptimizeResultPayload optimization = aiUsageService.recordCall(task.callContext().withLabel("optimize"),
+                    () -> aiServiceClient.optimize(optimizePayload));
 
             transactionTemplate.executeWithoutResult(tx ->
                     saveSuccess(jobId, analysis, optimization, task.anchorAnalyticsId()));
@@ -83,9 +89,9 @@ public class StrategyOptimizationWorkerServiceImpl implements StrategyOptimizati
         }
     }
 
-    /** Payload dựng sẵn trong transaction (dữ liệu lazy) để dùng ngoài transaction. */
+    /** Payload + ngữ cảnh event usage dựng sẵn trong transaction (dữ liệu lazy) để dùng ngoài. */
     record OptimizationTask(AnalyzePayload analyzePayload, ContentStrategyInputPayload strategyPayload,
-                            UUID anchorAnalyticsId) {
+                            UUID anchorAnalyticsId, AiUsageService.AiCallContext callContext) {
     }
 
     private OptimizationTask markRunningAndBuildPayload(UUID jobId) {
@@ -133,7 +139,10 @@ public class StrategyOptimizationWorkerServiceImpl implements StrategyOptimizati
 
         AnalyzePayload analyzePayload = strategyOptimizationMapper.toAnalyzePayload(
                 aiContentMapper.toBrandProfilePayload(brand), postPayloads);
-        return new OptimizationTask(analyzePayload, aiContentMapper.toStrategyPayload(strategy), anchorAnalyticsId);
+        AiUsageService.AiCallContext callContext = AiUsageService.AiCallContext.of(
+                brand.getUser(), AiTaskCode.STRATEGY_OPTIMIZATION, jobId, job.getClientIp(), job.getUserAgent());
+        return new OptimizationTask(analyzePayload, aiContentMapper.toStrategyPayload(strategy),
+                anchorAnalyticsId, callContext);
     }
 
     private void saveSuccess(UUID jobId, AnalyzeResultPayload analysis, OptimizeResultPayload optimization,
@@ -168,6 +177,9 @@ public class StrategyOptimizationWorkerServiceImpl implements StrategyOptimizati
                 : insights.get(0).getStrategyAdjustments().size();
         log.info("[StrategyOpt] Job {} xong: {} insight, {} đề xuất, {} cải tiến",
                 jobId, insights.size(), adjustmentCount, improvements.size());
+
+        // Usage (2 event /analyze + /optimize và cache hạn mức) đã được recordCall ghi
+        // tại thời điểm gọi AI.
 
         // FR-79: báo có insight/đề xuất mới cho user.
         notificationService.notify(strategy.getBrandProfile().getUser(), NotificationType.NEW_INSIGHT,

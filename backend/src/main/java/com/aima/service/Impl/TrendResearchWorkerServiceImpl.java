@@ -18,7 +18,6 @@ import com.aima.repository.ContentStrategyRepository;
 import com.aima.repository.TrendResearchSessionRepository;
 import com.aima.service.AiServiceClient;
 import com.aima.service.AiUsageService;
-import com.aima.service.TokenUsageService;
 import com.aima.service.TrendResearchWorkerService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -53,19 +52,24 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
     TrendResearchMapper trendResearchMapper;
     AiContentMapper aiContentMapper;
     TransactionTemplate transactionTemplate;
-    TokenUsageService tokenUsageService;
     AiUsageService aiUsageService;
+
+    /** Payload + ngữ cảnh event usage, dựng trong TX ngắn #1 để dùng ngoài transaction. */
+    private record ResearchTask(ResearchPayload payload, AiUsageService.AiCallContext callContext) {
+    }
 
     @Async("trendResearchExecutor")
     @Override
     public void process(UUID sessionId) {
-        ResearchPayload payload = transactionTemplate.execute(status -> markRunningAndBuildPayload(sessionId));
-        if (payload == null) {
+        ResearchTask task = transactionTemplate.execute(status -> markRunningAndBuildPayload(sessionId));
+        if (task == null) {
             return; // phiên không tồn tại hoặc thiếu chiến lược ACTIVE (đã ghi FAILED)
         }
 
         try {
-            ResearchResultPayload result = aiServiceClient.research(payload);
+            // Gọi AI NGOÀI transaction (rule #24), bọc recordCall để ghi event usage (kể cả lỗi).
+            ResearchResultPayload result = aiUsageService.recordCall(task.callContext(),
+                    () -> aiServiceClient.research(task.payload()));
             transactionTemplate.executeWithoutResult(status -> saveSuccess(sessionId, result));
         } catch (Exception e) {
             // AppException giờ truyền message của ErrorCode vào super(...) nên getMessage() luôn có nghĩa.
@@ -75,7 +79,7 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
         }
     }
 
-    private ResearchPayload markRunningAndBuildPayload(UUID sessionId) {
+    private ResearchTask markRunningAndBuildPayload(UUID sessionId) {
         TrendResearchSession session = sessionRepository.findById(sessionId).orElse(null);
         if (session == null) {
             log.warn("[TrendResearch] Phiên {} không tồn tại khi bắt đầu xử lý", sessionId);
@@ -98,12 +102,16 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
         session.setStatus(ResearchStatus.RUNNING);
         sessionRepository.save(session);
 
-        return ResearchPayload.builder()
+        ResearchPayload payload = ResearchPayload.builder()
                 .brandProfile(aiContentMapper.toBrandProfilePayload(brand))
                 .strategy(aiContentMapper.toStrategyPayload(strategy))
                 .maxTrends(MAX_TRENDS)
                 .maxIdeas(MAX_IDEAS)
                 .build();
+        AiUsageService.AiCallContext callContext = AiUsageService.AiCallContext.of(
+                brand.getUser(), AiTaskCode.TREND_RESEARCH, sessionId,
+                session.getClientIp(), session.getUserAgent());
+        return new ResearchTask(payload, callContext);
     }
 
     private void saveSuccess(UUID sessionId, ResearchResultPayload result) {
@@ -142,9 +150,7 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
         session.setStatus(ResearchStatus.COMPLETED);
         sessionRepository.save(session); // cascade ALL: lưu luôn trends + content ideas
 
-        // Cộng token LLM thật của lần gọi vào hạn mức tháng của user (thanh usage ở sidebar).
-        tokenUsageService.record(session.getBrandProfile().getUser(), result.getTokensUsed());
-        aiUsageService.record(session.getBrandProfile().getUser(), AiTaskCode.TREND_RESEARCH, result.getTokensUsed());
+        // Usage (event + cache hạn mức) đã được recordCall ghi tại thời điểm gọi AI.
     }
 
     private void saveFailure(UUID sessionId, String message) {

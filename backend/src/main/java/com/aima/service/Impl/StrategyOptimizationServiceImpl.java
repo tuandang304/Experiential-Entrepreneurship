@@ -20,6 +20,8 @@ import com.aima.repository.StrategyOptimizationJobRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.StrategyOptimizationService;
 import com.aima.service.StrategyOptimizationWorkerService;
+import com.aima.service.TokenUsageService;
+import com.aima.util.RequestMeta;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -52,10 +54,12 @@ public class StrategyOptimizationServiceImpl implements StrategyOptimizationServ
     UserRepository userRepository;
     StrategyOptimizationMapper strategyOptimizationMapper;
     StrategyOptimizationWorkerService workerService;
+    TokenUsageService tokenUsageService;
 
     @Override
     public ApiResponse<StrategyOptimizationJobResponse> start(String email, UUID strategyId) {
         User user = currentUser(email);
+        tokenUsageService.checkQuota(user); // hết hạn mức token tháng → chặn tạo job mới
         ContentStrategy strategy = ownedStrategy(strategyId, user.getId());
 
         // BR-10: tối ưu dựa trên dữ liệu — phải có ít nhất một bài đã thu analytics của brand này.
@@ -66,7 +70,10 @@ public class StrategyOptimizationServiceImpl implements StrategyOptimizationServ
             throw new AppException(ErrorCode.NO_ANALYZED_POSTS);
         }
 
-        StrategyOptimizationJob saved = jobRepository.save(strategyOptimizationMapper.toJob(strategy));
+        StrategyOptimizationJob job = strategyOptimizationMapper.toJob(strategy);
+        job.setClientIp(RequestMeta.clientIp());
+        job.setUserAgent(RequestMeta.userAgent());
+        StrategyOptimizationJob saved = jobRepository.save(job);
 
         // Dispatch worker SAU KHI commit (rule #28a) — cùng mẫu ContentGenerationServiceImpl.
         UUID jobId = saved.getId();

@@ -20,6 +20,7 @@ import com.aima.repository.UserRepository;
 import com.aima.service.TokenUsageService;
 import com.aima.service.TrendResearchService;
 import com.aima.service.TrendResearchWorkerService;
+import com.aima.util.RequestMeta;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -71,6 +72,8 @@ public class TrendResearchServiceImpl implements TrendResearchService {
 
         Platform platform = (request != null && request.getPlatform() != null) ? request.getPlatform() : Platform.FACEBOOK;
         TrendResearchSession session = trendResearchMapper.toSession(brand, platform);
+        session.setClientIp(RequestMeta.clientIp());
+        session.setUserAgent(RequestMeta.userAgent());
         TrendResearchSession saved = sessionRepository.save(session);
 
         // Dispatch worker nền SAU KHI transaction commit (rule #24, cùng mẫu ContentGenerationServiceImpl).

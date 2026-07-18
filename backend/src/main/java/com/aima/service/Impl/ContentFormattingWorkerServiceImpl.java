@@ -71,7 +71,8 @@ public class ContentFormattingWorkerServiceImpl implements ContentFormattingWork
     private record FormatContext(UUID userId,
                                  BrandProfileInputPayload brandProfile,
                                  List<Platform> platforms,
-                                 Map<Platform, PlatformSource> sources) {
+                                 Map<Platform, PlatformSource> sources,
+                                 AiUsageService.AiCallContext callContext) {
     }
 
     @Async("contentFormattingExecutor")
@@ -110,7 +111,11 @@ public class ContentFormattingWorkerServiceImpl implements ContentFormattingWork
                         .content(source.payload())
                         .platforms(List.of(platform.name()))
                         .build();
-                FormatResultPayload result = aiServiceClient.format(payload); // NGOÀI transaction (rule #24)
+                // NGOÀI transaction (rule #24); recordCall ghi event usage MỖI nền tảng một dòng
+                // (mỗi nền tảng một cuộc gọi AI) — label = tên nền tảng để idempotency key không trùng.
+                FormatResultPayload result = aiUsageService.recordCall(
+                        ctx.callContext().withLabel(platform.name()),
+                        () -> aiServiceClient.format(payload));
                 transactionTemplate.executeWithoutResult(s -> savePlatformResult(jobId, platform, source.sourceVersionId(), result));
                 anySuccess = true;
             } catch (Exception e) {
@@ -157,7 +162,11 @@ public class ContentFormattingWorkerServiceImpl implements ContentFormattingWork
                         sources.put(platform, new PlatformSource(sourceId, contentFormattingMapper.toFormatContentPayload(source)));
                     });
         }
-        return new FormatContext(item.getBrandProfile().getUser().getId(), brandProfile, platforms, sources);
+        AiUsageService.AiCallContext callContext = AiUsageService.AiCallContext.of(
+                item.getBrandProfile().getUser(), AiTaskCode.PLATFORM_FORMATTING, jobId,
+                job.getClientIp(), job.getUserAgent());
+        return new FormatContext(item.getBrandProfile().getUser().getId(), brandProfile, platforms, sources,
+                callContext);
     }
 
     private void checkQuota(UUID userId) {
@@ -204,9 +213,7 @@ public class ContentFormattingWorkerServiceImpl implements ContentFormattingWork
 
         jobRepository.save(job); // item + versions lưu qua cascade từ item đang managed trong tx
 
-        // Cộng token LLM thật của lần gọi vào hạn mức tháng của user (thanh usage ở sidebar).
-        tokenUsageService.record(item.getBrandProfile().getUser(), result.getTokensUsed());
-        aiUsageService.record(item.getBrandProfile().getUser(), AiTaskCode.PLATFORM_FORMATTING, result.getTokensUsed());
+        // Usage (event + cache hạn mức) đã được recordCall ghi tại thời điểm gọi AI.
     }
 
     // Chốt trạng thái job sau khi lặp hết nền tảng: ≥1 nền tảng xong → SUCCESS; không nền tảng nào

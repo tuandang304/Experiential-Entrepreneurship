@@ -33,4 +33,12 @@ public class ContentFormattingJob extends BaseEntity {
 
     @Column(name = "error_message", columnDefinition = "text")
     String errorMessage;
+
+    /** IP/User-Agent client lúc user tạo job (X-Forwarded-For aware qua util RequestMeta) —
+     *  null với job do hệ thống/scheduler tạo. Nguồn copy sang event usage (điều tra bất thường). */
+    @Column(name = "client_ip", length = 45)
+    String clientIp;
+
+    @Column(name = "user_agent", length = 300)
+    String userAgent;
 }

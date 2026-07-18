@@ -19,6 +19,7 @@ import com.aima.repository.UserRepository;
 import com.aima.service.ContentGenerationService;
 import com.aima.service.ContentGenerationWorkerService;
 import com.aima.service.TokenUsageService;
+import com.aima.util.RequestMeta;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -69,6 +70,8 @@ public class ContentGenerationServiceImpl implements ContentGenerationService {
         ContentGenerationJob job = contentGenerationJobMapper.toContentGenerationJob(request);
         job.setContentStrategy(strategy);
         job.setContentItem(item);
+        job.setClientIp(RequestMeta.clientIp());
+        job.setUserAgent(RequestMeta.userAgent());
         ContentGenerationJob saved = contentGenerationJobRepository.save(job);
 
         // Chỉ dispatch worker nền SAU KHI transaction commit — nếu không, thread @Async có thể

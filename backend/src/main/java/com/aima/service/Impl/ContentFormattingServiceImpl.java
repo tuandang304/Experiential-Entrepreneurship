@@ -17,6 +17,7 @@ import com.aima.repository.UserRepository;
 import com.aima.service.ContentFormattingService;
 import com.aima.service.ContentFormattingWorkerService;
 import com.aima.service.TokenUsageService;
+import com.aima.util.RequestMeta;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -70,6 +71,8 @@ public class ContentFormattingServiceImpl implements ContentFormattingService {
         }
 
         ContentFormattingJob job = contentFormattingMapper.toJob(item, request.getPlatforms());
+        job.setClientIp(RequestMeta.clientIp());
+        job.setUserAgent(RequestMeta.userAgent());
         ContentFormattingJob saved = jobRepository.save(job);
 
         // Dispatch worker nền SAU KHI transaction commit (rule #24/#28, cùng mẫu ContentGeneration).

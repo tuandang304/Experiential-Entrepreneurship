@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, memo } from 'react';
 import { DatabaseZap, SlidersHorizontal, Lightbulb, BookmarkCheck, ArrowRight, ArrowDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -17,7 +17,7 @@ const LINE = '#e3daf5';
  * Section "Cách hoạt động" — 4 bước tuần tự của agent research, nối bằng connector
  * mũi tên (ngang trên desktop/tablet, dọc khi mobile xếp 1 cột).
  */
-export default function HowItWorks() {
+export default memo(function HowItWorks() {
   const { t } = useApp();
   const { isMobile } = useBreakpoint();
   const steps = [
@@ -62,4 +62,4 @@ export default function HowItWorks() {
       </div>
     </Card>
   );
-}
+});

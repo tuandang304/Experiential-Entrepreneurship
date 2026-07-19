@@ -28,6 +28,9 @@ public class ResearchPayload implements LlmRoutedPayload {
 
     ContentStrategyInputPayload strategy;
 
+    // Nền tảng đích của phiên (FR-19) — AI chỉ trả trend/idea cho đúng nền tảng này.
+    String platform;
+
     @JsonProperty("max_trends")
     Integer maxTrends;
 

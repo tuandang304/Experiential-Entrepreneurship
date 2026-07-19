@@ -1,5 +1,6 @@
 package com.aima.service;
 
+import com.aima.dto.request.TrendDeleteRequest;
 import com.aima.dto.request.TrendResearchRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.TrendResearchSessionResponse;
@@ -15,4 +16,6 @@ public interface TrendResearchService {
     ApiResponse<TrendResearchSessionResponse> getSession(String email, UUID sessionId);
 
     ApiResponse<List<TrendResearchSessionSummaryResponse>> listSessions(String email);
+
+    ApiResponse<Integer> deleteTrends(String email, TrendDeleteRequest request);
 }

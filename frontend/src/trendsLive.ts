@@ -59,7 +59,7 @@ const fmtTime = (d: Date) => {
   return `${two(h)}:${two(d.getMinutes())} ${ampm}`;
 };
 
-export function liveTrendItems(session: ResearchSessionDetail, _lang: Lang): TrendItem[] {
+export function liveTrendItems(session: ResearchSessionDetail, _lang: Lang, startIndex = 0): TrendItem[] {
   return session.trends.map((tr, i) => {
     const score = tr.relevanceScore ?? 0;
     const pct = Math.round(score * 100);
@@ -69,8 +69,8 @@ export function liveTrendItems(session: ResearchSessionDetail, _lang: Lang): Tre
       name: tr.trendName,
       hashtag: hashtagOf(tr.trendName),
       desc: tr.description ?? '',
-      emoji: EMOJIS[i % EMOJIS.length],
-      tint: TINTS[i % TINTS.length],
+      emoji: EMOJIS[(startIndex + i) % EMOJIS.length],
+      tint: TINTS[(startIndex + i) % TINTS.length],
       industry: session.industry,
       platforms: [PLATFORM_TAG[tr.platform] ?? 'FB'],
       fit: fitOf(tr.relevanceScore),
@@ -84,6 +84,46 @@ export function liveTrendItems(session: ResearchSessionDetail, _lang: Lang): Tre
   });
 }
 
+/**
+ * Gộp trend + idea của N phiên COMPLETED gần nhất (nhiều phiên MỖI nền tảng — research lại
+ * KHÔNG ghi đè kết quả cũ trên màn hình). Trend trùng tên trong cùng nền tảng được khử trùng
+ * lặp: giữ bản của phiên MỚI NHẤT (sessions truyền vào đã sắp mới nhất trước), idea của bản
+ * cũ được nối lại vào trend giữ lại (remap trendId) nên không mất ý tưởng nào.
+ */
+export function mergedLiveData(sessions: ResearchSessionDetail[], lang: Lang): { trends: TrendItem[]; ideas: ContentIdea[] } {
+  const keptByKey = new Map<string, TrendItem>();
+  const idRemap = new Map<string, string>(); // id trend trùng (cũ) → id trend giữ lại
+  const trends: TrendItem[] = [];
+  let offset = 0;
+  for (const s of sessions) {
+    for (const item of liveTrendItems(s, lang, offset)) {
+      const key = `${item.platforms[0]}|${item.name.trim().toLowerCase()}`;
+      const kept = keptByKey.get(key);
+      if (kept) idRemap.set(item.id, kept.id);
+      else {
+        keptByKey.set(key, item);
+        trends.push(item);
+      }
+    }
+    offset += s.trends.length;
+  }
+
+  const ideas: ContentIdea[] = sessions.flatMap((s) =>
+    liveContentIdeas(s, lang).map((idea) => {
+      const target = idRemap.get(idea.trendId);
+      return target ? { ...idea, trendId: target } : idea;
+    }),
+  );
+
+  // ideaCount tính lại theo idea đã gộp/remap (trend giữ lại nhận cả idea của bản trùng).
+  const countByTrend = new Map<string, number>();
+  ideas.forEach((i) => countByTrend.set(i.trendId, (countByTrend.get(i.trendId) ?? 0) + 1));
+  trends.forEach((t) => {
+    t.ideaCount = countByTrend.get(t.id) ?? 0;
+  });
+  return { trends, ideas };
+}
+
 export function liveContentIdeas(session: ResearchSessionDetail, lang: Lang): ContentIdea[] {
   const p = (vi: string, en: string) => (lang === 'en' ? en : vi);
   return session.trends.flatMap((tr) =>
@@ -95,6 +135,7 @@ export function liveContentIdeas(session: ResearchSessionDetail, lang: Lang): Co
       format: FORMAT_KEYWORDS.find(([re]) => re.test(idea.ideaTitle))?.[1] ?? p('Bài viết', 'Post'),
       score: IDEA_SCORE[idea.suitabilityLevel ?? 'MEDIUM'] ?? 75,
       status: 'new' as const,
+      desc: idea.ideaDescription ?? undefined,
     })),
   );
 }
@@ -112,6 +153,7 @@ export function liveResearchSessions(summaries: ResearchSessionSummary[], lang: 
         status: s.status === 'COMPLETED' ? ('done' as const) : ('cancelled' as const),
         industry: s.industry,
         platforms: 1, // mỗi phiên gắn 1 nền tảng chính
+        platformTags: [PLATFORM_TAG[s.platform] ?? 'FB'],
         trendsFound: s.trendsFound,
         ideasCreated: s.ideasCreated,
         duration: p('—', '—'),
@@ -119,16 +161,19 @@ export function liveResearchSessions(summaries: ResearchSessionSummary[], lang: 
     });
 }
 
-export function liveTrendStats(session: ResearchSessionDetail, lang: Lang): TrendStat[] {
+/** 4 thẻ thống kê — tính trên trends/ideas ĐANG HIỂN THỊ (đã gộp phiên, khử trùng lặp,
+ *  lọc trend user đã xóa) để số liệu luôn khớp với bảng. */
+export function liveTrendStats(sessions: ResearchSessionDetail[], trends: TrendItem[], ideas: ContentIdea[], lang: Lang): TrendStat[] {
   const d = getDict(lang);
   const p = (vi: string, en: string) => (lang === 'en' ? en : vi);
 
-  const trendCount = session.trends.length;
-  const ideaCount = session.trends.reduce((sum, tr) => sum + tr.contentIdeas.length, 0);
-  const highCount = session.trends.filter((tr) => fitOf(tr.relevanceScore) === 'high').length;
+  const trendCount = trends.length;
+  const ideaCount = ideas.length;
+  const highCount = trends.filter((tr) => tr.fit === 'high').length;
   const highPct = trendCount > 0 ? Math.round((highCount / trendCount) * 100) : 0;
 
-  const when = new Date(session.researchTime);
+  const latestTime = Math.max(...sessions.map((s) => new Date(s.researchTime).getTime()));
+  const when = new Date(latestTime);
   const today = new Date();
   const sameDay = when.toDateString() === today.toDateString();
   const whenLabel = `${sameDay ? p('Hôm nay', 'Today') : fmtDate(when)}, ${fmtTime(when)}`;

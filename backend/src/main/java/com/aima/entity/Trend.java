@@ -39,7 +39,10 @@ public class Trend extends BaseEntity {
     @Column(name = "description", columnDefinition = "text")
     String description;
 
+    // Cùng lý do SQLRestriction ở TrendResearchSession.trends: idea của trend đã xóa
+    // (soft delete cascade) không xuất hiện trong response/counts.
     @OneToMany(mappedBy = "trend", cascade = CascadeType.ALL, orphanRemoval = true)
+    @org.hibernate.annotations.SQLRestriction("deleted_at is null")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     List<ContentIdea> contentIdeas = new ArrayList<>();

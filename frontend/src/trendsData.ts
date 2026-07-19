@@ -42,6 +42,8 @@ export interface ContentIdea {
   format: string;
   score: number; // điểm phù hợp 0–100
   status: IdeaStatus;
+  /** Mô tả chi tiết (dữ liệu thật: ideaDescription của AI; mock: không có → modal hiện fallback). */
+  desc?: string;
 }
 
 export interface ResearchSession {
@@ -51,6 +53,8 @@ export interface ResearchSession {
   status: SessionStatus;
   industry: string;
   platforms: number;
+  /** Tag nền tảng của phiên (FB | IG | TH) — thẻ "Trạng thái research" ở sidebar. */
+  platformTags: string[];
   trendsFound: number;
   ideasCreated: number;
   duration: string;
@@ -225,7 +229,8 @@ export function researchSessions(lang: Lang): ResearchSession[] {
   const mins = (m: number, s: number) => p(`${m} phút ${s} giây`, `${m}m ${s}s`);
   let k = 0;
   const S = (date: string, status: SessionStatus, industry: string, platforms: number, trendsFound: number, ideasCreated: number, duration: string): ResearchSession => ({
-    id: `s${++k}`, date, time: '02:00 AM', status, industry, platforms, trendsFound, ideasCreated, duration,
+    id: `s${++k}`, date, time: '02:00 AM', status, industry, platforms,
+    platformTags: ['FB', 'IG', 'TH'].slice(0, platforms), trendsFound, ideasCreated, duration,
   });
   return [
     S('02/07/2026', 'done', beauty, 3, 28, 56, mins(12, 34)),
@@ -247,16 +252,4 @@ export function researchSessions(lang: Lang): ResearchSession[] {
     S('16/06/2026', 'done', p('Du lịch', 'Travel'), 3, 19, 33, mins(9, 47)),
     S('15/06/2026', 'done', beauty, 3, 22, 41, mins(10, 29)),
   ];
-}
-
-/** Thông tin phiên gần nhất cho sidebar "Trạng thái research". */
-export function latestResearch(lang: Lang) {
-  const p = (vi: string, en: string) => (lang === 'en' ? en : vi);
-  return {
-    dateLabel: p('Hôm nay, 02:00 AM', 'Today, 02:00 AM'),
-    industry: p('Mỹ phẩm & Làm đẹp', 'Beauty & Cosmetics'),
-    platforms: ['FB', 'IG', 'TH'],
-    duration: p('12 phút 34 giây', '12m 34s'),
-    extraSources: 4,
-  };
 }

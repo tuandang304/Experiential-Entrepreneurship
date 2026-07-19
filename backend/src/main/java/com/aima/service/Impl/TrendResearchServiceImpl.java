@@ -1,10 +1,13 @@
 package com.aima.service.Impl;
 
+import com.aima.dto.request.TrendDeleteRequest;
 import com.aima.dto.request.TrendResearchRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.TrendResearchSessionResponse;
 import com.aima.dto.response.TrendResearchSessionSummaryResponse;
 import com.aima.entity.BrandProfile;
+import com.aima.entity.ContentStrategy;
+import com.aima.entity.Trend;
 import com.aima.entity.TrendResearchSession;
 import com.aima.entity.User;
 import com.aima.enums.Platform;
@@ -15,6 +18,7 @@ import com.aima.exception.ErrorCode;
 import com.aima.mapper.TrendResearchMapper;
 import com.aima.repository.BrandProfileRepository;
 import com.aima.repository.ContentStrategyRepository;
+import com.aima.repository.TrendRepository;
 import com.aima.repository.TrendResearchSessionRepository;
 import com.aima.repository.UserRepository;
 import com.aima.service.TokenUsageService;
@@ -30,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,6 +46,7 @@ import java.util.UUID;
 public class TrendResearchServiceImpl implements TrendResearchService {
 
     TrendResearchSessionRepository sessionRepository;
+    TrendRepository trendRepository;
     BrandProfileRepository brandProfileRepository;
     ContentStrategyRepository contentStrategyRepository;
     UserRepository userRepository;
@@ -61,9 +67,16 @@ public class TrendResearchServiceImpl implements TrendResearchService {
                 : brandProfileRepository.findFirstByUser_IdAndIsActiveTrueAndDeletedAtIsNull(user.getId())
                         .orElseThrow(() -> new AppException(ErrorCode.ACTIVE_BRAND_PROFILE_REQUIRED));
 
-        contentStrategyRepository
-                .findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(brand.getId(), StrategyStatus.ACTIVE)
-                .orElseThrow(() -> new AppException(ErrorCode.ACTIVE_STRATEGY_REQUIRED));
+        // Chiến lược user chọn (FR-19); không gửi → chiến lược ACTIVE mới nhất của brand.
+        ContentStrategy strategy = (request != null && request.getStrategyId() != null)
+                ? contentStrategyRepository.findByIdAndBrandProfile_IdAndDeletedAtIsNull(request.getStrategyId(), brand.getId())
+                        .orElseThrow(() -> new AppException(ErrorCode.CONTENT_STRATEGY_NOT_FOUND))
+                : contentStrategyRepository
+                        .findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(brand.getId(), StrategyStatus.ACTIVE)
+                        .orElseThrow(() -> new AppException(ErrorCode.ACTIVE_STRATEGY_REQUIRED));
+        if (strategy.getStatus() != StrategyStatus.ACTIVE) {
+            throw new AppException(ErrorCode.STRATEGY_NOT_ACTIVE);
+        }
 
         if (sessionRepository.existsByBrandProfile_User_IdAndStatusInAndDeletedAtIsNull(
                 user.getId(), List.of(ResearchStatus.PENDING, ResearchStatus.RUNNING))) {
@@ -71,7 +84,8 @@ public class TrendResearchServiceImpl implements TrendResearchService {
         }
 
         Platform platform = (request != null && request.getPlatform() != null) ? request.getPlatform() : Platform.FACEBOOK;
-        TrendResearchSession session = trendResearchMapper.toSession(brand, platform);
+        Integer articleCount = request != null ? request.getArticleCount() : null;
+        TrendResearchSession session = trendResearchMapper.toSession(brand, platform, strategy, articleCount);
         session.setClientIp(RequestMeta.clientIp());
         session.setUserAgent(RequestMeta.userAgent());
         TrendResearchSession saved = sessionRepository.save(session);
@@ -102,6 +116,28 @@ public class TrendResearchServiceImpl implements TrendResearchService {
                 .orElseThrow(() -> new AppException(ErrorCode.RESEARCH_SESSION_NOT_FOUND));
         TrendResearchSessionResponse response = trendResearchMapper.toSessionResponse(session);
         return ApiResponse.success("Lấy phiên nghiên cứu xu hướng thành công", response);
+    }
+
+    // Xóa nhiều trend không phù hợp (multi-select ở tab "Trend nổi bật") — soft delete
+    // trend + cascade idea; SQLRestriction trên collection loại chúng khỏi response/counts.
+    @Override
+    public ApiResponse<Integer> deleteTrends(String email, TrendDeleteRequest request) {
+        User user = currentUser(email);
+        List<Trend> trends = trendRepository
+                .findByIdInAndResearchSession_BrandProfile_User_IdAndDeletedAtIsNull(request.getTrendIds(), user.getId());
+        if (trends.isEmpty()) {
+            throw new AppException(ErrorCode.TREND_NOT_FOUND);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        for (Trend trend : trends) {
+            trend.setDeletedAt(now);
+            trend.getContentIdeas().forEach(idea -> idea.setDeletedAt(now));
+        }
+        trendRepository.saveAll(trends);
+
+        Integer deletedCount = trends.size();
+        return ApiResponse.success("Đã xóa trend không phù hợp", deletedCount);
     }
 
     @Override

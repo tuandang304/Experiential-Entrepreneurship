@@ -1,9 +1,10 @@
+import { memo } from 'react';
 import { Card, Icon } from '../ui';
 import { STATUS_COLORS } from '../../statusTokens';
 import type { TrendStat } from '../../trendsData';
 
-/** 4 thẻ thống kê đầu trang Nghiên cứu xu hướng. */
-export default function TrendStatCards({ stats }: { stats: TrendStat[] }) {
+/** 4 thẻ thống kê đầu trang Nghiên cứu xu hướng (memo — stats được page memo hóa). */
+export default memo(function TrendStatCards({ stats }: { stats: TrendStat[] }) {
   return (
     <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
       {stats.map((s, i) => (
@@ -29,4 +30,4 @@ export default function TrendStatCards({ stats }: { stats: TrendStat[] }) {
       ))}
     </div>
   );
-}
+});

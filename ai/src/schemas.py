@@ -150,6 +150,11 @@ class ResearchRequest(BaseModel):
     brand_profile: BrandProfileInput
     strategy: ContentStrategyInput
     sources: TrendSource = Field(default_factory=TrendSource)
+    # Target platform of the session (FR-19): every returned trend/idea targets it.
+    # None = legacy payload without a platform -> agent behaves as before (any of the 3).
+    platform: Optional[str] = Field(
+        default=None, description="Facebook | Instagram | Threads (case-insensitive)"
+    )
     max_trends: int = Field(default=8, ge=1, le=20)
     max_ideas: int = Field(default=5, ge=1, le=20)
     llm_config: Optional[LlmConfig] = None

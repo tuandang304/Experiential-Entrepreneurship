@@ -5,7 +5,7 @@ import { SESSION_STATUS_COLORS, type ResearchSession } from '../../trendsData';
 import { Pill } from './filters';
 
 /** 1 dòng timeline trong sub-tab "Lịch sử research". */
-export default function ResearchHistoryItem({ session }: { session: ResearchSession }) {
+export default function ResearchHistoryItem({ session, onDetail }: { session: ResearchSession; onDetail: () => void }) {
   const { t } = useApp();
   const done = session.status === 'done';
   const st = SESSION_STATUS_COLORS[session.status];
@@ -24,6 +24,7 @@ export default function ResearchHistoryItem({ session }: { session: ResearchSess
       </div>
       <button
         type="button"
+        onClick={onDetail}
         className="link-underline"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 2, border: 'none', background: 'transparent', padding: '4px 0', fontSize: 12.5, fontWeight: 600, color: '#7c3aed', cursor: 'pointer', flex: 'none' }}
       >

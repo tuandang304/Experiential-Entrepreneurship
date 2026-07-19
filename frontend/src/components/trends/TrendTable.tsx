@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { ArrowUpRight, ArrowDownRight, ChevronRight } from 'lucide-react';
+import { memo, useState, type ReactNode } from 'react';
+import { ArrowUpRight, ArrowDownRight, ChevronRight, Pin } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Card, Icon, PlatformTag } from '../ui';
@@ -39,6 +39,35 @@ function GrowthTag({ trend }: { trend: TrendItem }) {
   );
 }
 
+/** Nút ghim/bỏ ghim một trend — ghim thì icon tô đặc màu brand. */
+function PinButton({ pinned, onClick, label }: { pinned: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pinned}
+      aria-label={label}
+      title={label}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, border: 'none', borderRadius: 8, background: pinned ? '#f3edff' : 'transparent', cursor: 'pointer', flex: 'none' }}
+    >
+      <Pin size={14} color={pinned ? '#7c3aed' : '#a39bbf'} fill={pinned ? '#7c3aed' : 'none'} strokeWidth={1.9} />
+    </button>
+  );
+}
+
+/** Checkbox chọn trend để xóa (chỉ hiện ở chế độ chọn). */
+function SelectBox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      style={{ width: 16, height: 16, flex: 'none', accentColor: '#8b5cf6', cursor: 'pointer' }}
+    />
+  );
+}
+
 function ViewIdeasLink({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
@@ -56,8 +85,28 @@ function ViewIdeasLink({ onClick, label }: { onClick: () => void; label: string 
 /**
  * Danh sách trend nổi bật: dạng bảng (≥1024px) hoặc card dọc (tablet/mobile),
  * dùng chung data + phân trang, chỉ đổi phần render.
+ * memo: chỉ render lại khi rows/onViewIdeas đổi (gõ ô tìm kiếm không dội vào bảng
+ * chừng nào kết quả lọc chưa đổi — rows và callback đều được page memo hóa).
  */
-export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; onViewIdeas: (trendId: string) => void }) {
+export default memo(function TrendTable({
+  rows,
+  pinnedIds,
+  selectMode,
+  selectedIds,
+  onViewIdeas,
+  onTogglePin,
+  onToggleSelect,
+}: {
+  rows: TrendItem[];
+  /** Trend đã ghim (luôn nổi lên đầu — page sắp sẵn thứ tự). */
+  pinnedIds: Set<string>;
+  /** Chế độ chọn nhiều trend để xóa: hiện checkbox mỗi dòng. */
+  selectMode: boolean;
+  selectedIds: Set<string>;
+  onViewIdeas: (trendId: string) => void;
+  onTogglePin: (trendId: string) => void;
+  onToggleSelect: (trendId: string) => void;
+}) {
   const { t } = useApp();
   const { width } = useBreakpoint();
   const asCards = width < 1024;
@@ -86,11 +135,17 @@ export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; o
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {visible.map((tr) => (
-          <Card key={tr.id} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Card key={tr.id} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, ...(selectMode && selectedIds.has(tr.id) ? { outline: '1.5px solid #8b5cf6' } : {}) }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              {selectMode && (
+                <span style={{ display: 'flex', alignItems: 'center', height: 40 }}>
+                  <SelectBox checked={selectedIds.has(tr.id)} onChange={() => onToggleSelect(tr.id)} />
+                </span>
+              )}
               <div aria-hidden style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: tr.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}>{tr.emoji}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: '#2b2543' }}>
+                  {pinnedIds.has(tr.id) && <Pin size={12} color="#7c3aed" fill="#7c3aed" style={{ marginRight: 4, verticalAlign: -1 }} />}
                   {tr.name} <span style={{ fontWeight: 600, color: '#7c3aed' }}>{tr.hashtag}</span>
                 </div>
                 <div style={{ fontSize: 12, color: '#8a85a0', marginTop: 2 }}>{tr.desc}</div>
@@ -114,7 +169,10 @@ export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; o
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTop: '1px solid #f4f1fa', paddingTop: 9 }}>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2b2543' }}>{tr.ideaCount} {t.trIdeaUnit}</span>
-              <ViewIdeasLink onClick={() => onViewIdeas(tr.id)} label={t.trViewIdeas} />
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <PinButton pinned={pinnedIds.has(tr.id)} onClick={() => onTogglePin(tr.id)} label={pinnedIds.has(tr.id) ? t.trUnpin : t.trPin} />
+                <ViewIdeasLink onClick={() => onViewIdeas(tr.id)} label={t.trViewIdeas} />
+              </span>
             </div>
           </Card>
         ))}
@@ -148,12 +206,14 @@ export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; o
           {visible.map((tr) => {
             const trendColor = tr.up ? '#16a34a' : '#dc2626';
             return (
-              <tr key={tr.id} style={{ borderTop: '1px solid #f1eef8' }}>
+              <tr key={tr.id} style={{ borderTop: '1px solid #f1eef8', background: selectMode && selectedIds.has(tr.id) ? '#f8f6fd' : 'transparent' }}>
                 <td style={{ padding: '12px 8px 12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {selectMode && <SelectBox checked={selectedIds.has(tr.id)} onChange={() => onToggleSelect(tr.id)} />}
                     <div aria-hidden style={{ width: 40, height: 40, flex: 'none', borderRadius: 11, background: tr.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}>{tr.emoji}</div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#2b2543', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {pinnedIds.has(tr.id) && <Pin size={12} color="#7c3aed" fill="#7c3aed" style={{ marginRight: 4, verticalAlign: -1 }} />}
                         {tr.name} <span style={{ fontWeight: 600, color: '#7c3aed' }}>{tr.hashtag}</span>
                       </div>
                       <div style={{ fontSize: 12, color: '#8a85a0', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr.desc}</div>
@@ -184,6 +244,7 @@ export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; o
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2b2543', whiteSpace: 'nowrap' }}>{tr.ideaCount} {t.trIdeaUnit}</span>
                     <ViewIdeasLink onClick={() => onViewIdeas(tr.id)} label={t.trViewIdeas} />
+                    <PinButton pinned={pinnedIds.has(tr.id)} onClick={() => onTogglePin(tr.id)} label={pinnedIds.has(tr.id) ? t.trUnpin : t.trPin} />
                   </div>
                 </td>
               </tr>
@@ -199,4 +260,4 @@ export default function TrendTable({ rows, onViewIdeas }: { rows: TrendItem[]; o
       {footer}
     </Card>
   );
-}
+});

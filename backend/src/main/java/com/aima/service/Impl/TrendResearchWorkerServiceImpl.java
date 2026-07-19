@@ -87,10 +87,15 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
         }
 
         BrandProfile brand = session.getBrandProfile();
-        ContentStrategy strategy = contentStrategyRepository
-                .findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-                        brand.getId(), StrategyStatus.ACTIVE)
-                .orElse(null);
+        // Ưu tiên chiến lược user chọn lúc tạo phiên (nếu còn ACTIVE); không có → ACTIVE mới nhất.
+        ContentStrategy strategy = session.getContentStrategy() != null
+                && session.getContentStrategy().getStatus() == StrategyStatus.ACTIVE
+                && session.getContentStrategy().getDeletedAt() == null
+                ? session.getContentStrategy()
+                : contentStrategyRepository
+                        .findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                                brand.getId(), StrategyStatus.ACTIVE)
+                        .orElse(null);
         if (strategy == null) {
             // Chiến lược bị đổi trạng thái giữa lúc tạo phiên và lúc worker chạy.
             session.setStatus(ResearchStatus.FAILED);
@@ -102,11 +107,16 @@ public class TrendResearchWorkerServiceImpl implements TrendResearchWorkerServic
         session.setStatus(ResearchStatus.RUNNING);
         sessionRepository.save(session);
 
+        // Số ý tưởng user yêu cầu (1-20, đã validate ở request); null = mặc định MAX_IDEAS.
+        int maxIdeas = session.getArticleCount() != null
+                ? Math.max(1, Math.min(20, session.getArticleCount()))
+                : MAX_IDEAS;
         ResearchPayload payload = ResearchPayload.builder()
                 .brandProfile(aiContentMapper.toBrandProfilePayload(brand))
                 .strategy(aiContentMapper.toStrategyPayload(strategy))
+                .platform(session.getPlatform().name()) // nền tảng đích (AI chuẩn hoá case)
                 .maxTrends(MAX_TRENDS)
-                .maxIdeas(MAX_IDEAS)
+                .maxIdeas(maxIdeas)
                 .build();
         AiUsageService.AiCallContext callContext = AiUsageService.AiCallContext.of(
                 brand.getUser(), AiTaskCode.TREND_RESEARCH, sessionId,

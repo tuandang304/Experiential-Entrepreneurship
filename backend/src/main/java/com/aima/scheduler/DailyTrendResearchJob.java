@@ -1,6 +1,7 @@
 package com.aima.scheduler;
 
 import com.aima.entity.BrandProfile;
+import com.aima.entity.ContentStrategy;
 import com.aima.entity.TrendResearchSession;
 import com.aima.enums.Platform;
 import com.aima.enums.ResearchStatus;
@@ -61,10 +62,11 @@ public class DailyTrendResearchJob {
     }
 
     private boolean startResearchFor(BrandProfile brand) {
-        if (contentStrategyRepository
+        ContentStrategy strategy = contentStrategyRepository
                 .findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         brand.getId(), StrategyStatus.ACTIVE)
-                .isEmpty()) {
+                .orElse(null);
+        if (strategy == null) {
             return false; // thiếu chiến lược ACTIVE — không tự nghiên cứu
         }
         if (sessionRepository.existsByBrandProfile_User_IdAndStatusInAndDeletedAtIsNull(
@@ -81,7 +83,7 @@ public class DailyTrendResearchJob {
         // Không có transaction bao ngoài — save commit ngay nên dispatch worker trực tiếp
         // (khác luồng "Research ngay" phải chờ afterCommit).
         TrendResearchSession session = sessionRepository
-                .save(trendResearchMapper.toSession(brand, Platform.FACEBOOK));
+                .save(trendResearchMapper.toSession(brand, Platform.FACEBOOK, strategy, null));
         trendResearchWorkerService.process(session.getId());
         log.info("[DailyTrendResearch] Đã tạo phiên {} cho hồ sơ {}", session.getId(), brand.getId());
         return true;

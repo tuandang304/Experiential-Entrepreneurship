@@ -2,6 +2,8 @@ package com.aima.dto.request;
 
 import com.aima.enums.Platform;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,4 +31,13 @@ public class TrendResearchRequest {
 
     @Schema(description = "Main platform of the session; defaults to FACEBOOK.")
     Platform platform;
+
+    @Schema(description = "Content strategy id; defaults to the brand's latest ACTIVE strategy.",
+            example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")
+    UUID strategyId;
+
+    @Min(value = 1, message = "RESEARCH_ARTICLE_COUNT_INVALID")
+    @Max(value = 20, message = "RESEARCH_ARTICLE_COUNT_INVALID")
+    @Schema(description = "Desired number of content ideas (1-20); defaults to 10.", example = "10")
+    Integer articleCount;
 }

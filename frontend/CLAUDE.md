@@ -40,11 +40,23 @@ src/
 │   ├── plans.ts          — gói dịch vụ từ DB: GET /plans/public (landing/pricing) + CRUD /admin/plans;
 │   │                       map payload BE → shape UI (PricingPlan/ComparisonGroup). hooks/usePublicPlans
 │   │                       cache 1 lần gọi/phiên, fallback config/plans.ts (hardcode cũ) khi API lỗi.
-│   └── trendResearch.ts  — start/poll/list phiên Trend Research (async job, NFR-04);
-│                           map sang shape UI ở src/trendsLive.ts — trang Trends dùng dữ liệu thật
-│                           khi có phiên COMPLETED, mock trendsData.ts chỉ là fallback demo.
-│                           "Research ngay" mở components/trends/ResearchStartModal (chọn hồ sơ
-│                           thương hiệu + nền tảng, cảnh báo thiếu chiến lược ACTIVE)
+│   └── trendResearch.ts  — start/poll/list/deleteTrends phiên Trend Research (async job, NFR-04);
+│                           input có `strategyId` + `articleCount` (1–20) ngoài brand/platform.
+│                           Trang Trends GỘP tối đa 3 phiên COMPLETED gần nhất MỖI nền tảng
+│                           (trendsLive.ts: mergedLiveData khử trùng lặp theo tên + remap idea;
+│                           liveTrendStats tính trên dữ liệu ĐANG hiển thị) — research lại BỔ SUNG
+│                           chứ không ghi đè; mock trendsData.ts chỉ là fallback demo.
+│                           Tab "Trend nổi bật": ghim trend (localStorage aima_pinned_trends, nổi
+│                           lên đầu) + chọn nhiều trend để xóa (live → DELETE /trend-research/trends
+│                           soft delete backend; ẩn ngay qua localStorage aima_deleted_trends).
+│                           "Research ngay" mở components/trends/ResearchStartModal (chọn hồ sơ +
+│                           chiến lược + NHIỀU nền tảng — page research LẦN LƯỢT vì BE chặn phiên
+│                           song song mã 1912 — + số ý tưởng + bộ lọc nâng cao áp cho kết quả).
+│                           Modal chi tiết: IdeaDetailModal (ý tưởng + ngày ghi nhận trend),
+│                           SessionDetailModal (phiên thật fetch theo id / phiên mock hiện trend demo),
+│                           ScheduleModal (lịch research tự động — cấu hình lưu localStorage qua
+│                           src/trendsSchedule.ts; job backend 02:00 là nguồn chạy thật).
+│                           "Lưu ý tưởng" bền vững qua localStorage (key aima_saved_ideas).
 ├── auth/
 │   ├── AuthContext.tsx   — user state, refreshUser() gọi /users/me, login/logout
 │   ├── ProtectedRoute.tsx— chặn route nếu chưa đăng nhập
@@ -58,7 +70,8 @@ src/
 │                           toast/ToastProvider (toast góc trên-phải: useToast().success/error/
 │                           warning/info cho MỌI feedback thao tác nhất thời — không tự chế banner;
 │                           KHÁC NotificationBell là hộp thư bền vững), …
-├── hooks/                — useBreakpoint (responsive), useReveal (scroll reveal)
+├── hooks/                — useBreakpoint (responsive; resize gộp theo rAF — không dội re-render
+│                           liên tục khi kéo giãn cửa sổ), useReveal (scroll reveal)
 ├── validations/          — logic kiểm tra dữ liệu dùng chung (1 nguồn, không lặp inline):
 │                           password.ts (PASSWORD_RULE + độ mạnh), authValidation.ts
 │                           (validEmail/otpValid/passwordsMatch), profileValidation.ts (phoneOk/validateStep1)
@@ -94,6 +107,10 @@ src/
 - **Điều hướng:** dùng `go(route)` từ `useApp()` hoặc `<Link>`/`navigate` của react-router. Route map ở `AppContext`.
 - **i18n:** chuỗi hiển thị lấy từ `t` (`useApp().t`), không hardcode tiếng Việt/Anh rải rác khi đã có key.
 - **TypeScript:** không `any` tùy tiện; type request/response API ở `api/*.ts`. Build chạy `tsc` nên lỗi type sẽ fail build.
+- **Hiệu năng trang danh sách** (mẫu tham chiếu: trang Trends): component hiển thị thuần bọc
+  `React.memo`; mọi props truyền xuống phải ổn định — mảng/derived data qua `useMemo`, handler qua
+  `useCallback` (card trong danh sách nhận callback dạng `(id) => ...` dùng chung, KHÔNG tạo closure
+  mới cho từng item); ô tìm kiếm lọc danh sách dùng `useDeferredValue` để gõ phím không giật.
 
 ## 5. Giao diện
 

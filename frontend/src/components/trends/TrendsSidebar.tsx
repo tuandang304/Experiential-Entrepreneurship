@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Globe, Hash, Newspaper, TrendingUp, CalendarClock, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -5,12 +6,12 @@ import { Card, Icon, PlatformTag } from '../ui';
 import { PLATFORM_BG } from '../../theme';
 import {
   SESSION_STATUS_COLORS,
-  latestResearch,
   type ContentIdea,
   type ResearchSession,
   type TrendItem,
   type TrendsTab,
 } from '../../trendsData';
+import { type TrendSchedule } from '../../trendsSchedule';
 import { Pill } from './filters';
 
 const SOURCE_ICONS = [Globe, Hash, Newspaper, TrendingUp];
@@ -22,91 +23,127 @@ const valueStyle = { fontSize: 13, fontWeight: 700, color: '#2b2543', textAlign:
 /**
  * Sidebar phải của trang Xu hướng. Thứ tự ưu tiên: "Lịch research tự động" (toggle
  * quan trọng, đặt trên đầu để không bị cắt khi cột phải dài) → "Trạng thái research"
- * → khối giữa đổi theo sub-tab: hot → lịch sử rút gọn · ideas → thống kê ý tưởng ·
- * history → thống kê phiên. Cả hai khối cố định luôn hiển thị ở mọi sub-tab.
+ * (dựa trên PHIÊN GẦN NHẤT thật/mock — không hardcode) → khối giữa đổi theo sub-tab:
+ * hot → lịch sử rút gọn · ideas → thống kê ý tưởng · history → thống kê phiên.
+ * memo: mọi props đều được page memo hóa/ổn định — gõ tìm kiếm không dội vào sidebar.
  */
-export default function TrendsSidebar({
+export default memo(function TrendsSidebar({
   tab,
   sessions,
   ideas,
   trends,
   savedIds,
+  schedule,
   onViewHistory,
+  onViewSession,
+  onEditSchedule,
 }: {
   tab: TrendsTab;
   sessions: ResearchSession[];
   ideas: ContentIdea[];
   trends: TrendItem[];
   savedIds: Set<string>;
+  /** Cấu hình lịch research tự động (localStorage); null = chưa thiết lập (backend mặc định 02:00). */
+  schedule: TrendSchedule | null;
   onViewHistory: () => void;
+  /** Mở modal chi tiết một phiên research. */
+  onViewSession: (session: ResearchSession) => void;
+  onEditSchedule: () => void;
 }) {
-  const { t, lang } = useApp();
-  const latest = latestResearch(lang);
+  const { t } = useApp();
+  const latest = sessions[0] ?? null;
+  const latestSt = latest ? SESSION_STATUS_COLORS[latest.status] : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* 1. Lịch research tự động — toggle quan trọng, đưa lên đầu để không bị che khi sidebar dài */}
-      <AutoScheduleCard />
+      <AutoScheduleCard schedule={schedule} onEdit={onEditSchedule} />
 
-      {/* 2. Trạng thái research — cố định ở mọi sub-tab */}
+      {/* 2. Trạng thái research — theo phiên gần nhất, cố định ở mọi sub-tab */}
       <Card style={{ padding: 20 }}>
         <div style={{ ...rowStyle, marginBottom: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 15, color: '#211c38' }}>{t.trSideStatus}</div>
-          <Pill text={t.trDone} color={SESSION_STATUS_COLORS.done.color} bg={SESSION_STATUS_COLORS.done.bg} />
+          {latest && latestSt && (
+            <Pill text={latest.status === 'done' ? t.trDone : t.trCancelled} color={latestSt.color} bg={latestSt.bg} />
+          )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-          <div style={rowStyle}>
-            <span style={labelStyle}>{t.trSideLatest}</span>
-            <span style={valueStyle}>{latest.dateLabel}</span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>{t.trIndustry}</span>
-            <span style={valueStyle}>{latest.industry}</span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>{t.trPlatform}</span>
-            <span style={{ display: 'flex', gap: 5 }}>
-              {latest.platforms.map((tag) => (
-                <PlatformTag key={tag} tag={tag} bg={PLATFORM_BG[tag]} size={22} radius={7} fontSize={10} />
-              ))}
-            </span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>{t.trSideDuration}</span>
-            <span style={valueStyle}>{latest.duration}</span>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>{t.trSideSources}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {SOURCE_ICONS.map((Ic, i) => (
-                <span key={i} style={{ width: 22, height: 22, borderRadius: 7, background: '#f4f2fb', border: '1px solid #ece8f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon icon={Ic} size={12} stroke="#7c3aed" />
+        {!latest ? (
+          <div style={{ fontSize: 13, color: '#8a85a0' }}>{t.trNoSession}</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trSideLatest}</span>
+                <span style={valueStyle}>{latest.date} · {latest.time}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trIndustry}</span>
+                <span style={valueStyle}>{latest.industry}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trPlatform}</span>
+                <span style={{ display: 'flex', gap: 5 }}>
+                  {latest.platformTags.map((tag) => (
+                    <PlatformTag key={tag} tag={tag} bg={PLATFORM_BG[tag]} size={22} radius={7} fontSize={10} />
+                  ))}
                 </span>
-              ))}
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#7c3aed', background: '#f3edff', borderRadius: 7, padding: '3px 6px' }}>+{latest.extraSources}</span>
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="btn-soft"
-          style={{ width: '100%', marginTop: 16, border: '1px solid #e7d9fb', background: '#f3edff', color: '#6d28d9', fontWeight: 700, fontSize: 12.5, borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
-        >
-          {t.trSideDetail}
-        </button>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trTrendsFound}</span>
+                <span style={valueStyle}>{latest.trendsFound}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trIdeasCreated}</span>
+                <span style={valueStyle}>{latest.ideasCreated}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trSideDuration}</span>
+                <span style={valueStyle}>{latest.duration}</span>
+              </div>
+              <div style={rowStyle}>
+                <span style={labelStyle}>{t.trSideSources}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {SOURCE_ICONS.map((Ic, i) => (
+                    <span key={i} style={{ width: 22, height: 22, borderRadius: 7, background: '#f4f2fb', border: '1px solid #ece8f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon icon={Ic} size={12} stroke="#7c3aed" />
+                    </span>
+                  ))}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onViewSession(latest)}
+              className="btn-soft"
+              style={{ width: '100%', marginTop: 16, border: '1px solid #e7d9fb', background: '#f3edff', color: '#6d28d9', fontWeight: 700, fontSize: 12.5, borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
+            >
+              {t.trSideDetail}
+            </button>
+          </>
+        )}
       </Card>
 
       {/* 3. Khối giữa — đổi theo sub-tab */}
-      {tab === 'hot' && <HistoryBrief sessions={sessions} onViewHistory={onViewHistory} />}
+      {tab === 'hot' && <HistoryBrief sessions={sessions} onViewHistory={onViewHistory} onViewSession={onViewSession} />}
       {tab === 'ideas' && <IdeaStats ideas={ideas} trends={trends} savedIds={savedIds} />}
       {tab === 'history' && <SessionStats sessions={sessions} />}
     </div>
   );
-}
+});
 
-/** Lịch research tự động — toggle cố định, hiển thị ở mọi sub-tab (đặt đầu sidebar). */
-function AutoScheduleCard() {
+/** Lịch research tự động — hiển thị cấu hình đã lưu (localStorage) + nút mở modal cài đặt. */
+function AutoScheduleCard({ schedule, onEdit }: { schedule: TrendSchedule | null; onEdit: () => void }) {
   const { t } = useApp();
+  const dayLabels = t.trDayShorts.split(',');
+  const on = schedule ? schedule.enabled : true; // chưa cấu hình → job backend 02:00 mặc định đang chạy
+  const pill = on
+    ? { text: t.trScheduleOn, ...SESSION_STATUS_COLORS.done }
+    : { text: t.trScheduleOffPill, ...SESSION_STATUS_COLORS.cancelled };
+
+  const desc = schedule
+    ? `${schedule.frequency === 'daily' ? t.trFreqDaily : `${t.trFreqWeekly} (${schedule.days.map((d) => dayLabels[d]).join(', ')})`} · ${schedule.time} · ${schedule.brandName}`
+    : t.trScheduleDesc;
+
   return (
     <Card style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -114,11 +151,20 @@ function AutoScheduleCard() {
           <Icon icon={CalendarClock} size={18} stroke="#8b5cf6" />
         </div>
         <div style={{ flex: 1, fontWeight: 700, fontSize: 15, color: '#211c38' }}>{t.trSideSchedule}</div>
-        <Pill text={t.trScheduleOn} color={SESSION_STATUS_COLORS.done.color} bg={SESSION_STATUS_COLORS.done.bg} />
+        <Pill text={pill.text} color={pill.color} bg={pill.bg} />
       </div>
-      <div style={{ fontSize: 12.5, color: '#6b6680', lineHeight: 1.55, marginBottom: 14 }}>{t.trScheduleDesc}</div>
+      <div style={{ fontSize: 12.5, color: '#6b6680', lineHeight: 1.55, marginBottom: schedule ? 6 : 14 }}>{desc}</div>
+      {schedule && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+          {schedule.platforms.map((tag) => (
+            <PlatformTag key={tag} tag={tag} bg={PLATFORM_BG[tag]} size={20} radius={6} fontSize={9.5} />
+          ))}
+          <span style={{ fontSize: 11.5, color: '#8a85a0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{schedule.strategyName}</span>
+        </div>
+      )}
       <button
         type="button"
+        onClick={onEdit}
         className="btn-outline"
         style={{ width: '100%', border: '1px solid #ece8f6', background: '#fff', color: '#4b4660', fontWeight: 700, fontSize: 12.5, borderRadius: 10, padding: '10px 12px', cursor: 'pointer' }}
       >
@@ -129,7 +175,15 @@ function AutoScheduleCard() {
 }
 
 /** Tab "Trend nổi bật": lịch sử research rút gọn (3 mục ở laptop, 5 mục ở PC) + link Xem tất cả. */
-function HistoryBrief({ sessions, onViewHistory }: { sessions: ResearchSession[]; onViewHistory: () => void }) {
+function HistoryBrief({
+  sessions,
+  onViewHistory,
+  onViewSession,
+}: {
+  sessions: ResearchSession[];
+  onViewHistory: () => void;
+  onViewSession: (session: ResearchSession) => void;
+}) {
   const { t } = useApp();
   const { width } = useBreakpoint();
   const briefCount = width >= 1280 ? 5 : 3;
@@ -151,7 +205,12 @@ function HistoryBrief({ sessions, onViewHistory }: { sessions: ResearchSession[]
         {sessions.slice(0, briefCount).map((s, i) => {
           const st = SESSION_STATUS_COLORS[s.status];
           return (
-            <div key={s.id} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid #f4f1fa' : 'none' }}>
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onViewSession(s)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', padding: '10px 0', borderTop: i > 0 ? '1px solid #f4f1fa' : 'none', cursor: 'pointer' }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2b2543' }}>{s.date}</span>
                 <Pill text={s.status === 'done' ? t.trDone : t.trCancelled} color={st.color} bg={st.bg} style={{ fontSize: 10.5, padding: '3px 8px' }} />
@@ -159,7 +218,7 @@ function HistoryBrief({ sessions, onViewHistory }: { sessions: ResearchSession[]
               <div style={{ fontSize: 11.5, color: '#8a85a0', marginTop: 3 }}>
                 {s.industry} · {s.platforms} {t.trPlatformUnit} · {s.trendsFound} {t.trTrendUnit} · {s.ideasCreated} {t.trIdeaUnit}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

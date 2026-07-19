@@ -1,5 +1,6 @@
 package com.aima.controller;
 
+import com.aima.dto.request.TrendDeleteRequest;
 import com.aima.dto.request.TrendResearchRequest;
 import com.aima.dto.response.ApiResponse;
 import com.aima.dto.response.TrendResearchSessionResponse;
@@ -7,11 +8,13 @@ import com.aima.dto.response.TrendResearchSessionSummaryResponse;
 import com.aima.service.TrendResearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,7 +39,7 @@ public class TrendResearchController {
     @Operation(summary = "Start a trend-research session (\"Research now\")",
             description = "Requires an active brand profile + ACTIVE strategy; rejects if a session is already running (FR-19).")
     public ApiResponse<TrendResearchSessionResponse> start(@AuthenticationPrincipal UserDetails principal,
-                                                           @RequestBody(required = false) TrendResearchRequest request) {
+                                                           @Valid @RequestBody(required = false) TrendResearchRequest request) {
         return trendResearchService.startResearch(principal.getUsername(), request);
     }
 
@@ -53,5 +56,13 @@ public class TrendResearchController {
             description = "Newest first; counts only — fetch a session by id for full trends/ideas (FR-23).")
     public ApiResponse<List<TrendResearchSessionSummaryResponse>> listSessions(@AuthenticationPrincipal UserDetails principal) {
         return trendResearchService.listSessions(principal.getUsername());
+    }
+
+    @DeleteMapping("/trends")
+    @Operation(summary = "Soft-delete unwanted trends (multi-select)",
+            description = "Deletes the caller's trends (and their content ideas) by id; returns the deleted count.")
+    public ApiResponse<Integer> deleteTrends(@AuthenticationPrincipal UserDetails principal,
+                                             @Valid @RequestBody TrendDeleteRequest request) {
+        return trendResearchService.deleteTrends(principal.getUsername(), request);
     }
 }

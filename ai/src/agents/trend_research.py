@@ -145,16 +145,35 @@ USER_PROMPT = """BRAND PROFILE:
 
 CONTENT STRATEGY:
 {strategy}
-
+{platform_instruction}
 RAW SOCIAL SIGNAL (aggregated):
 {signal}
 
 Return at most {max_trends} trends and at most {max_ideas} content ideas."""
 
 
+# Canonical platform names as the schemas/prompt expect them (FR-19 target platform).
+_CANONICAL_PLATFORMS = {"facebook": "Facebook", "instagram": "Instagram", "threads": "Threads"}
+
+
+def _target_platform(req: ResearchRequest) -> str | None:
+    """Normalize the requested platform ("FACEBOOK" from the backend, any case) or None."""
+    return _CANONICAL_PLATFORMS.get((req.platform or "").strip().lower())
+
+
 def research_trends(req: ResearchRequest) -> ResearchResult:
     """Run a single trend-research session and return trends + ideas (+ token usage)."""
     signal = _collect_signal(req)
+    target = _target_platform(req)
+
+    platform_instruction = (
+        "\nTARGET PLATFORM OF THIS SESSION: "
+        f"{target}. Focus the analysis on what works on {target}; the `platform` field "
+        f'of EVERY trend and EVERY content idea must be exactly "{target}", and idea '
+        f"formats must suit {target}.\n"
+        if target
+        else "\n"
+    )
 
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("user", USER_PROMPT)]
@@ -166,6 +185,7 @@ def research_trends(req: ResearchRequest) -> ResearchResult:
             "brand_profile": req.brand_profile.model_dump_json(indent=2),
             "strategy": req.strategy.model_dump_json(indent=2),
             "signal": _format_signal(signal),
+            "platform_instruction": platform_instruction,
             "max_trends": req.max_trends,
             "max_ideas": req.max_ideas,
         },
@@ -174,6 +194,13 @@ def research_trends(req: ResearchRequest) -> ResearchResult:
     result.industry = req.brand_profile.industry
     result.trends = result.trends[: req.max_trends]
     result.content_ideas = result.content_ideas[: req.max_ideas]
+    # Belt-and-braces (FR-19): structured output may still stray — force the session's
+    # target platform on every trend/idea so the backend never stores a mismatched one.
+    if target:
+        for trend in result.trends:
+            trend.platform = target
+        for idea in result.content_ideas:
+            idea.platform = target
     return ResearchResult(**result.model_dump(), **usage.response_fields())
 
 

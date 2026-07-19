@@ -15,6 +15,8 @@ import java.util.UUID;
 @Repository
 public interface ContentStrategyRepository extends JpaRepository<ContentStrategy, UUID> {
     Optional<ContentStrategy> findByIdAndBrandProfile_User_IdAndDeletedAtIsNull(UUID id, UUID userId);
+    // Chiến lược user chọn khi bắt đầu trend research (phải thuộc đúng brand của phiên).
+    Optional<ContentStrategy> findByIdAndBrandProfile_IdAndDeletedAtIsNull(UUID id, UUID brandId);
     Optional<ContentStrategy> findFirstByBrandProfile_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(UUID brandId, StrategyStatus status);
 
     // Badge "N chiến lược" trên card hồ sơ thương hiệu (strategyCount trong BrandProfileResponse).

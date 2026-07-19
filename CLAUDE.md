@@ -18,6 +18,8 @@ repo/
 >   Backend address is read from `VITE_API_BASE_URL` (`.env`) — never hardcoded.
 > - Backend → read [`backend/CLAUDE.md`](backend/CLAUDE.md) for its structure, conventions,
 >   authentication flow and rules.
+> - AI service → read [`ai/CLAUDE.md`](ai/CLAUDE.md) for its agents, endpoints, LLM routing,
+>   trend-signal connectors and rules (stateless — persistence lives on the backend).
 
 ## 🛠️ Project Commands
 

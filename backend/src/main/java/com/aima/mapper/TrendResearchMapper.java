@@ -8,6 +8,7 @@ import com.aima.dto.response.TrendResearchSessionSummaryResponse;
 import com.aima.dto.response.TrendResponse;
 import com.aima.entity.BrandProfile;
 import com.aima.entity.ContentIdea;
+import com.aima.entity.ContentStrategy;
 import com.aima.entity.Trend;
 import com.aima.entity.TrendResearchSession;
 import com.aima.enums.Platform;
@@ -21,6 +22,7 @@ public interface TrendResearchMapper {
 
     // ===== Entity → response =====
 
+    @Mapping(target = "strategyName", source = "contentStrategy.name")
     TrendResearchSessionResponse toSessionResponse(TrendResearchSession session);
 
     TrendResponse toTrendResponse(Trend trend);
@@ -42,9 +44,10 @@ public interface TrendResearchMapper {
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "brandProfile", source = "brand")
     @Mapping(target = "industry", source = "brand.industry")
+    @Mapping(target = "contentStrategy", source = "strategy")
     @Mapping(target = "researchTime", expression = "java(java.time.LocalDateTime.now())")
     @Mapping(target = "status", constant = "PENDING")
-    TrendResearchSession toSession(BrandProfile brand, Platform platform);
+    TrendResearchSession toSession(BrandProfile brand, Platform platform, ContentStrategy strategy, Integer articleCount);
 
     // ===== AI result → entities =====
 

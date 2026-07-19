@@ -34,6 +34,12 @@ public class TrendResearchSessionResponse {
     @Schema(description = "Main platform of the session.")
     Platform platform;
 
+    @Schema(description = "Name of the content strategy the session was started with (null for older sessions).")
+    String strategyName;
+
+    @Schema(description = "Desired number of content ideas requested by the user (null = default).")
+    Integer articleCount;
+
     @Schema(description = "When the research started.")
     LocalDateTime researchTime;
 

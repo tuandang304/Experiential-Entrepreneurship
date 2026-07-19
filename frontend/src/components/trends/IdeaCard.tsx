@@ -1,24 +1,32 @@
-import { Sparkles, Bookmark, BookmarkCheck } from 'lucide-react';
+import { memo } from 'react';
+import { Sparkles, Bookmark, BookmarkCheck, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Card, Icon, PlatformTag } from '../ui';
-import { PLATFORM_BG } from '../../theme';
+import { PLATFORMS, PLATFORM_BG } from '../../theme';
 import { IDEA_STATUS_COLORS, type ContentIdea, type IdeaStatus } from '../../trendsData';
 import { Pill } from './filters';
 
-/** 1 thẻ ý tưởng content trong sub-tab "Ý tưởng content". */
-export default function IdeaCard({
+/**
+ * 1 thẻ ý tưởng content trong sub-tab "Ý tưởng content".
+ * memo + callback nhận id/idea (thay vì closure per-card) để danh sách card
+ * không render lại hàng loạt khi page đổi state không liên quan.
+ */
+export default memo(function IdeaCard({
   idea,
   trendName,
   saved,
   onCreate,
   onToggleSave,
+  onDetail,
   compact = false,
 }: {
   idea: ContentIdea;
   trendName: string;
   saved: boolean;
   onCreate: () => void;
-  onToggleSave: () => void;
+  onToggleSave: (ideaId: string) => void;
+  /** Mở modal chi tiết ý tưởng (kèm ngày ghi nhận trend). */
+  onDetail: (idea: ContentIdea) => void;
   /** Tablet: thu gọn padding để 2 cột không bị chật. */
   compact?: boolean;
 }) {
@@ -26,18 +34,29 @@ export default function IdeaCard({
   const status: IdeaStatus = saved && idea.status === 'new' ? 'saved' : idea.status;
   const statusLabel = { new: t.trStatusNew, used: t.trStatusUsed, saved: t.trStatusSaved } as const;
   const st = IDEA_STATUS_COLORS[status];
+  const platformName = PLATFORMS.find((p) => p.tag === idea.platform)?.name ?? idea.platform;
 
   return (
     <Card style={{ padding: compact ? 14 : 18, display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#2b2543', lineHeight: 1.45 }}>{idea.title}</div>
+        <button
+          type="button"
+          onClick={() => onDetail(idea)}
+          title={t.trViewDetail}
+          style={{ border: 'none', background: 'transparent', padding: 0, textAlign: 'left', fontSize: 14, fontWeight: 700, color: '#2b2543', lineHeight: 1.45, cursor: 'pointer' }}
+        >
+          {idea.title}
+        </button>
         <Pill text={statusLabel[status]} color={st.color} bg={st.bg} style={{ flex: 'none' }} />
       </div>
       <div style={{ fontSize: 12.5, color: '#8a85a0' }}>
         {t.trFromTrend}: <span style={{ fontWeight: 600, color: '#7c3aed' }}>{trendName}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <PlatformTag tag={idea.platform} bg={PLATFORM_BG[idea.platform]} size={24} radius={7} fontSize={11} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <PlatformTag tag={idea.platform} bg={PLATFORM_BG[idea.platform]} size={24} radius={7} fontSize={11} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#4b4660' }}>{platformName}</span>
+        </span>
         <span style={{ fontSize: 12, fontWeight: 600, color: '#4b4660', background: '#f4f2fb', border: '1px solid #ece8f6', borderRadius: 8, padding: '4px 10px' }}>{idea.format}</span>
         <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed', background: '#f3edff', borderRadius: 8, padding: '4px 10px' }}>
           {t.trScore}: {idea.score}
@@ -55,7 +74,7 @@ export default function IdeaCard({
         </button>
         <button
           type="button"
-          onClick={onToggleSave}
+          onClick={() => onToggleSave(idea.id)}
           className="btn-outline"
           aria-pressed={status === 'saved'}
           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: '1px solid #ece8f6', background: '#fff', color: status === 'saved' ? '#16a34a' : '#4b4660', fontWeight: 700, fontSize: 12.5, borderRadius: 10, padding: '9px 12px', cursor: 'pointer' }}
@@ -63,7 +82,17 @@ export default function IdeaCard({
           <Icon icon={status === 'saved' ? BookmarkCheck : Bookmark} size={14} stroke={status === 'saved' ? '#16a34a' : '#4b4660'} />
           {status === 'saved' ? t.trStatusSaved : t.trSaveIdea}
         </button>
+        <button
+          type="button"
+          onClick={() => onDetail(idea)}
+          className="btn-outline"
+          aria-label={t.trViewDetail}
+          title={t.trViewDetail}
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ece8f6', background: '#fff', color: '#4b4660', borderRadius: 10, padding: '9px 11px', cursor: 'pointer' }}
+        >
+          <Icon icon={Eye} size={14} stroke="#7c3aed" />
+        </button>
       </div>
     </Card>
   );
-}
+});

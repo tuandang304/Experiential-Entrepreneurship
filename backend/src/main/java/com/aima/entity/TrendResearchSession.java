@@ -27,6 +27,17 @@ public class TrendResearchSession extends BaseEntity {
     @EqualsAndHashCode.Exclude
     BrandProfile brandProfile;
 
+    // Chiến lược user chọn khi bắt đầu phiên (FR-19); null = worker tự lấy chiến lược ACTIVE mới nhất.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "content_strategy_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    ContentStrategy contentStrategy;
+
+    // Số ý tưởng content mong muốn (1-20); null = mặc định của worker.
+    @Column(name = "article_count")
+    Integer articleCount;
+
     @Column(name = "industry", nullable = false, length = 100)
     String industry;
 
@@ -56,7 +67,10 @@ public class TrendResearchSession extends BaseEntity {
     @Column(name = "user_agent", length = 300)
     String userAgent;
 
+    // SQLRestriction: trend bị user xóa (soft delete, FE multi-select) không còn xuất hiện
+    // trong response phiên lẫn counts của summary — không cần lọc thủ công ở mapper.
     @OneToMany(mappedBy = "researchSession", cascade = CascadeType.ALL, orphanRemoval = true)
+    @org.hibernate.annotations.SQLRestriction("deleted_at is null")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     List<Trend> trends = new ArrayList<>();

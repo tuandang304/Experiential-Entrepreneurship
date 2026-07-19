@@ -12,9 +12,21 @@ export function useBreakpoint(): Breakpoint {
   const [width, setWidth] = useState<number>(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
 
   useEffect(() => {
-    const onResize = () => setWidth(window.innerWidth);
+    // Gộp các event resize liên tiếp về 1 lần cập nhật mỗi frame (rAF) — kéo giãn
+    // cửa sổ không còn dội hàng chục lần re-render mỗi giây vào các trang nặng.
+    let frame = 0;
+    const onResize = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setWidth(window.innerWidth);
+      });
+    };
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
 
   return {

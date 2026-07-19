@@ -557,17 +557,20 @@ A `PENDING_DELETE` user can still log in (only `LOCKED` is blocked) so they can 
 **Endpoints** (`/trend-research`, auth required):
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/trend-research/sessions` | "Research ngay" (FR-19): cần brand profile (FE gửi `brandProfileId` tường minh; thiếu thì BE lấy hồ sơ `isActive` — hồ sơ ĐẦU TIÊN của user tự động active khi tạo) + strategy ACTIVE; chặn phiên chạy song song (`RESEARCH_ALREADY_RUNNING`); body optional `{brandProfileId?, platform?}` |
+| POST | `/trend-research/sessions` | "Research ngay" (FR-19): cần brand profile (FE gửi `brandProfileId` tường minh; thiếu thì BE lấy hồ sơ `isActive` — hồ sơ ĐẦU TIÊN của user tự động active khi tạo) + strategy ACTIVE; chặn phiên chạy song song (`RESEARCH_ALREADY_RUNNING`); body optional `{brandProfileId?, platform?, strategyId?, articleCount?}` — `strategyId` phải thuộc brand + ACTIVE (1715/1902), `articleCount` 1–20 (1914, `@Valid`); cả hai lưu trên session (`content_strategy_id`, `article_count`) |
 | GET | `/trend-research/sessions/{id}` | FE poll tới khi `COMPLETED`/`FAILED`; trả trends + content ideas |
 | GET | `/trend-research/sessions` | Lịch sử phiên (FR-23), chỉ counts — lấy chi tiết theo id |
+| DELETE | `/trend-research/trends` | Xóa nhiều trend không phù hợp (multi-select FE): body `{trendIds: [...]}` (`@NotEmpty` 1915); soft delete trend + cascade idea, chỉ trend thuộc user (không tìm thấy cái nào → 1916); trả số đã xóa. `@SQLRestriction("deleted_at is null")` trên `TrendResearchSession.trends` + `Trend.contentIdeas` loại trend/idea đã xóa khỏi response phiên lẫn counts summary |
 
 **Session status** — `ResearchStatus`: `PENDING → RUNNING → COMPLETED | FAILED` (session kiêm luôn job record; có `summary` + `error_message`).
 
 **Ghi chú mapping** — AI trả platform dạng chuỗi ("Facebook"/"Instagram"/"Threads") → `parsePlatform` chuẩn hoá về enum (lạ → FACEBOOK); mỗi idea link trend cha qua `trend_name` (không khớp → gắn trend đầu tiên). Nguồn signal phía AI service: Facebook connector + Trends-MCP (YouTube/TikTok/IG Reels — xem `ai/src/platform/trends_mcp.py`).
 
+**Nền tảng đích của phiên (fix 2026-07-19)** — worker gửi `platform` (= `session.platform.name()`) trong `ResearchPayload`; phía AI (`ai/src/agents/trend_research.py`) đưa target platform vào prompt VÀ ép `platform` của mọi trend/idea trả về đúng nền tảng phiên (payload cũ không có `platform` giữ hành vi cũ — trend/idea tự do trong 3 nền tảng). Worker cũng ưu tiên `session.contentStrategy` (nếu còn ACTIVE) thay vì luôn lấy chiến lược ACTIVE mới nhất, và gửi `maxIdeas` = `articleCount` (clamp 1–20, mặc định 10). `TrendResearchSessionResponse` trả thêm `strategyName` + `articleCount` cho modal chi tiết phiên phía FE.
+
 **Scheduler 2:00 AM (FR-19)** — `scheduler/DailyTrendResearchJob` (`@Scheduled(cron = "0 0 2 * * *")`): quét mọi brand profile `isActive` (`findByIsActiveTrueAndDeletedAtIsNull`), yêu cầu strategy ACTIVE, bỏ qua user đang có phiên PENDING/RUNNING (cùng guard với "Research ngay"), tạo session qua `TrendResearchMapper.toSession(brand, FACEBOOK)` rồi dispatch thẳng `TrendResearchWorkerService.process(id)` (không cần afterCommit — scheduler không có transaction bao ngoài, repo save commit ngay). Resilient: lỗi từng hồ sơ log + bỏ qua.
 
-**ErrorCodes** 1910–1913: `ACTIVE_BRAND_PROFILE_REQUIRED`, `ACTIVE_STRATEGY_REQUIRED`, `RESEARCH_ALREADY_RUNNING`, `RESEARCH_SESSION_NOT_FOUND`.
+**ErrorCodes** 1910–1916: `ACTIVE_BRAND_PROFILE_REQUIRED`, `ACTIVE_STRATEGY_REQUIRED`, `RESEARCH_ALREADY_RUNNING`, `RESEARCH_SESSION_NOT_FOUND`, `RESEARCH_ARTICLE_COUNT_INVALID`, `TREND_IDS_REQUIRED`, `TREND_NOT_FOUND`.
 
 ### Post Scheduling — FR-47..FR-51 (+ FR-48 golden hours)
 > Lên lịch đăng một `ContentVersion` đã FORMATTED lên một `PlatformAccount` ACTIVE cùng nền tảng (BR-05).

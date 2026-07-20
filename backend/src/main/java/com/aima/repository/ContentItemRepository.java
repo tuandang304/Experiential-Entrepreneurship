@@ -1,6 +1,8 @@
 package com.aima.repository;
 
 import com.aima.entity.ContentItem;
+import com.aima.repository.projection.DailyStatusCountProjection;
+import com.aima.repository.projection.StatusCountProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -56,4 +59,27 @@ public interface ContentItemRepository extends JpaRepository<ContentItem, UUID> 
                              @Param("q") String q,
                              @Param("sort") String sort,
                              Pageable pageable);
+
+    // Bảng điều khiển — 4 thẻ số liệu: đếm bài theo trạng thái HIỆN TẠI trong MỘT truy vấn
+    // (service gộp thành tổng / đã đăng / đang chờ / bị từ chối), tránh N lần count.
+    @Query("""
+            select i.status as status, count(i) as total from ContentItem i
+            where i.brandProfile.user.id = :userId
+              and i.deletedAt is null and i.brandProfile.deletedAt is null
+            group by i.status
+            """)
+    List<StatusCountProjection> countByStatusForUser(@Param("userId") UUID userId);
+
+    // Bảng điều khiển — sparkline + % thay đổi: số bài TẠO RA mỗi ngày kể từ :from, tách theo
+    // trạng thái. Service gọi với from = 14 ngày trước để dùng chung cho cả sparkline (7 ngày
+    // gần nhất) lẫn so sánh 7 ngày qua vs 7 ngày liền trước — một truy vấn cho cả 4 thẻ.
+    @Query(value = """
+            select to_char(i.created_at, 'YYYY-MM-DD') as day, i.status as status, count(*) as total
+            from content_items i
+            join brand_profiles bp on bp.id = i.brand_profile_id and bp.deleted_at is null
+            where bp.user_id = :userId and i.deleted_at is null and i.created_at >= :from
+            group by 1, 2
+            """, nativeQuery = true)
+    List<DailyStatusCountProjection> countDailyByStatusForUser(@Param("userId") UUID userId,
+                                                               @Param("from") LocalDateTime from);
 }

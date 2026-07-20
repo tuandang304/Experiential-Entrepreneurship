@@ -1,40 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCheck, CheckCircle2, Lightbulb, PlugZap, ShieldAlert, XCircle } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { Icon } from "./ui";
 import { ICON } from "../data";
+import { ROUTE_BY_TYPE, TYPE_META } from "./notificationMeta";
+import { formatRelativeTime } from "../utils/format";
 import {
   getUnreadCount,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   type AppNotification,
-  type NotificationType,
 } from "../api/notifications";
-import type { Route } from "../types";
 
 const PAGE_SIZE = 8;
 const POLL_MS = 60_000;
-
-// Điều hướng theo loại thông báo (FR-75..FR-78): bài đăng → lịch, đăng lỗi → trang Bài lỗi & cần
-// xử lý (FR-38, nhảy thẳng vào trung tâm hồi phục), cần duyệt → nội dung, kết nối lại → cài đặt,
-// insight → phân tích.
-const ROUTE_BY_TYPE: Record<NotificationType, Route> = {
-  POST_PUBLISHED: "calendar",
-  POST_FAILED: "failedPosts",
-  REVIEW_NEEDED: "create",
-  RECONNECT_NEEDED: "settings",
-  NEW_INSIGHT: "analytics",
-};
-
-const TYPE_META: Record<NotificationType, { icon: typeof CheckCircle2; color: string; bg: string }> = {
-  POST_PUBLISHED: { icon: CheckCircle2, color: "#16a34a", bg: "#eafbf1" },
-  POST_FAILED: { icon: XCircle, color: "#e23d6e", bg: "#fdecf1" },
-  REVIEW_NEEDED: { icon: ShieldAlert, color: "#d97706", bg: "#fdf4e5" },
-  RECONNECT_NEEDED: { icon: PlugZap, color: "#ea580c", bg: "#fdefe6" },
-  NEW_INSIGHT: { icon: Lightbulb, color: "#7c3aed", bg: "#f3edfd" },
-};
 
 /** Chuông thông báo trên Topbar: badge số chưa đọc + dropdown danh sách (FR-75..FR-78, FR-38). */
 export default function NotificationBell() {
@@ -233,21 +214,9 @@ function NotificationRow({ notification, onClick }: { notification: AppNotificat
           </span>
         )}
         <span style={{ display: "block", fontSize: 11, color: "#a39bbf", marginTop: 4 }}>
-          {relativeTime(notification.createdAt, t)}
+          {formatRelativeTime(notification.createdAt, t)}
         </span>
       </span>
     </button>
   );
-}
-
-// "x phút/giờ/ngày trước" — đủ dùng cho danh sách thông báo, không cần thư viện.
-function relativeTime(iso: string, t: { ntfNow: string; ntfMinAgo: string; ntfHourAgo: string; ntfDayAgo: string }): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return t.ntfNow;
-  if (minutes < 60) return t.ntfMinAgo.replace("{n}", String(minutes));
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t.ntfHourAgo.replace("{n}", String(hours));
-  const days = Math.floor(hours / 24);
-  return t.ntfDayAgo.replace("{n}", String(days));
 }

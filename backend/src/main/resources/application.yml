@@ -10,7 +10,7 @@ server:
 
 spring:
   application:
-    name: ${APP_NAME}
+    name: ${APP_NAME:aima-backend}
 
   config:
     import: optional:file:backend/.env[.properties]

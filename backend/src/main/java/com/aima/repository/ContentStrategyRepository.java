@@ -22,6 +22,9 @@ public interface ContentStrategyRepository extends JpaRepository<ContentStrategy
     // Badge "N chiến lược" trên card hồ sơ thương hiệu (strategyCount trong BrandProfileResponse).
     long countByBrandProfile_IdAndDeletedAtIsNull(UUID brandId);
 
+    // Bảng điều khiển — bước "Tạo chiến lược content" của tiến độ thiết lập (mọi hồ sơ của user).
+    long countByBrandProfile_User_IdAndDeletedAtIsNull(UUID userId);
+
     // Phân trang + lọc server-side cho list chiến lược (tham số null/rỗng = bỏ qua điều kiện).
     @Query("""
             select s from ContentStrategy s

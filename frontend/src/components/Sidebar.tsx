@@ -49,14 +49,27 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
   // Thanh usage token AI trong tháng (GET /users/me/token-usage). Refetch khi đổi route
   // để số liệu cập nhật sau mỗi lần tạo/định dạng/nghiên cứu; lỗi thì ẩn thanh (không chặn UI).
   const [usage, setUsage] = useState<TokenUsage | null>(null);
+  const [scheduledCount, setScheduledCount] = useState<number | null>(null);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     getTokenUsage()
       .then((u) => { if (!cancelled) setUsage(u); })
       .catch(() => { if (!cancelled) setUsage(null); });
+      
+    // Fetch count of upcoming SCHEDULED posts to display on the Calendar badge
+    if (user.role !== 'ADMIN' || mode === 'app') {
+      // Dynamic import to avoid circular dependency issues if any, or just import it at top
+      import('../api/schedules').then(({ listSchedules }) => {
+        listSchedules({ status: 'SCHEDULED' })
+          .then((schedules) => { if (!cancelled) setScheduledCount(schedules.length); })
+          .catch(() => { if (!cancelled) setScheduledCount(null); });
+      });
+    }
+
     return () => { cancelled = true; };
-  }, [user, route]);
+  }, [user, route, mode]);
 
   const usagePct = usage && usage.limit !== null
     ? Math.min(usage.limit > 0 ? (usage.used / usage.limit) * 100 : 100, 100)
@@ -101,7 +114,7 @@ export default function Sidebar({ mode = 'app', mobileMenuOpen, setMobileMenuOpe
       label: t.secContent,
       items: [
         { key: 'create', label: t.navCreate, icon: ICON.create },
-        { key: 'calendar', label: t.navCalendar, icon: ICON.calendar, badge: '3' },
+        { key: 'calendar', label: t.navCalendar, icon: ICON.calendar, badge: scheduledCount ? scheduledCount.toString() : undefined },
         // Trung tâm hồi phục bài lỗi (FR-35..FR-39) — bổ trợ lối vào từ trang Lịch + notification.
         { key: 'failedPosts', label: t.navFailedPosts, icon: AlertTriangle },
       ],

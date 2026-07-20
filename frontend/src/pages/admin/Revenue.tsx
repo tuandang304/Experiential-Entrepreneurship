@@ -332,7 +332,7 @@ export default function Revenue() {
                 {series.points.every((p) => p.revenue === 0 && p.transactions === 0)
                   ? emptyBox(t.revNoDataPeriod)
                   : (
-                    <div className="h-[280px] sm:h-[360px] xl:h-[440px]">
+                    <div className="h-[240px] sm:h-[280px] xl:h-[320px]">
                       <RevenueChart points={series.points} />
                     </div>
                   )}

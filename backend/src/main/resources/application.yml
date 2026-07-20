@@ -102,11 +102,15 @@ app:
   auth:
     cookie:
       refresh-token-name: ${AUTH_COOKIE_NAME:refresh_token}
+      access-token-name: ${AUTH_ACCESS_COOKIE_NAME:access_token}
       # Bật true khi chạy HTTPS (production). Trên http://localhost để false.
       secure: ${AUTH_COOKIE_SECURE:false}
       # Lax cho dev (FE/BE cùng site localhost). Cross-site production dùng None + secure=true.
       same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
       path: ${AUTH_COOKIE_PATH:/}
+      # Domain của cookie, vd .aima-marketing.id.vn khi FE/BE nằm trên hai subdomain cùng
+      # domain gốc (first-party, Safari/Brave không chặn). Trống = không set Domain.
+      domain: ${COOKIE_DOMAIN:}
 
 # Cấu hình liên kết tài khoản MXH qua Meta (Facebook/Instagram + Threads).
 meta:

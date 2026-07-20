@@ -48,6 +48,15 @@ public class CookieUtils {
     @Value("${app.auth.cookie.path:/}")
     String path;
 
+    /**
+     * Domain của cookie, vd {@code .aima-marketing.id.vn} để FE/BE khác subdomain vẫn là
+     * first-party. Để trống (mặc định) → không set Domain, cookie chỉ thuộc host trả về
+     * response (local dev và mọi cấu hình hiện tại giữ nguyên hành vi).
+     */
+    @NonFinal
+    @Value("${app.auth.cookie.domain:}")
+    String domain;
+
     @NonFinal
     @Value("${jwt.refreshTokenExpiration:604800}")
     long refreshTokenExpiration;
@@ -67,14 +76,24 @@ public class CookieUtils {
     }
 
     private void addCookie(HttpServletResponse response, String name, String value, long maxAge) {
-        ResponseCookie cookie = ResponseCookie.from(name, value)
+        ResponseCookie cookie = baseCookie(name, value).maxAge(maxAge).build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    /**
+     * Thuộc tính dùng chung cho cả lúc đặt và lúc xoá cookie — trình duyệt chỉ xoá được
+     * cookie khi Domain/Path/SameSite khớp với lúc đặt, nên hai đường phải đi qua đây.
+     */
+    private ResponseCookie.ResponseCookieBuilder baseCookie(String name, String value) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(secure)
                 .sameSite(sameSite)
-                .path(path)
-                .maxAge(maxAge)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                .path(path);
+        if (domain != null && !domain.isBlank()) {
+            builder.domain(domain);
+        }
+        return builder;
     }
 
     /** Xoá refresh-token cookie (khi logout). */
@@ -88,13 +107,7 @@ public class CookieUtils {
     }
 
     private void clearCookie(HttpServletResponse response, String name) {
-        ResponseCookie cookie = ResponseCookie.from(name, "")
-                .httpOnly(true)
-                .secure(secure)
-                .sameSite(sameSite)
-                .path(path)
-                .maxAge(0)
-                .build();
+        ResponseCookie cookie = baseCookie(name, "").maxAge(0).build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 

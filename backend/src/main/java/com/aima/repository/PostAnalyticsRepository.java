@@ -1,7 +1,10 @@
 package com.aima.repository;
 
 import com.aima.entity.PostAnalytics;
+import com.aima.repository.projection.DailyEngagementProjection;
 import com.aima.repository.projection.DailyMetricProjection;
+import com.aima.repository.projection.PlatformMetricProjection;
+import com.aima.repository.projection.TopPostProjection;
 import com.aima.repository.projection.TopicMetricProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -75,4 +78,110 @@ public interface PostAnalyticsRepository extends JpaRepository<PostAnalytics, UU
             """, nativeQuery = true)
     List<TopicMetricProjection> findTopTopicsForUser(@Param("userId") UUID userId,
                                                      @Param("limit") int limit);
+
+    // Trang Phân tích (UI-08 khối B/C): 4 metric riêng lẻ theo NGÀY ĐĂNG trong [from, to). Cùng khuôn
+    // với findDailyPerformanceForUser nhưng KHÔNG gộp thành reach/engagement — FE cần từng metric.
+    // platformCsv null = mọi nền tảng; khác null = danh sách tên nền tảng nối bằng dấu phẩy
+    // ("FACEBOOK,THREADS"). CAST(:platformCsv AS text) để PostgreSQL suy được kiểu khi bind null.
+    @Query(value = """
+            select to_char(p.published_at, 'YYYY-MM-DD') as day,
+                   cast(coalesce(sum(la.views), 0) as bigint) as views,
+                   cast(coalesce(sum(la.likes), 0) as bigint) as likes,
+                   cast(coalesce(sum(la.comments), 0) as bigint) as comments,
+                   cast(coalesce(sum(la.shares), 0) as bigint) as shares
+            from posts p
+            join post_schedules ps on ps.id = p.schedule_id and ps.deleted_at is null
+            join platform_accounts pa on pa.id = ps.platform_account_id and pa.deleted_at is null
+            left join (
+                select distinct on (a.post_id) a.post_id, a.views, a.likes, a.comments, a.shares
+                from post_analytics a
+                where a.deleted_at is null
+                order by a.post_id, a.milestone_hours desc nulls last
+            ) la on la.post_id = p.id
+            where pa.user_id = :userId
+              and p.deleted_at is null
+              and p.status = 'POSTED'
+              and p.published_at is not null
+              and p.published_at >= :from
+              and p.published_at < :to
+              and (cast(:platformCsv as text) is null
+                   or p.platform_name = any(string_to_array(cast(:platformCsv as text), ',')))
+            group by 1
+            order by 1
+            """, nativeQuery = true)
+    List<DailyEngagementProjection> findDailyEngagementForUser(@Param("userId") UUID userId,
+                                                               @Param("from") LocalDateTime from,
+                                                               @Param("to") LocalDateTime to,
+                                                               @Param("platformCsv") String platformCsv);
+
+    // Khối D — số liệu gộp theo TỪNG nền tảng trong [from, to). Không lọc nền tảng ở đây: donut thể
+    // hiện tỷ trọng giữa các nền tảng nên luôn tính tất cả; service tự bổ sung nền tảng chưa có bài.
+    @Query(value = """
+            select p.platform_name as platform,
+                   cast(coalesce(sum(la.views), 0) as bigint) as views,
+                   cast(coalesce(sum(la.likes), 0) as bigint) as likes,
+                   cast(coalesce(sum(la.comments), 0) as bigint) as comments,
+                   cast(coalesce(sum(la.shares), 0) as bigint) as shares,
+                   cast(coalesce(sum(coalesce(la.likes, 0) + coalesce(la.comments, 0)
+                                     + coalesce(la.shares, 0)), 0) as bigint) as engagement
+            from posts p
+            join post_schedules ps on ps.id = p.schedule_id and ps.deleted_at is null
+            join platform_accounts pa on pa.id = ps.platform_account_id and pa.deleted_at is null
+            left join (
+                select distinct on (a.post_id) a.post_id, a.views, a.likes, a.comments, a.shares
+                from post_analytics a
+                where a.deleted_at is null
+                order by a.post_id, a.milestone_hours desc nulls last
+            ) la on la.post_id = p.id
+            where pa.user_id = :userId
+              and p.deleted_at is null
+              and p.status = 'POSTED'
+              and p.published_at is not null
+              and p.published_at >= :from
+              and p.published_at < :to
+            group by p.platform_name
+            """, nativeQuery = true)
+    List<PlatformMetricProjection> findPlatformMetricsForUser(@Param("userId") UUID userId,
+                                                              @Param("from") LocalDateTime from,
+                                                              @Param("to") LocalDateTime to);
+
+    // Khối E — bài đã đăng trong [from, to) kèm số liệu mốc muộn nhất; caption/contentItemId lấy từ
+    // content_versions (LEFT JOIN để bài không biến mất nếu bản định dạng bị xoá mềm). Sắp xếp theo
+    // cột do service quyết định (whitelist) nên ở đây chỉ ORDER BY ngày đăng làm thứ tự nạp mặc định.
+    @Query(value = """
+            select p.id as postId,
+                   cv.content_item_id as contentItemId,
+                   p.platform_name as platform,
+                   cv.formatted_caption as caption,
+                   pa.account_name as accountName,
+                   p.published_at as publishedAt,
+                   cast(coalesce(la.views, 0) as bigint) as views,
+                   cast(coalesce(la.likes, 0) as bigint) as likes,
+                   cast(coalesce(la.comments, 0) as bigint) as comments,
+                   cast(coalesce(la.shares, 0) as bigint) as shares,
+                   cast(coalesce(la.likes, 0) + coalesce(la.comments, 0) + coalesce(la.shares, 0) as bigint) as engagement
+            from posts p
+            join post_schedules ps on ps.id = p.schedule_id and ps.deleted_at is null
+            join platform_accounts pa on pa.id = ps.platform_account_id and pa.deleted_at is null
+            left join content_versions cv on cv.id = ps.content_version_id and cv.deleted_at is null
+            left join (
+                select distinct on (a.post_id) a.post_id, a.views, a.likes, a.comments, a.shares
+                from post_analytics a
+                where a.deleted_at is null
+                order by a.post_id, a.milestone_hours desc nulls last
+            ) la on la.post_id = p.id
+            where pa.user_id = :userId
+              and p.deleted_at is null
+              and p.status = 'POSTED'
+              and p.published_at is not null
+              and p.published_at >= :from
+              and p.published_at < :to
+              and (cast(:platformCsv as text) is null
+                   or p.platform_name = any(string_to_array(cast(:platformCsv as text), ',')))
+            order by p.published_at desc
+            """, nativeQuery = true)
+    List<TopPostProjection> findTopPostsForUser(@Param("userId") UUID userId,
+                                                @Param("from") LocalDateTime from,
+                                                @Param("to") LocalDateTime to,
+                                                @Param("platformCsv") String platformCsv);
 }

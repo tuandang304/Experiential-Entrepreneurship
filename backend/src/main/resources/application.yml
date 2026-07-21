@@ -165,6 +165,9 @@ aima:
     # DEV-ONLY: bật endpoint seed payments mẫu (POST/DELETE /admin/revenue/dev-seed) để dựng
     # giao diện Quản lý doanh thu trước khi có cổng payOS. GỠ/TẮT khi có thanh toán thật.
     payment-seed-enabled: ${AIMA_DEV_PAYMENT_SEED:false}
+    # DEV-ONLY: bật endpoint seed số liệu Phân tích mẫu (POST/DELETE /analytics/dev-seed) để dựng
+    # trang Phân tích (UI-08) trước khi có bài đăng thật đủ 24h. GỠ/TẮT khi có dữ liệu thật.
+    analytics-seed-enabled: ${AIMA_DEV_ANALYTICS_SEED:false}
   encryption:
     # 32 byte base64 (openssl rand -base64 32). Bắt buộc — app fail khi startup nếu thiếu.
     key: ${AIMA_ENCRYPTION_KEY}

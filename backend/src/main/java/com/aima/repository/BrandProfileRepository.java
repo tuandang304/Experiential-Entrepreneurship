@@ -24,6 +24,10 @@ public interface BrandProfileRepository extends JpaRepository<BrandProfile, UUID
     // FR-19: scheduler 02:00 quét mọi hồ sơ đang hoạt động (tối đa 1 active/user).
     List<BrandProfile> findByIsActiveTrueAndDeletedAtIsNull();
 
+    // Seeder dev-only (UI-08): tìm hồ sơ MẪU theo tên đánh dấu để dọn trước khi seed lại / khi clear.
+    // Không lọc deletedAt: dev-seed xoá cứng nên không có bản mềm, nhưng cứ nhận hết cho chắc.
+    List<BrandProfile> findByUser_IdAndBrandName(UUID userId, String brandName);
+
     // Phân trang + lọc server-side cho tab Thương hiệu (q rỗng / industry rỗng = bỏ qua điều kiện).
     @Query("""
             select b from BrandProfile b

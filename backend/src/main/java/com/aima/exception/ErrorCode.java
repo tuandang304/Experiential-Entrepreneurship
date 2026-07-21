@@ -286,6 +286,13 @@ public enum ErrorCode {
             "Kết quả vượt trần 50.000 dòng — thu hẹp bộ lọc rồi export lại", HttpStatus.BAD_REQUEST),
     ACTIVITY_LOG_RANGE_INVALID(2045, "Khoảng thời gian không hợp lệ — từ ngày phải trước đến ngày",
             HttpStatus.BAD_REQUEST),
+
+    // Phân tích (Analytics summary/timeseries — UI-08) — 2050+
+    ANALYTICS_RANGE_INVALID(2050, "Khoảng thời gian không hợp lệ — từ ngày phải trước đến ngày",
+            HttpStatus.BAD_REQUEST),
+    ANALYTICS_RANGE_TOO_LARGE(2051, "Khoảng thời gian quá dài — tối đa 366 ngày", HttpStatus.BAD_REQUEST),
+    ANALYTICS_SEED_DISABLED(2052,
+            "Công cụ dev đang tắt — bật AIMA_DEV_ANALYTICS_SEED=true (chỉ môi trường dev)", HttpStatus.FORBIDDEN),
     ;
 
     private int code;
